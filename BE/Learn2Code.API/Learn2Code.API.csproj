@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Learn2Code.Services\Learn2Code.Application.csproj" />
+    <ProjectReference Include="..\Learn2Code.Application\Learn2Code.Application.csproj" />
   </ItemGroup>
 
 </Project>
