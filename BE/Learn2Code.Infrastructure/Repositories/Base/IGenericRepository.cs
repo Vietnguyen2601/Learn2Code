@@ -45,32 +45,32 @@ public interface IGenericRepository<T> where T : class
     /// <summary>
     /// Get entity by integer ID synchronously
     /// </summary>
-    T GetById(int id);
+    T? GetById(int id);
 
     /// <summary>
     /// Get entity by integer ID asynchronously
     /// </summary>
-    Task<T> GetByIdAsync(int id);
+    Task<T?> GetByIdAsync(int id);
 
     /// <summary>
     /// Get entity by string code synchronously
     /// </summary>
-    T GetById(string code);
+    T? GetById(string code);
 
     /// <summary>
     /// Get entity by string code asynchronously
     /// </summary>
-    Task<T> GetByIdAsync(string code);
+    Task<T?> GetByIdAsync(string code);
 
     /// <summary>
     /// Get entity by GUID synchronously
     /// </summary>
-    T GetById(Guid code);
+    T? GetById(Guid code);
 
     /// <summary>
     /// Get entity by GUID asynchronously
     /// </summary>
-    Task<T> GetByIdAsync(Guid code);
+    Task<T?> GetByIdAsync(Guid code);
 
     /// <summary>
     /// Prepare entity for creation without saving
@@ -98,7 +98,14 @@ public interface IGenericRepository<T> where T : class
     Task<int> SaveAsync();
 
     /// <summary>
-    /// Get all entities as queryable without materializing
+    /// Get single entity by predicate
     /// </summary>
+    Task<T?> GetAsync(System.Linq.Expressions.Expression<Func<T, bool>> predicate);
+
+    /// <summary>
+    /// Check if entity exists by predicate
+    /// </summary>
+    Task<bool> AnyAsync(System.Linq.Expressions.Expression<Func<T, bool>> predicate);
+
     IQueryable<T> GetAllQueryable();
 }
