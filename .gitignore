@@ -320,3 +320,6 @@ appsettings.json
 appsettings.*.json
 !appsettings.Example.json
 BE/Learn2Code.API/appsettings.json
+
+.agent
+.agent/agents
