@@ -25,7 +25,6 @@ public static class AccountMapper
     {
         return new RegisterResponse
         {
-            AccountId = account.AccountId,
             Username = account.Username,
             Email = account.Email,
             Name = account.Name
@@ -36,7 +35,6 @@ public static class AccountMapper
     {
         return new LoginResponse
         {
-            AccountId = account.AccountId,
             Username = account.Username,
             Email = account.Email,
             Name = account.Name,

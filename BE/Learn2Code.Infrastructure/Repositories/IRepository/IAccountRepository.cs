@@ -6,4 +6,6 @@ namespace Learn2Code.Infrastructure.Repositories.IRepository;
 public interface IAccountRepository : IGenericRepository<Account>
 {
     Task<Account?> GetByEmailOrUsernameWithRolesAsync(string emailOrUsername);
+    Task<List<Account>> GetAllWithRolesAsync();
+    Task<Account?> GetByIdWithRolesAsync(Guid id);
 }

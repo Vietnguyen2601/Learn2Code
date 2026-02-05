@@ -18,19 +18,22 @@ public class AccountService : IAccountService
 
     public async Task<ServiceResult<List<AccountDto>>> GetAllAccountsAsync()
     {
-        var accounts = _unitOfWork.AccountRepository.GetAllQueryable().ToList();
+        var accounts = await _unitOfWork.AccountRepository.GetAllWithRolesAsync();
 
-        var accountDtos = accounts.Select(a => a.ToAccountDto(new List<string>())).ToList();
+        var accountDtos = accounts.Select(a => a.ToAccountDto(
+            a.AccountRoles?.Select(ar => ar.Role?.RoleName ?? "").ToList() ?? new List<string>()
+        )).ToList();
 
         return ServiceResult<List<AccountDto>>.Ok(accountDtos);
     }
 
     public async Task<ServiceResult<AccountDto>> GetAccountByIdAsync(Guid id)
     {
-        var account = await _unitOfWork.AccountRepository.GetAsync(a => a.AccountId == id);
+        var account = await _unitOfWork.AccountRepository.GetByIdWithRolesAsync(id);
         if (account == null)
             return ServiceResult<AccountDto>.NotFound("Account not found");
-        var roles = new List<string>();
+
+        var roles = account.AccountRoles?.Select(ar => ar.Role?.RoleName ?? "").ToList() ?? new List<string>();
 
         return ServiceResult<AccountDto>.Ok(account.ToAccountDto(roles));
     }
@@ -47,14 +50,33 @@ public class AccountService : IAccountService
         var account = request.ToAccount(hashedPassword);
 
         _unitOfWork.AccountRepository.PrepareCreate(account);
+
+        // Assign default Student role if no roles specified
+        var rolesToAssign = request.Roles?.Count > 0 ? request.Roles : new List<string> { "Student" };
+
+        foreach (var roleName in rolesToAssign)
+        {
+            var role = await _unitOfWork.RoleRepository.GetAsync(r => r.RoleName == roleName);
+            if (role != null)
+            {
+                var accountRole = new AccountRole
+                {
+                    AccountId = account.AccountId,
+                    RoleId = role.RoleId,
+                    AssignedAt = DateTime.UtcNow
+                };
+                _unitOfWork.Repository<AccountRole>().PrepareCreate(accountRole);
+            }
+        }
+
         await _unitOfWork.CommitTransactionAsync();
 
-        return ServiceResult<AccountDto>.Created(account.ToAccountDto(new List<string>()));
+        return ServiceResult<AccountDto>.Created(account.ToAccountDto(rolesToAssign));
     }
 
     public async Task<ServiceResult<AccountDto>> UpdateAccountAsync(Guid id, UpdateAccountRequest request)
     {
-        var account = await _unitOfWork.AccountRepository.GetAsync(a => a.AccountId == id);
+        var account = await _unitOfWork.AccountRepository.GetByIdWithRolesAsync(id);
         if (account == null) return ServiceResult<AccountDto>.NotFound("Account not found");
 
         account.UpdateAccount(request);
@@ -62,7 +84,8 @@ public class AccountService : IAccountService
         _unitOfWork.AccountRepository.PrepareUpdate(account);
         await _unitOfWork.CommitTransactionAsync();
 
-        return ServiceResult<AccountDto>.Ok(account.ToAccountDto(new List<string>()));
+        var roles = account.AccountRoles?.Select(ar => ar.Role?.RoleName ?? "").ToList() ?? new List<string>();
+        return ServiceResult<AccountDto>.Ok(account.ToAccountDto(roles));
     }
 
     public async Task<ServiceResult> DeleteAccountAsync(Guid id)
@@ -76,3 +99,4 @@ public class AccountService : IAccountService
         return ServiceResult.Ok("Account deleted successfully");
     }
 }
+

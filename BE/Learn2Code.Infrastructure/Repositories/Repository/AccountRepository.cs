@@ -19,4 +19,20 @@ public class AccountRepository : GenericRepository<Account>, IAccountRepository
             .ThenInclude(ar => ar.Role)
             .FirstOrDefaultAsync(a => a.Email == emailOrUsername || a.Username == emailOrUsername);
     }
+
+    public async Task<List<Account>> GetAllWithRolesAsync()
+    {
+        return await _context.Set<Account>()
+            .Include(a => a.AccountRoles)
+            .ThenInclude(ar => ar.Role)
+            .ToListAsync();
+    }
+
+    public async Task<Account?> GetByIdWithRolesAsync(Guid id)
+    {
+        return await _context.Set<Account>()
+            .Include(a => a.AccountRoles)
+            .ThenInclude(ar => ar.Role)
+            .FirstOrDefaultAsync(a => a.AccountId == id);
+    }
 }

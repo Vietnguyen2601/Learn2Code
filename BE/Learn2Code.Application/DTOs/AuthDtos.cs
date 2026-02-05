@@ -60,9 +60,6 @@ public class LoginRequest
 
 public class LoginResponse
 {
-    [JsonPropertyName("account_id")]
-    public Guid AccountId { get; set; }
-
     [JsonPropertyName("username")]
     public string Username { get; set; } = string.Empty;
 
@@ -81,9 +78,6 @@ public class LoginResponse
 
 public class RegisterResponse
 {
-    [JsonPropertyName("account_id")]
-    public Guid AccountId { get; set; }
-
     [JsonPropertyName("username")]
     public string Username { get; set; } = string.Empty;
 
