@@ -1,13 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿namespace Learn2Code.Application.Base;
 
-namespace Learn2Code.Application.Base
+public interface IServiceResult
 {
-    public class IServiceResult
-    {
-
-    }
+    int Status { get; set; }
+    string? Message { get; set; }
+    object? Data { get; set; }
+    List<string>? Errors { get; set; }
 }

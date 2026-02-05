@@ -7,8 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Learn2Code.Common\Learn2Code.Domain.csproj" />
-    <ProjectReference Include="..\Learn2Code.Repositories\Learn2Code.Infrastructure.csproj" />
+    <ProjectReference Include="..\Learn2Code.Domain\Learn2Code.Domain.csproj" />
+    <ProjectReference Include="..\Learn2Code.Infrastructure\Learn2Code.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
