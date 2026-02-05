@@ -314,3 +314,9 @@ FE/.vite/
 
 # Testing
 FE/coverage/
+
+# App settings với thông tin nhạy cảm
+appsettings.json
+appsettings.*.json
+!appsettings.Example.json
+BE/Learn2Code.API/appsettings.json
