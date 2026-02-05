@@ -273,53 +273,10 @@ __pycache__/
 
 # End of https://www.toptal.com/developers/gitignore/api/aspnetcore
 
-# Development settings
-appsettings.Development.json
-
-### React + Vite + Tailwind ###
-
-# Dependencies
-FE/node_modules/
-FE/.pnp
-FE/.pnp.js
-
-# Production build
-FE/dist/
-FE/build/
-
-# Misc
-FE/.DS_Store
-FE/.env
-FE/.env.local
-FE/.env.development.local
-FE/.env.test.local
-FE/.env.production.local
-
-# Logs
-FE/npm-debug.log*
-FE/yarn-debug.log*
-FE/yarn-error.log*
-
-# Editor directories and files
-FE/.vscode
-FE/.idea
-FE/*.suo
-FE/*.ntvs*
-FE/*.njsproj
-FE/*.sln
-FE/*.sw?
-
-# Vite
-FE/.vite/
-
-# Testing
-FE/coverage/
-
 # App settings với thông tin nhạy cảm
 appsettings.json
 appsettings.*.json
 !appsettings.Example.json
-BE/Learn2Code.API/appsettings.json
 
 .agent
 .agent/agents

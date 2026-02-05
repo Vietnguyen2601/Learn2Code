@@ -1,107 +1,127 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
-// using Learn2Code.Infrastructure.Data.Context;
+﻿using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.EntityFrameworkCore;
+using Learn2Code.Infrastructure.Repositories.IRepository;
+using Learn2Code.Infrastructure.Data.Context;
+using Learn2Code.Infrastructure.Repositories.Repository;
 using Learn2Code.Infrastructure.Repositories.Base;
 
 namespace Learn2Code.Infrastructure.Persistence.UnitOfWork;
 
-public class UnitOfWork
+public class UnitOfWork : IUnitOfWork
 {
-    // private readonly ApplicationDbContext _context;
-    // private IDbContextTransaction _transaction;
-    // private readonly Dictionary<string, object> _repositories;
+    private readonly Learn2CodeDbContext _context;
+    private IDbContextTransaction? _transaction;
+    private readonly Dictionary<string, object> _repositories;
 
-    // public UnitOfWork(ApplicationDbContext context)
-    // {
-    //     _context = context;
-    //     _repositories = new Dictionary<string, object>();
-    // }
+    public UnitOfWork(Learn2CodeDbContext context)
+    {
+        _context = context;
+        _repositories = new Dictionary<string, object>();
+    }
 
-    // /// Get or create a repository for entity type T
-    // public IGenericRepository<T> Repository<T>() where T : class
-    // {
-    //     var key = typeof(T).Name;
+    private IAccountRepository? _accountRepository;
+    public IAccountRepository AccountRepository
+    {
+        get
+        {
+            return _accountRepository ??= new AccountRepository(_context);
+        }
+    }
 
-    //     if (!_repositories.ContainsKey(key))
-    //     {
-    //         var repositoryType = typeof(GenericRepository<>).MakeGenericType(typeof(T));
-    //         var repositoryInstance = Activator.CreateInstance(repositoryType, _context);
-    //         _repositories.Add(key, repositoryInstance);
-    //     }
+    private IRoleRepository? _roleRepository;
+    public IRoleRepository RoleRepository
+    {
+        get
+        {
+            return _roleRepository ??= new RoleRepository(_context);
+        }
+    }
 
-    //     return (IGenericRepository<T>)_repositories[key];
-    // }
+    public IGenericRepository<T> Repository<T>() where T : class
+    {
+        var key = typeof(T).Name;
 
-    // /// Save all pending changes synchronously
-    // public int SaveChanges()
-    // {
-    //     return _context.SaveChanges();
-    // }
+        if (!_repositories.ContainsKey(key))
+        {
+            var repositoryType = typeof(GenericRepository<>).MakeGenericType(typeof(T));
+            var repositoryInstance = Activator.CreateInstance(repositoryType, _context);
+            _repositories.Add(key, repositoryInstance!);
+        }
 
-    // /// Save all pending changes asynchronously
-    // public async Task<int> SaveChangesAsync()
-    // {
-    //     return await _context.SaveChangesAsync();
-    // }
+        return (IGenericRepository<T>)_repositories[key];
+    }
 
-    // /// Begin a database transaction
-    // public async Task BeginTransactionAsync()
-    // {
-    //     _transaction = await _context.Database.BeginTransactionAsync();
-    // }
+    public int SaveChanges()
+    {
+        return _context.SaveChanges();
+    }
 
-    // /// Commit the current transaction
-    // public async Task CommitTransactionAsync()
-    // {
-    //     try
-    //     {
-    //         await SaveChangesAsync();
-    //         await _transaction?.CommitAsync();
-    //     }
-    //     catch
-    //     {
-    //         await RollbackTransactionAsync();
-    //         throw;
-    //     }
-    //     finally
-    //     {
-    //         // await _transaction?.DisposeAsync();
-    //         _transaction = null;
-    //     }
-    // }
+    public async Task<int> SaveChangesAsync()
+    {
+        return await _context.SaveChangesAsync();
+    }
 
-    // /// Rollback the current transaction
-    // public async Task RollbackTransactionAsync()
-    // {
-    //     try
-    //     {
-    //         await _transaction?.RollbackAsync();
-    //     }
-    //     finally
-    //     {
-    //         // await _transaction?.DisposeAsync();
-    //         _transaction = null;
-    //     }
-    // }
+    public async Task BeginTransactionAsync()
+    {
+        _transaction = await _context.Database.BeginTransactionAsync();
+    }
 
-    // /// Dispose resources
-    // public void Dispose()
-    // {
-    //     _transaction?.Dispose();
-    //     _context?.Dispose();
-    // }
+    public async Task CommitTransactionAsync()
+    {
+        try
+        {
+            await SaveChangesAsync();
+            if (_transaction != null)
+            {
+                await _transaction.CommitAsync();
+            }
+        }
+        catch
+        {
+            await RollbackTransactionAsync();
+            throw;
+        }
+        finally
+        {
+            if (_transaction != null)
+            {
+                await _transaction.DisposeAsync();
+            }
+            _transaction = null;
+        }
+    }
 
-    // /// Dispose resources asynchronously
-    // public async ValueTask DisposeAsync()
-    // {
-    //     if (_transaction != null)
-    //     {
-    //         await _transaction.DisposeAsync();
-    //     }
+    public async Task RollbackTransactionAsync()
+    {
+        try
+        {
+            if (_transaction != null)
+            {
+                await _transaction.RollbackAsync();
+            }
+        }
+        finally
+        {
+            if (_transaction != null)
+            {
+                await _transaction.DisposeAsync();
+            }
+            _transaction = null;
+        }
+    }
 
-    //     if (_context != null)
-    //     {
-    //         await _context.DisposeAsync();
-    //     }
-    // }
+    public void Dispose()
+    {
+        _transaction?.Dispose();
+        _context.Dispose();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_transaction != null)
+        {
+            await _transaction.DisposeAsync();
+        }
+        await _context.DisposeAsync();
+    }
 }
