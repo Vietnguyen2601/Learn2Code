@@ -33,58 +33,14 @@ public class AuthService : IAuthService
         _logger = logger;
     }
 
-    public async Task<ServiceResult> SendOtpAsync(SendOtpRequest request)
-    {
-        if (string.IsNullOrWhiteSpace(request.Email))
-        {
-            return ServiceResult.Error("INVALID_EMAIL", "Email is required");
-        }
-
-        // Validate email format
-        if (!IsValidEmail(request.Email))
-        {
-            return ServiceResult.Error("INVALID_EMAIL", "Invalid email format");
-        }
-
-        // Check if email already exists
-        // Check if email already exists
-        var existingAccount = await _unitOfWork.AccountRepository.GetAsync(a => a.Email == request.Email);
-
-        if (existingAccount != null)
-        {
-            return ServiceResult.Error("EMAIL_EXISTS", "Email already registered");
-        }
-
-        // Generate OTP
-        var otpCode = GenerateOtpCode();
-
-        // Store OTP in memory cache
-        var cacheKey = $"OTP_{request.Email}";
-        var cacheOptions = new MemoryCacheEntryOptions()
-            .SetAbsoluteExpiration(TimeSpan.FromMinutes(5));
-
-        _memoryCache.Set(cacheKey, otpCode, cacheOptions);
-
-        // Send OTP email
-        var emailSent = await _emailService.SendOtpEmailAsync(request.Email, otpCode);
-        if (!emailSent)
-        {
-            return ServiceResult.Error("EMAIL_SEND_FAILED", "Failed to send OTP email. Please try again.");
-        }
-
-        _logger.LogInformation("OTP sent to {Email}", request.Email);
-        return ServiceResult.Ok("OTP sent successfully. Please check your email.");
-    }
-
     public async Task<ServiceResult<RegisterResponse>> RegisterAsync(RegisterRequest request)
     {
         // Validation
         if (string.IsNullOrWhiteSpace(request.Email) ||
-            string.IsNullOrWhiteSpace(request.OtpCode) ||
             string.IsNullOrWhiteSpace(request.Username) ||
             string.IsNullOrWhiteSpace(request.Password))
         {
-            return ServiceResult<RegisterResponse>.Error("VALIDATION_ERROR", "Email, OTP code, username and password are required");
+            return ServiceResult<RegisterResponse>.Error("VALIDATION_ERROR", "Email, username and password are required");
         }
 
         if (request.Password.Length < 6)
@@ -97,9 +53,47 @@ public class AuthService : IAuthService
             return ServiceResult<RegisterResponse>.Error("PASSWORD_MISMATCH", "Passwords do not match");
         }
 
+        // Validate email format
+        if (!IsValidEmail(request.Email))
+        {
+            return ServiceResult<RegisterResponse>.Error("INVALID_EMAIL", "Invalid email format");
+        }
+
+        // If OTP code is not provided, send OTP to email
+        if (string.IsNullOrWhiteSpace(request.OtpCode))
+        {
+            // Check if email already exists
+            var existingAccount = await _unitOfWork.AccountRepository.GetAsync(a => a.Email == request.Email);
+            if (existingAccount != null)
+            {
+                return ServiceResult<RegisterResponse>.Error("EMAIL_EXISTS", "Email already registered");
+            }
+
+            // Generate OTP
+            var otpCode = GenerateOtpCode();
+
+            // Store OTP in memory cache
+            var cacheKey = $"OTP_{request.Email}";
+            var cacheOptions = new MemoryCacheEntryOptions()
+                .SetAbsoluteExpiration(TimeSpan.FromMinutes(5));
+
+            _memoryCache.Set(cacheKey, otpCode, cacheOptions);
+
+            // Send OTP email
+            var emailSent = await _emailService.SendOtpEmailAsync(request.Email, otpCode);
+            if (!emailSent)
+            {
+                return ServiceResult<RegisterResponse>.Error("EMAIL_SEND_FAILED", "Failed to send OTP email. Please try again.");
+            }
+
+            _logger.LogInformation("OTP sent to {Email}", request.Email);
+            // Return a response indicating OTP was sent
+            return ServiceResult<RegisterResponse>.Ok(new RegisterResponse(), "OTP sent successfully. Please check your email and provide the OTP code in your next request.");
+        }
+
         // Verify OTP from memory cache
-        var cacheKey = $"OTP_{request.Email}";
-        if (!_memoryCache.TryGetValue(cacheKey, out string? cachedOtp) || cachedOtp != request.OtpCode)
+        var cacheKeyVerify = $"OTP_{request.Email}";
+        if (!_memoryCache.TryGetValue(cacheKeyVerify, out string? cachedOtp) || cachedOtp != request.OtpCode)
         {
             return ServiceResult<RegisterResponse>.Error("INVALID_OTP", "Invalid or expired OTP code");
         }
@@ -126,7 +120,7 @@ public class AuthService : IAuthService
         try
         {
             // Remove OTP from cache after successful verification use
-            _memoryCache.Remove(cacheKey);
+            _memoryCache.Remove(cacheKeyVerify);
 
             // Assign default role (Student)
             // Assign default role (Student)

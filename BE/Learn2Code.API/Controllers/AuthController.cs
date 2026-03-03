@@ -17,18 +17,6 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Send OTP to email for verification
-    /// </summary>
-    [HttpPost("send-otp")]
-    [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> SendOtp([FromBody] SendOtpRequest request)
-    {
-        var result = await _authService.SendOtpAsync(request);
-        return result.Success ? Ok(result) : BadRequest(result);
-    }
-
-    /// <summary>
     /// Register new account with OTP verification
     /// </summary>
     [HttpPost("register")]
