@@ -49,6 +49,36 @@ public class LoginRequest
     public string Password { get; set; } = string.Empty;
 }
 
+public class ForgotPasswordRequest
+{
+    [Required]
+    [EmailAddress]
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = string.Empty;
+}
+
+public class ResetPasswordRequest
+{
+    [Required]
+    [EmailAddress]
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = string.Empty;
+
+    [Required]
+    [JsonPropertyName("otp_code")]
+    public string OtpCode { get; set; } = string.Empty;
+
+    [Required]
+    [MinLength(6)]
+    [JsonPropertyName("new_password")]
+    public string NewPassword { get; set; } = string.Empty;
+
+    [Required]
+    [Compare("NewPassword")]
+    [JsonPropertyName("confirm_password")]
+    public string ConfirmPassword { get; set; } = string.Empty;
+}
+
 // Response DTOs
 
 public class LoginResponse
@@ -79,4 +109,13 @@ public class RegisterResponse
 
     [JsonPropertyName("name")]
     public string? Name { get; set; }
+}
+
+public class ResetPasswordResponse
+{
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = string.Empty;
+
+    [JsonPropertyName("message")]
+    public string Message { get; set; } = string.Empty;
 }

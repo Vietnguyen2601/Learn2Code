@@ -238,6 +238,118 @@ public class AuthService : IAuthService
         return ServiceResult<LoginResponse>.Ok(response, "Login successful");
     }
 
+    public async Task<ServiceResult> ForgotPasswordAsync(ForgotPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            return ServiceResult.Error("INVALID_EMAIL", "Email is required");
+        }
+
+        // Validate email format
+        if (!IsValidEmail(request.Email))
+        {
+            return ServiceResult.Error("INVALID_EMAIL", "Invalid email format");
+        }
+
+        // Check if account exists
+        var account = await _unitOfWork.AccountRepository.GetAsync(a => a.Email == request.Email);
+        if (account == null)
+        {
+            return ServiceResult.Error("ACCOUNT_NOT_FOUND", "Account with this email does not exist");
+        }
+
+        // Generate OTP
+        var otpCode = GenerateOtpCode();
+
+        // Store OTP in memory cache with key for password reset
+        var cacheKey = $"PASSWORD_RESET_OTP_{request.Email}";
+        var cacheOptions = new MemoryCacheEntryOptions()
+            .SetAbsoluteExpiration(TimeSpan.FromMinutes(5));
+
+        _memoryCache.Set(cacheKey, otpCode, cacheOptions);
+
+        // Send OTP email
+        var emailSent = await _emailService.SendOtpEmailAsync(request.Email, otpCode);
+        if (!emailSent)
+        {
+            return ServiceResult.Error("EMAIL_SEND_FAILED", "Failed to send OTP email. Please try again.");
+        }
+
+        _logger.LogInformation("Password reset OTP sent to {Email}", request.Email);
+        return ServiceResult.Ok("OTP sent successfully. Please check your email.");
+    }
+
+    public async Task<ServiceResult<ResetPasswordResponse>> ResetPasswordAsync(ResetPasswordRequest request)
+    {
+        // Validation
+        if (string.IsNullOrWhiteSpace(request.Email) ||
+            string.IsNullOrWhiteSpace(request.OtpCode) ||
+            string.IsNullOrWhiteSpace(request.NewPassword))
+        {
+            return ServiceResult<ResetPasswordResponse>.Error("VALIDATION_ERROR", "Email, OTP code and new password are required");
+        }
+
+        if (request.NewPassword.Length < 6)
+        {
+            return ServiceResult<ResetPasswordResponse>.Error("WEAK_PASSWORD", "Password must be at least 6 characters");
+        }
+
+        if (request.NewPassword != request.ConfirmPassword)
+        {
+            return ServiceResult<ResetPasswordResponse>.Error("PASSWORD_MISMATCH", "Passwords do not match");
+        }
+
+        // Validate email format
+        if (!IsValidEmail(request.Email))
+        {
+            return ServiceResult<ResetPasswordResponse>.Error("INVALID_EMAIL", "Invalid email format");
+        }
+
+        // Verify OTP from memory cache
+        var cacheKey = $"PASSWORD_RESET_OTP_{request.Email}";
+        if (!_memoryCache.TryGetValue(cacheKey, out string? cachedOtp) || cachedOtp != request.OtpCode)
+        {
+            return ServiceResult<ResetPasswordResponse>.Error("INVALID_OTP", "Invalid or expired OTP code");
+        }
+
+        // Check if account exists
+        var account = await _unitOfWork.AccountRepository.GetAsync(a => a.Email == request.Email);
+        if (account == null)
+        {
+            return ServiceResult<ResetPasswordResponse>.Error("ACCOUNT_NOT_FOUND", "Account with this email does not exist");
+        }
+
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            // Remove OTP from cache after successful verification
+            _memoryCache.Remove(cacheKey);
+
+            // Update password
+            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            account.Password = hashedPassword;
+
+            _unitOfWork.AccountRepository.PrepareUpdate(account);
+            await _unitOfWork.CommitTransactionAsync();
+
+            _logger.LogInformation("Password reset successfully for {Email}", request.Email);
+
+            var response = new ResetPasswordResponse
+            {
+                Email = account.Email,
+                Message = "Password reset successfully"
+            };
+
+            return ServiceResult<ResetPasswordResponse>.Ok(response, "Password reset successfully");
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            _logger.LogError(ex, "Failed to reset password for {Email}", request.Email);
+            return ServiceResult<ResetPasswordResponse>.Error("RESET_FAILED", "Failed to reset password. Please try again.");
+        }
+    }
+
     private static string GenerateOtpCode()
     {
         var random = new Random();
