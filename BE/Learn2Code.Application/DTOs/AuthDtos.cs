@@ -13,10 +13,6 @@ public class RegisterRequest
     [JsonPropertyName("email")]
     public string Email { get; set; } = string.Empty;
 
-    [JsonPropertyName("otp_code")]
-    [DefaultValue("")]
-    public string OtpCode { get; set; } = string.Empty;
-
     [Required]
     [JsonPropertyName("username")]
     public string Username { get; set; } = string.Empty;
@@ -36,6 +32,18 @@ public class RegisterRequest
 
     [JsonPropertyName("phone_number")]
     public string? PhoneNumber { get; set; }
+}
+
+public class VerifyOtpRequest
+{
+    [Required]
+    [EmailAddress]
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = string.Empty;
+
+    [Required]
+    [JsonPropertyName("otp_code")]
+    public string OtpCode { get; set; } = string.Empty;
 }
 
 public class LoginRequest
@@ -100,6 +108,18 @@ public class LoginResponse
 }
 
 public class RegisterResponse
+{
+    [JsonPropertyName("username")]
+    public string Username { get; set; } = string.Empty;
+
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = string.Empty;
+
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+}
+
+public class VerifyOtpResponse
 {
     [JsonPropertyName("username")]
     public string Username { get; set; } = string.Empty;

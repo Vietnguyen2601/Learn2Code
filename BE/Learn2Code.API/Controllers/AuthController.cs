@@ -17,14 +17,26 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Register new account with OTP verification
+    /// Send OTP to email for registration
     /// </summary>
     [HttpPost("register")]
-    [ProducesResponseType(typeof(ServiceResult<RegisterResponse>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(ServiceResult<RegisterResponse>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
         var result = await _authService.RegisterAsync(request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    /// <summary>
+    /// Verify OTP and create account
+    /// </summary>
+    [HttpPost("verify-otp")]
+    [ProducesResponseType(typeof(ServiceResult<VerifyOtpResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ServiceResult<VerifyOtpResponse>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequest request)
+    {
+        var result = await _authService.VerifyOtpAsync(request);
         return result.Success ? StatusCode(201, result) : BadRequest(result);
     }
 
