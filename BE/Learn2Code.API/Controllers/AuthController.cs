@@ -51,4 +51,27 @@ public class AuthController : ControllerBase
             _ => BadRequest(result)
         };
     }
-}
+
+    /// <summary>
+    /// Send OTP for password reset
+    /// </summary>
+    [HttpPost("forgot-password")]
+    [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        var result = await _authService.ForgotPasswordAsync(request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    /// <summary>
+    /// Reset password with OTP verification
+    /// </summary>
+    [HttpPost("reset-password")]
+    [ProducesResponseType(typeof(ServiceResult<ResetPasswordResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ServiceResult<ResetPasswordResponse>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        var result = await _authService.ResetPasswordAsync(request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }}
