@@ -8,19 +8,19 @@ namespace Learn2Code.Infrastructure.Data.Context;
 
 /// <summary>
 /// Seeds initial / master data. Call <see cref="SeedAsync"/> at startup.
-/// Schema creation is handled entirely by EF Core migrations  no DDL here.
+/// Schema creation is handled entirely by EF Core migrations.
 /// </summary>
 public static class Learn2CodeDbContextSeeder
 {
     public static async Task SeedAsync(IServiceProvider serviceProvider)
     {
         using var scope = serviceProvider.CreateScope();
-        var context     = scope.ServiceProvider.GetRequiredService<Learn2CodeDbContext>();
-        var logger      = scope.ServiceProvider.GetRequiredService<ILogger<Learn2CodeDbContext>>();
+        var context    = scope.ServiceProvider.GetRequiredService<Learn2CodeDbContext>();
+        var logger     = scope.ServiceProvider.GetRequiredService<ILogger<Learn2CodeDbContext>>();
 
         try
         {
-            // Apply any pending EF migrations (creates / alters schema as needed)
+            await ResetSchemaIfNeededAsync(context, logger);
             await context.Database.MigrateAsync();
 
             await SeedRolesAsync(context, logger);
@@ -28,11 +28,10 @@ public static class Learn2CodeDbContextSeeder
             await SeedCourseCategoriesAsync(context, logger);
             await SeedDevAccountsAsync(context, logger);
             await SeedCoursesAsync(context, logger);
-            await SeedSectionsAndLessonsAsync(context, logger);
-            await SeedDocumentsAsync(context, logger);
-            await SeedExercisesAndTestCasesAsync(context, logger);
+            await SeedSectionsAsync(context, logger);
+            await SeedLessonsAsync(context, logger);
+            await SeedExercisesAsync(context, logger);
             await SeedQuizzesAsync(context, logger);
-            await SeedFinalTestsAsync(context, logger);
             await SeedCourseCompletionRulesAsync(context, logger);
             await SeedCertificateTemplatesAsync(context, logger);
         }
@@ -40,6 +39,49 @@ public static class Learn2CodeDbContextSeeder
         {
             logger.LogError(ex, "An error occurred while seeding the database");
             throw;
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // If any table already exists (e.g. DB was created manually),
+    // drop the entire public schema and recreate it so MigrateAsync
+    // starts from a clean slate without conflicts.
+    // ─────────────────────────────────────────────
+    private static async Task ResetSchemaIfNeededAsync(Learn2CodeDbContext context, ILogger logger)
+    {
+        var conn = context.Database.GetDbConnection();
+        var needsClose = conn.State != System.Data.ConnectionState.Open;
+        if (needsClose) await conn.OpenAsync();
+
+        try
+        {
+            long tableCount;
+            await using (var cmd = conn.CreateCommand())
+            {
+                // COUNT is safer than EXISTS bool cast across driver versions
+                cmd.CommandText = """
+                    SELECT COUNT(1) FROM pg_catalog.pg_tables
+                    WHERE schemaname = 'public' AND tablename = 'accounts'
+                """;
+                tableCount = Convert.ToInt64(await cmd.ExecuteScalarAsync() ?? 0L);
+            }
+
+            if (tableCount > 0)
+            {
+                logger.LogWarning("Existing tables detected — dropping public schema and recreating for clean migration");
+                await using var drop = conn.CreateCommand();
+                drop.CommandText = "DROP SCHEMA public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO PUBLIC;";
+                await drop.ExecuteNonQueryAsync();
+                logger.LogInformation("Schema reset complete — migrations will now run on a clean database");
+            }
+            else
+            {
+                logger.LogInformation("No existing tables found — migrations will run on empty database");
+            }
+        }
+        finally
+        {
+            if (needsClose) await conn.CloseAsync();
         }
     }
 
@@ -124,6 +166,8 @@ public static class Learn2CodeDbContextSeeder
     // 
     private static async Task SeedCourseCategoriesAsync(Learn2CodeDbContext context, ILogger logger)
     {
+        if (await context.CourseCategories.AnyAsync()) return;
+
         var categories = new[]
         {
             new { Name = "Web Development",       Description = "Frontend, Backend, Full-stack web development" },
@@ -135,16 +179,16 @@ public static class Learn2CodeDbContextSeeder
 
         foreach (var c in categories)
         {
-            if (!await context.CourseCategories.AnyAsync(x => x.Name == c.Name))
+            context.CourseCategories.Add(new CourseCategory
             {
-                context.CourseCategories.Add(new CourseCategory
-                {
-                    Name        = c.Name,
-                    Description = c.Description,
-                    CreatedAt   = DateTime.UtcNow
-                });
-                logger.LogInformation("Seeded category: {Category}", c.Name);
-            }
+                CategoryId  = Guid.NewGuid(),
+                Name        = c.Name,
+                Description = c.Description,
+                IsActive    = true,
+                CreatedAt   = DateTime.UtcNow,
+                UpdatedAt   = DateTime.UtcNow
+            });
+            logger.LogInformation("Seeded category: {Category}", c.Name);
         }
 
         await context.SaveChangesAsync();
@@ -152,7 +196,6 @@ public static class Learn2CodeDbContextSeeder
 
     // 
     // Dev / test accounts  (password: Admin@123)
-    // Remove or guard this in production
     // 
     private static async Task SeedDevAccountsAsync(Learn2CodeDbContext context, ILogger logger)
     {
@@ -160,8 +203,8 @@ public static class Learn2CodeDbContextSeeder
 
         var devAccounts = new[]
         {
-            new { Username = "student_dev",    Email = "student@learn2code.com",    Name = "Dev Student",    Role = "Student",    Password = hash },
-            new { Username = "instructor_dev", Email = "instructor@learn2code.com", Name = "Dev Instructor", Role = "Instructor", Password = hash }
+            new { Username = "student_dev",    Email = "student@learn2code.com",    Name = "Dev Student",    Role = "Student"    },
+            new { Username = "instructor_dev", Email = "instructor@learn2code.com", Name = "Dev Instructor", Role = "Instructor" }
         };
 
         foreach (var dev in devAccounts)
@@ -177,7 +220,7 @@ public static class Learn2CodeDbContextSeeder
                 AccountId = Guid.NewGuid(),
                 Username  = dev.Username,
                 Email     = dev.Email,
-                Password  = dev.Password,
+                Password  = hash,
                 Name      = dev.Name,
                 IsActive  = true,
                 CreatedAt = DateTime.UtcNow,
@@ -211,46 +254,49 @@ public static class Learn2CodeDbContextSeeder
         var progCat    = await context.CourseCategories.FirstOrDefaultAsync(c => c.Name == "Programming Languages");
         var dsCat      = await context.CourseCategories.FirstOrDefaultAsync(c => c.Name == "Data Science");
 
+        if (instructor == null)
+        {
+            logger.LogWarning("instructor_dev not found  skipping course seed");
+            return;
+        }
+
         var courses = new[]
         {
             new Course
             {
-                Title         = "C# Full-Stack Web Development",
-                Description   = "Master ASP.NET Core, Entity Framework, and React to build modern full-stack apps.",
-                Price         = 499000,
-                OriginalPrice = 799000,
-                Difficulty    = CourseDifficulty.Intermediate,
-                IsPublished   = true,
-                AdminId       = instructor?.AccountId,
-                CategoryId    = webCat?.Id,
-                CreatedAt     = DateTime.UtcNow,
-                UpdatedAt     = DateTime.UtcNow
+                CourseId     = Guid.NewGuid(),
+                Title        = "C# Full-Stack Web Development",
+                Description  = "Master ASP.NET Core, Entity Framework, and React to build modern full-stack apps.",
+                Difficulty   = CourseDifficulty.Intermediate,
+                IsActive     = true,
+                InstructorId = instructor.AccountId,
+                CategoryId   = webCat?.CategoryId,
+                CreatedAt    = DateTime.UtcNow,
+                UpdatedAt    = DateTime.UtcNow
             },
             new Course
             {
-                Title         = "Python for Data Science & AI",
-                Description   = "Learn Python, Pandas, Numpy, Scikit-learn and build real ML models.",
-                Price         = 599000,
-                OriginalPrice = 999000,
-                Difficulty    = CourseDifficulty.Beginner,
-                IsPublished   = true,
-                AdminId       = instructor?.AccountId,
-                CategoryId    = dsCat?.Id,
-                CreatedAt     = DateTime.UtcNow,
-                UpdatedAt     = DateTime.UtcNow
+                CourseId     = Guid.NewGuid(),
+                Title        = "Python for Data Science & AI",
+                Description  = "Learn Python, Pandas, Numpy, Scikit-learn and build real ML models.",
+                Difficulty   = CourseDifficulty.Beginner,
+                IsActive     = true,
+                InstructorId = instructor.AccountId,
+                CategoryId   = dsCat?.CategoryId,
+                CreatedAt    = DateTime.UtcNow,
+                UpdatedAt    = DateTime.UtcNow
             },
             new Course
             {
-                Title         = "JavaScript & TypeScript Fundamentals",
-                Description   = "From zero to hero  variables, functions, async/await, TypeScript types and more.",
-                Price         = 0,
-                OriginalPrice = 0,
-                Difficulty    = CourseDifficulty.Beginner,
-                IsPublished   = true,
-                AdminId       = instructor?.AccountId,
-                CategoryId    = progCat?.Id,
-                CreatedAt     = DateTime.UtcNow,
-                UpdatedAt     = DateTime.UtcNow
+                CourseId     = Guid.NewGuid(),
+                Title        = "JavaScript & TypeScript Fundamentals",
+                Description  = "From zero to hero  variables, functions, async/await, TypeScript types and more.",
+                Difficulty   = CourseDifficulty.Beginner,
+                IsActive     = true,
+                InstructorId = instructor.AccountId,
+                CategoryId   = progCat?.CategoryId,
+                CreatedAt    = DateTime.UtcNow,
+                UpdatedAt    = DateTime.UtcNow
             }
         };
 
@@ -260,9 +306,9 @@ public static class Learn2CodeDbContextSeeder
     }
 
     // 
-    // Sections & Lessons
+    // Sections  (3 per course)
     // 
-    private static async Task SeedSectionsAndLessonsAsync(Learn2CodeDbContext context, ILogger logger)
+    private static async Task SeedSectionsAsync(Learn2CodeDbContext context, ILogger logger)
     {
         if (await context.Sections.AnyAsync()) return;
 
@@ -271,60 +317,43 @@ public static class Learn2CodeDbContextSeeder
 
         foreach (var course in courses)
         {
-            var sections = new[]
-            {
-                new Section { CourseId = course.Id, Title = "Getting Started", OrderNumber = 1, IsFreePreview = true,  CreatedAt = DateTime.UtcNow },
-                new Section { CourseId = course.Id, Title = "Core Concepts",   OrderNumber = 2, IsFreePreview = false, CreatedAt = DateTime.UtcNow },
-                new Section { CourseId = course.Id, Title = "Advanced Topics", OrderNumber = 3, IsFreePreview = false, CreatedAt = DateTime.UtcNow }
-            };
-
-            context.Sections.AddRange(sections);
-            await context.SaveChangesAsync();
-
-            foreach (var section in sections)
-            {
-                context.Lessons.AddRange(
-                    new Lesson { SectionId = section.Id, Title = $"{section.Title} - Lesson 1", OrderNumber = 1, IsPreviewable = section.IsFreePreview, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-                    new Lesson { SectionId = section.Id, Title = $"{section.Title} - Lesson 2", OrderNumber = 2, IsPreviewable = false,                 CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
-                );
-            }
-            await context.SaveChangesAsync();
-        }
-
-        logger.LogInformation("Seeded sections & lessons");
-    }
-
-    // 
-    // Documents
-    // 
-    private static async Task SeedDocumentsAsync(Learn2CodeDbContext context, ILogger logger)
-    {
-        if (await context.Documents.AnyAsync()) return;
-
-        var lessons = await context.Lessons.ToListAsync();
-        if (!lessons.Any()) return;
-
-        foreach (var lesson in lessons)
-        {
-            context.Documents.Add(new Document
-            {
-                LessonId    = lesson.Id,
-                Title       = $"{lesson.Title} - Reading Material",
-                Content     = $"# {lesson.Title}\n\nThis is the reading material for **{lesson.Title}**.\n\nReplace this with actual content.",
-                DocType     = DocumentType.Theory,
-                OrderNumber = 1,
-                CreatedAt   = DateTime.UtcNow
-            });
+            context.Sections.AddRange(
+                new Section { SectionId = Guid.NewGuid(), CourseId = course.CourseId, Title = "Getting Started", OrderNumber = 1, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                new Section { SectionId = Guid.NewGuid(), CourseId = course.CourseId, Title = "Core Concepts",   OrderNumber = 2, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                new Section { SectionId = Guid.NewGuid(), CourseId = course.CourseId, Title = "Advanced Topics", OrderNumber = 3, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
+            );
         }
 
         await context.SaveChangesAsync();
-        logger.LogInformation("Seeded documents");
+        logger.LogInformation("Seeded sections");
     }
 
     // 
-    // Exercises & Test Cases
+    // Lessons  (2 per section)
     // 
-    private static async Task SeedExercisesAndTestCasesAsync(Learn2CodeDbContext context, ILogger logger)
+    private static async Task SeedLessonsAsync(Learn2CodeDbContext context, ILogger logger)
+    {
+        if (await context.Lessons.AnyAsync()) return;
+
+        var sections = await context.Sections.ToListAsync();
+        if (!sections.Any()) return;
+
+        foreach (var section in sections)
+        {
+            context.Lessons.AddRange(
+                new Lesson { LessonId = Guid.NewGuid(), SectionId = section.SectionId, Title = $"{section.Title} - Lesson 1", OrderNumber = 1, IsFreePreview = section.OrderNumber == 1, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                new Lesson { LessonId = Guid.NewGuid(), SectionId = section.SectionId, Title = $"{section.Title} - Lesson 2", OrderNumber = 2, IsFreePreview = false,                     CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
+            );
+        }
+
+        await context.SaveChangesAsync();
+        logger.LogInformation("Seeded lessons");
+    }
+
+    // 
+    // Exercises  (1 per lesson)
+    // 
+    private static async Task SeedExercisesAsync(Learn2CodeDbContext context, ILogger logger)
     {
         if (await context.Exercises.AnyAsync()) return;
 
@@ -335,22 +364,28 @@ public static class Learn2CodeDbContextSeeder
         {
             var exercise = new Exercise
             {
-                LessonId     = lesson.Id,
-                Title        = $"Exercise: {lesson.Title}",
-                Description  = "Write a function that returns the sum of two numbers.",
-                Difficulty   = ExerciseDifficulty.Easy,
-                Language     = ProgrammingLanguage.CSharp,
+                ExerciseId   = Guid.NewGuid(),
+                LessonId     = lesson.LessonId,
+                OrderNumber  = 1,
+                ExerciseType = ExerciseType.GradedCode,
+                Narrative    = $"Practice exercise for: {lesson.Title}. Write a function that returns the sum of two numbers.",
+                Language     = "csharp",
                 StarterCode  = "public int Add(int a, int b)\n{\n    // TODO: implement\n    return 0;\n}",
                 SolutionCode = "public int Add(int a, int b)\n{\n    return a + b;\n}",
-                CreatedAt    = DateTime.UtcNow
+                Instruction  = "Implement the Add method to return the sum of a and b.",
+                Hint         = "Use the + operator.",
+                CreatedAt    = DateTime.UtcNow,
+                UpdatedAt    = DateTime.UtcNow
             };
+
             context.Exercises.Add(exercise);
             await context.SaveChangesAsync();
 
+            // TestCase has no Input field  only ExpectedOutput
             context.TestCases.AddRange(
-                new TestCase { ExerciseId = exercise.Id, Input = "1 2",   ExpectedOutput = "3",  IsHidden = false, Weight = 0.5m },
-                new TestCase { ExerciseId = exercise.Id, Input = "10 20", ExpectedOutput = "30", IsHidden = false, Weight = 0.5m },
-                new TestCase { ExerciseId = exercise.Id, Input = "-5 5",  ExpectedOutput = "0",  IsHidden = true,  Weight = 1.0m }
+                new TestCase { TestCaseId = Guid.NewGuid(), ExerciseId = exercise.ExerciseId, ExpectedOutput = "3",  IsHidden = false, Weight = 0.5m, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                new TestCase { TestCaseId = Guid.NewGuid(), ExerciseId = exercise.ExerciseId, ExpectedOutput = "30", IsHidden = false, Weight = 0.5m, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                new TestCase { TestCaseId = Guid.NewGuid(), ExerciseId = exercise.ExerciseId, ExpectedOutput = "0",  IsHidden = true,  Weight = 1.0m, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
             );
             await context.SaveChangesAsync();
         }
@@ -359,7 +394,7 @@ public static class Learn2CodeDbContextSeeder
     }
 
     // 
-    // Quizzes & Options
+    // Quizzes & Options  (1 quiz per lesson)
     // 
     private static async Task SeedQuizzesAsync(Learn2CodeDbContext context, ILogger logger)
     {
@@ -372,47 +407,28 @@ public static class Learn2CodeDbContextSeeder
         {
             var quiz = new Quiz
             {
-                LessonId    = lesson.Id,
+                QuizId      = Guid.NewGuid(),
+                LessonId    = lesson.LessonId,
+                OrderNumber = 1,
                 Question    = $"What is the main purpose of {lesson.Title}?",
-                Explanation = "This question tests your understanding of the lesson's core objective."
+                Explanation = "This question tests your understanding of the lesson's core objective.",
+                CreatedAt   = DateTime.UtcNow,
+                UpdatedAt   = DateTime.UtcNow
             };
+
             context.Quizzes.Add(quiz);
             await context.SaveChangesAsync();
 
             context.QuizOptions.AddRange(
-                new QuizOption { QuizId = quiz.Id, Content = "To learn fundamentals",       IsCorrect = true  },
-                new QuizOption { QuizId = quiz.Id, Content = "To practice advanced topics", IsCorrect = false },
-                new QuizOption { QuizId = quiz.Id, Content = "To review previous material", IsCorrect = false },
-                new QuizOption { QuizId = quiz.Id, Content = "None of the above",           IsCorrect = false }
+                new QuizOption { OptionId = Guid.NewGuid(), QuizId = quiz.QuizId, Content = "To learn fundamentals",       IsCorrect = true,  CreatedAt = DateTime.UtcNow },
+                new QuizOption { OptionId = Guid.NewGuid(), QuizId = quiz.QuizId, Content = "To practice advanced topics", IsCorrect = false, CreatedAt = DateTime.UtcNow },
+                new QuizOption { OptionId = Guid.NewGuid(), QuizId = quiz.QuizId, Content = "To review previous material", IsCorrect = false, CreatedAt = DateTime.UtcNow },
+                new QuizOption { OptionId = Guid.NewGuid(), QuizId = quiz.QuizId, Content = "None of the above",           IsCorrect = false, CreatedAt = DateTime.UtcNow }
             );
             await context.SaveChangesAsync();
         }
 
         logger.LogInformation("Seeded quizzes & options");
-    }
-
-    // 
-    // Final Tests  (1 per course)
-    // 
-    private static async Task SeedFinalTestsAsync(Learn2CodeDbContext context, ILogger logger)
-    {
-        if (await context.FinalTests.AnyAsync()) return;
-
-        var courses = await context.Courses.ToListAsync();
-        foreach (var course in courses)
-        {
-            context.FinalTests.Add(new FinalTest
-            {
-                CourseId        = course.Id,
-                Title           = $"Final Test - {course.Title}",
-                Description     = "Comprehensive assessment covering all topics in this course.",
-                DurationMinutes = 60,
-                PassingScore    = 70m
-            });
-        }
-
-        await context.SaveChangesAsync();
-        logger.LogInformation("Seeded final tests");
     }
 
     // 
@@ -427,11 +443,14 @@ public static class Learn2CodeDbContextSeeder
         {
             context.CourseCompletionRules.Add(new CourseCompletionRule
             {
-                CourseId                   = course.Id,
-                MinLessonCompletionPercent = 80m,
-                MinExercisePassPercent     = 70m,
-                MinQuizScore               = 60m,
-                RequireFinalTest           = true
+                RuleId                  = Guid.NewGuid(),
+                CourseId                = course.CourseId,
+                MinLessonCompletionPct  = 80m,
+                MinExercisePassPct      = 70m,
+                MinSectionQuizScore     = 60m,
+                RequireAllSectionQuiz   = true,
+                CreatedAt               = DateTime.UtcNow,
+                UpdatedAt               = DateTime.UtcNow
             });
         }
 
@@ -451,11 +470,13 @@ public static class Learn2CodeDbContextSeeder
         {
             context.CertificateTemplates.Add(new CertificateTemplate
             {
-                CourseId      = course.Id,
+                TemplateId    = Guid.NewGuid(),
+                CourseId      = course.CourseId,
                 Title         = $"Certificate of Completion - {course.Title}",
                 Description   = "This certificate is awarded upon successful completion of the course.",
                 SignatureName = "Learn2Code Team",
-                CreatedAt     = DateTime.UtcNow
+                CreatedAt     = DateTime.UtcNow,
+                UpdatedAt     = DateTime.UtcNow
             });
         }
 
