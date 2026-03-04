@@ -140,6 +140,16 @@ public class LessonService : ILessonService
                 _unitOfWork.LessonProgressRepository.PrepareUpdate(lessonProgress);
             }
 
+            // Update ActivatedAt on first lesson access (when student starts learning for the first time)
+            var enrollment = await _unitOfWork.EnrollmentRepository
+                .GetByStudentAndCourseAsync(studentId, courseId);
+            
+            if (enrollment != null && enrollment.ActivatedAt == null)
+            {
+                enrollment.ActivatedAt = DateTime.UtcNow;
+                _unitOfWork.EnrollmentRepository.PrepareUpdate(enrollment);
+            }
+
             await _unitOfWork.CommitTransactionAsync();
         }
 

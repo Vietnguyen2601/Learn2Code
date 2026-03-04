@@ -31,7 +31,7 @@ public static class EnrollmentMapper
             Status = EnrollmentStatus.Enrolled,
             ProgressPct = 0,
             EnrolledAt = DateTime.UtcNow,
-            ActivatedAt = DateTime.UtcNow,
+            ActivatedAt = null,
             SubscriptionId = subscriptionId
         };
     }

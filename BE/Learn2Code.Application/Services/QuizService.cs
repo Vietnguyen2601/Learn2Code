@@ -341,6 +341,32 @@ public class QuizService : IQuizService
             return (false, null);
         }
 
+        // Check GradedCode exercise pass percentage
+        var allGradedExercises = await _unitOfWork.Repository<Exercise>()
+            .GetAllQueryable()
+            .Where(e => e.Lesson.Section.CourseId == courseId && e.ExerciseType == ExerciseType.GradedCode)
+            .ToListAsync();
+
+        if (allGradedExercises.Any())
+        {
+            var gradedExerciseIds = allGradedExercises.Select(e => e.ExerciseId).ToList();
+            var exerciseProgresses = await _unitOfWork.Repository<ExerciseProgress>()
+                .GetAllQueryable()
+                .Where(ep => ep.StudentId == studentId && gradedExerciseIds.Contains(ep.ExerciseId))
+                .ToListAsync();
+
+            var passedCount = exerciseProgresses.Count(ep => ep.IsPassed);
+            var passedPct = (decimal)passedCount / allGradedExercises.Count() * 100;
+
+            if (passedPct < rules.MinExercisePassPct)
+            {
+                _logger.LogInformation(
+                    "Student {StudentId} failed exercise pass requirement: {PassedPct}% < {Required}%",
+                    studentId, Math.Round(passedPct, 1), rules.MinExercisePassPct);
+                return (false, null);
+            }
+        }
+
         // Check section quiz requirements
         if (rules.RequireAllSectionQuiz)
         {
