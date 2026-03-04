@@ -106,22 +106,20 @@ namespace Learn2Code.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("Learn2Code.Domain.Entities.CertificateTemplate", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("TemplateId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                        .HasColumnType("uuid")
+                        .HasColumnName("template_id");
 
                     b.Property<string>("BackgroundImageUrl")
                         .HasColumnType("text")
                         .HasColumnName("background_image_url");
 
-                    b.Property<int>("CourseId")
-                        .HasColumnType("integer")
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid")
                         .HasColumnName("course_id");
 
-                    b.Property<DateTime?>("CreatedAt")
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
@@ -138,10 +136,15 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                         .HasColumnName("signature_name");
 
                     b.Property<string>("Title")
+                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("title");
 
-                    b.HasKey("Id");
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("TemplateId");
 
                     b.HasIndex("CourseId")
                         .IsUnique();
@@ -151,14 +154,13 @@ namespace Learn2Code.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("Learn2Code.Domain.Entities.Certification", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("CertificationId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                        .HasColumnType("uuid")
+                        .HasColumnName("certification_id");
 
                     b.Property<string>("CertificateCode")
+                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("certificate_code");
 
@@ -166,48 +168,43 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("certificate_url");
 
-                    b.Property<int>("CourseId")
-                        .HasColumnType("integer")
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid")
                         .HasColumnName("course_id");
 
-                    b.Property<DateTime?>("IssueDate")
+                    b.Property<DateTime>("IssuedAt")
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("issue_date");
+                        .HasColumnName("issued_at");
 
                     b.Property<Guid>("StudentId")
                         .HasColumnType("uuid")
                         .HasColumnName("student_id");
 
-                    b.HasKey("Id");
+                    b.HasKey("CertificationId");
 
                     b.HasIndex("CertificateCode")
                         .IsUnique();
 
                     b.HasIndex("CourseId");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("StudentId", "CourseId")
+                        .IsUnique();
 
                     b.ToTable("certifications");
                 });
 
             modelBuilder.Entity("Learn2Code.Domain.Entities.Course", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("CourseId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<Guid?>("AdminId")
                         .HasColumnType("uuid")
-                        .HasColumnName("admin_id");
+                        .HasColumnName("course_id");
 
-                    b.Property<int?>("CategoryId")
-                        .HasColumnType("integer")
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uuid")
                         .HasColumnName("category_id");
 
-                    b.Property<DateTime?>("CreatedAt")
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
@@ -219,52 +216,40 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("difficulty");
 
-                    b.Property<bool>("IsPublished")
+                    b.Property<Guid>("InstructorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("instructor_id");
+
+                    b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
-                        .HasColumnName("is_published");
-
-                    b.Property<decimal?>("OriginalPrice")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
-                        .HasColumnName("original_price");
-
-                    b.Property<decimal?>("Price")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
-                        .HasColumnName("price");
-
-                    b.Property<string>("ThumbnailUrl")
-                        .HasColumnType("text")
-                        .HasColumnName("thumbnail_url");
+                        .HasColumnName("is_active");
 
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("title");
 
-                    b.Property<DateTime?>("UpdatedAt")
+                    b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("AdminId");
+                    b.HasKey("CourseId");
 
                     b.HasIndex("CategoryId");
+
+                    b.HasIndex("InstructorId");
 
                     b.ToTable("courses");
                 });
 
             modelBuilder.Entity("Learn2Code.Domain.Entities.CourseCategory", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("CategoryId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
+                        .HasColumnType("uuid")
+                        .HasColumnName("category_id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime?>("CreatedAt")
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
@@ -272,12 +257,20 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("description");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("name");
 
-                    b.HasKey("Id");
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("CategoryId");
 
                     b.HasIndex("Name")
                         .IsUnique();
@@ -287,37 +280,43 @@ namespace Learn2Code.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("Learn2Code.Domain.Entities.CourseCompletionRule", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("RuleId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
+                        .HasColumnType("uuid")
+                        .HasColumnName("rule_id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CourseId")
-                        .HasColumnType("integer")
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid")
                         .HasColumnName("course_id");
 
-                    b.Property<decimal?>("MinExercisePassPercent")
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<decimal>("MinExercisePassPct")
                         .HasPrecision(5, 2)
                         .HasColumnType("numeric(5,2)")
-                        .HasColumnName("min_exercise_pass_percent");
+                        .HasColumnName("min_exercise_pass_pct");
 
-                    b.Property<decimal?>("MinLessonCompletionPercent")
+                    b.Property<decimal>("MinLessonCompletionPct")
                         .HasPrecision(5, 2)
                         .HasColumnType("numeric(5,2)")
-                        .HasColumnName("min_lesson_completion_percent");
+                        .HasColumnName("min_lesson_completion_pct");
 
-                    b.Property<decimal?>("MinQuizScore")
+                    b.Property<decimal>("MinSectionQuizScore")
                         .HasPrecision(5, 2)
                         .HasColumnType("numeric(5,2)")
-                        .HasColumnName("min_quiz_score");
+                        .HasColumnName("min_section_quiz_score");
 
-                    b.Property<bool?>("RequireFinalTest")
+                    b.Property<bool>("RequireAllSectionQuiz")
                         .HasColumnType("boolean")
-                        .HasColumnName("require_final_test");
+                        .HasColumnName("require_all_section_quiz");
 
-                    b.HasKey("Id");
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("RuleId");
 
                     b.HasIndex("CourseId")
                         .IsUnique();
@@ -325,71 +324,33 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                     b.ToTable("course_completion_rules");
                 });
 
-            modelBuilder.Entity("Learn2Code.Domain.Entities.Document", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Content")
-                        .HasColumnType("text")
-                        .HasColumnName("content");
-
-                    b.Property<DateTime?>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("DocType")
-                        .HasColumnType("text")
-                        .HasColumnName("doc_type");
-
-                    b.Property<int>("LessonId")
-                        .HasColumnType("integer")
-                        .HasColumnName("lesson_id");
-
-                    b.Property<int?>("OrderNumber")
-                        .HasColumnType("integer")
-                        .HasColumnName("order_number");
-
-                    b.Property<string>("Title")
-                        .HasColumnType("text")
-                        .HasColumnName("title");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LessonId");
-
-                    b.ToTable("documents");
-                });
-
             modelBuilder.Entity("Learn2Code.Domain.Entities.Enrollment", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("EnrollmentId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
+                        .HasColumnType("uuid")
+                        .HasColumnName("enrollment_id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    b.Property<DateTime?>("ActivatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("activated_at");
 
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("completed_at");
 
-                    b.Property<int>("CourseId")
-                        .HasColumnType("integer")
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid")
                         .HasColumnName("course_id");
 
-                    b.Property<DateTime?>("EnrollmentDate")
+                    b.Property<DateTime>("EnrolledAt")
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("enrollment_date");
+                        .HasColumnName("enrolled_at");
 
-                    b.Property<decimal>("ProgressPercentage")
+                    b.Property<decimal>("ProgressPct")
                         .HasPrecision(5, 2)
                         .HasColumnType("numeric(5,2)")
-                        .HasColumnName("progress_percentage");
+                        .HasColumnName("progress_pct");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -400,43 +361,62 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("student_id");
 
-                    b.HasKey("Id");
+                    b.Property<Guid?>("SubscriptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subscription_id");
+
+                    b.HasKey("EnrollmentId");
 
                     b.HasIndex("CourseId");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("SubscriptionId");
+
+                    b.HasIndex("StudentId", "CourseId")
+                        .IsUnique();
 
                     b.ToTable("enrollments");
                 });
 
             modelBuilder.Entity("Learn2Code.Domain.Entities.Exercise", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("ExerciseId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
+                        .HasColumnType("uuid")
+                        .HasColumnName("exercise_id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime?>("CreatedAt")
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<string>("Description")
+                    b.Property<string>("ExerciseType")
+                        .IsRequired()
                         .HasColumnType("text")
-                        .HasColumnName("description");
+                        .HasColumnName("exercise_type");
 
-                    b.Property<string>("Difficulty")
+                    b.Property<string>("Hint")
                         .HasColumnType("text")
-                        .HasColumnName("difficulty");
+                        .HasColumnName("hint");
+
+                    b.Property<string>("Instruction")
+                        .HasColumnType("text")
+                        .HasColumnName("instruction");
 
                     b.Property<string>("Language")
                         .HasColumnType("text")
                         .HasColumnName("language");
 
-                    b.Property<int>("LessonId")
-                        .HasColumnType("integer")
+                    b.Property<Guid>("LessonId")
+                        .HasColumnType("uuid")
                         .HasColumnName("lesson_id");
+
+                    b.Property<string>("Narrative")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("narrative");
+
+                    b.Property<int>("OrderNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("order_number");
 
                     b.Property<string>("SolutionCode")
                         .HasColumnType("text")
@@ -446,39 +426,132 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("starter_code");
 
-                    b.Property<string>("Title")
-                        .HasColumnType("text")
-                        .HasColumnName("title");
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
-                    b.HasKey("Id");
+                    b.HasKey("ExerciseId");
 
-                    b.HasIndex("LessonId");
+                    b.HasIndex("LessonId", "OrderNumber")
+                        .IsUnique();
 
                     b.ToTable("exercises");
                 });
 
+            modelBuilder.Entity("Learn2Code.Domain.Entities.ExerciseMedia", b =>
+                {
+                    b.Property<Guid>("MediaId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("media_id");
+
+                    b.Property<string>("Caption")
+                        .HasColumnType("text")
+                        .HasColumnName("caption");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("ExerciseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("exercise_id");
+
+                    b.Property<string>("MediaType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("media_type");
+
+                    b.Property<int>("OrderNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("order_number");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("url");
+
+                    b.HasKey("MediaId");
+
+                    b.HasIndex("ExerciseId", "OrderNumber")
+                        .IsUnique();
+
+                    b.ToTable("exercise_media");
+                });
+
+            modelBuilder.Entity("Learn2Code.Domain.Entities.ExerciseProgress", b =>
+                {
+                    b.Property<Guid>("ExProgressId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("exprogress_id");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("ExerciseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("exercise_id");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_completed");
+
+                    b.Property<bool>("IsPassed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_passed");
+
+                    b.Property<string>("LastCode")
+                        .HasColumnType("text")
+                        .HasColumnName("last_code");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("ExProgressId");
+
+                    b.HasIndex("ExerciseId");
+
+                    b.HasIndex("StudentId", "ExerciseId")
+                        .IsUnique();
+
+                    b.ToTable("exercise_progress");
+                });
+
             modelBuilder.Entity("Learn2Code.Domain.Entities.Feedback", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("FeedbackId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                        .HasColumnType("uuid")
+                        .HasColumnName("feedback_id");
 
                     b.Property<string>("Comment")
                         .HasColumnType("text")
                         .HasColumnName("comment");
 
-                    b.Property<int>("CourseId")
-                        .HasColumnType("integer")
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid")
                         .HasColumnName("course_id");
 
-                    b.Property<DateTime?>("CreatedAt")
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<int?>("Rating")
+                    b.Property<int>("Rating")
                         .HasColumnType("integer")
                         .HasColumnName("rating");
 
@@ -486,116 +559,169 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("student_id");
 
-                    b.HasKey("Id");
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
-                    b.HasIndex("CourseId");
+                    b.HasKey("FeedbackId");
 
                     b.HasIndex("StudentId");
+
+                    b.HasIndex("CourseId", "StudentId")
+                        .IsUnique();
 
                     b.ToTable("feedbacks");
                 });
 
-            modelBuilder.Entity("Learn2Code.Domain.Entities.FinalTest", b =>
+            modelBuilder.Entity("Learn2Code.Domain.Entities.Leaderboard", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("LeaderboardId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
+                        .HasColumnType("uuid")
+                        .HasColumnName("leaderboard_id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CourseId")
-                        .HasColumnType("integer")
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid")
                         .HasColumnName("course_id");
 
-                    b.Property<string>("Description")
-                        .HasColumnType("text")
-                        .HasColumnName("description");
-
-                    b.Property<int?>("DurationMinutes")
+                    b.Property<int?>("Rank")
                         .HasColumnType("integer")
-                        .HasColumnName("duration_minutes");
+                        .HasColumnName("rank");
 
-                    b.Property<decimal?>("PassingScore")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("numeric(5,2)")
-                        .HasColumnName("passing_score");
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_id");
 
-                    b.Property<string>("Title")
-                        .HasColumnType("text")
-                        .HasColumnName("title");
+                    b.Property<decimal>("TotalScore")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("total_score");
 
-                    b.HasKey("Id");
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
-                    b.HasIndex("CourseId")
+                    b.HasKey("LeaderboardId");
+
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("CourseId", "Rank")
                         .IsUnique();
 
-                    b.ToTable("final_tests");
+                    b.HasIndex("CourseId", "StudentId")
+                        .IsUnique();
+
+                    b.ToTable("leaderboards");
                 });
 
             modelBuilder.Entity("Learn2Code.Domain.Entities.Lesson", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("LessonId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
+                        .HasColumnType("uuid")
+                        .HasColumnName("lesson_id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime?>("CreatedAt")
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<bool?>("IsPreviewable")
+                    b.Property<bool>("IsFreePreview")
                         .HasColumnType("boolean")
-                        .HasColumnName("is_previewable");
+                        .HasColumnName("is_free_preview");
 
-                    b.Property<int?>("OrderNumber")
+                    b.Property<int>("OrderNumber")
                         .HasColumnType("integer")
                         .HasColumnName("order_number");
 
-                    b.Property<int>("SectionId")
-                        .HasColumnType("integer")
+                    b.Property<Guid>("SectionId")
+                        .HasColumnType("uuid")
                         .HasColumnName("section_id");
 
                     b.Property<string>("Title")
+                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("title");
 
-                    b.Property<DateTime?>("UpdatedAt")
+                    b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
-                    b.HasKey("Id");
+                    b.HasKey("LessonId");
 
-                    b.HasIndex("SectionId");
+                    b.HasIndex("SectionId", "OrderNumber")
+                        .IsUnique();
 
                     b.ToTable("lessons");
                 });
 
+            modelBuilder.Entity("Learn2Code.Domain.Entities.LessonProgress", b =>
+                {
+                    b.Property<Guid>("ProgressId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("progress_id");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("LastAccessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_accessed_at");
+
+                    b.Property<Guid>("LessonId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("lesson_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("ProgressId");
+
+                    b.HasIndex("LessonId");
+
+                    b.HasIndex("StudentId", "LessonId")
+                        .IsUnique();
+
+                    b.ToTable("lesson_progress");
+                });
+
             modelBuilder.Entity("Learn2Code.Domain.Entities.Payment", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("PaymentId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
+                        .HasColumnType("uuid")
+                        .HasColumnName("payment_id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<decimal?>("Amount")
+                    b.Property<decimal>("Amount")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("amount");
 
-                    b.Property<int>("EnrollmentId")
-                        .HasColumnType("integer")
-                        .HasColumnName("enrollment_id");
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<DateTime?>("PaidAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("paid_at");
 
                     b.Property<string>("PaymentMethod")
+                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("payment_method");
 
@@ -604,151 +730,93 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("status");
 
+                    b.Property<Guid>("SubscriptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subscription_id");
+
                     b.Property<string>("TransactionId")
                         .HasColumnType("text")
                         .HasColumnName("transaction_id");
 
-                    b.HasKey("Id");
+                    b.HasKey("PaymentId");
 
-                    b.HasIndex("EnrollmentId")
+                    b.HasIndex("SubscriptionId");
+
+                    b.HasIndex("TransactionId")
                         .IsUnique();
 
                     b.ToTable("payments");
                 });
 
-            modelBuilder.Entity("Learn2Code.Domain.Entities.Progress", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("completed_at");
-
-                    b.Property<DateTime?>("LastAccessedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_accessed_at");
-
-                    b.Property<int>("LessonId")
-                        .HasColumnType("integer")
-                        .HasColumnName("lesson_id");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("status");
-
-                    b.Property<Guid>("StudentId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("student_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LessonId");
-
-                    b.HasIndex("StudentId");
-
-                    b.ToTable("progresses");
-                });
-
             modelBuilder.Entity("Learn2Code.Domain.Entities.Quiz", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("QuizId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
+                        .HasColumnType("uuid")
+                        .HasColumnName("quiz_id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("Explanation")
                         .HasColumnType("text")
                         .HasColumnName("explanation");
 
-                    b.Property<int>("LessonId")
-                        .HasColumnType("integer")
+                    b.Property<Guid>("LessonId")
+                        .HasColumnType("uuid")
                         .HasColumnName("lesson_id");
 
+                    b.Property<int>("OrderNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("order_number");
+
                     b.Property<string>("Question")
+                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("question");
 
-                    b.HasKey("Id");
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
-                    b.HasIndex("LessonId");
+                    b.HasKey("QuizId");
+
+                    b.HasIndex("LessonId", "OrderNumber")
+                        .IsUnique();
 
                     b.ToTable("quizzes");
                 });
 
             modelBuilder.Entity("Learn2Code.Domain.Entities.QuizOption", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("OptionId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                        .HasColumnType("uuid")
+                        .HasColumnName("option_id");
 
                     b.Property<string>("Content")
+                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("content");
 
-                    b.Property<bool?>("IsCorrect")
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("IsCorrect")
                         .HasColumnType("boolean")
                         .HasColumnName("is_correct");
 
-                    b.Property<int>("QuizId")
-                        .HasColumnType("integer")
+                    b.Property<Guid>("QuizId")
+                        .HasColumnType("uuid")
                         .HasColumnName("quiz_id");
 
-                    b.HasKey("Id");
+                    b.HasKey("OptionId");
 
                     b.HasIndex("QuizId");
 
                     b.ToTable("quiz_options");
-                });
-
-            modelBuilder.Entity("Learn2Code.Domain.Entities.QuizSubmission", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<bool?>("IsCorrect")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_correct");
-
-                    b.Property<int>("QuizId")
-                        .HasColumnType("integer")
-                        .HasColumnName("quiz_id");
-
-                    b.Property<int?>("SelectedOptionId")
-                        .HasColumnType("integer")
-                        .HasColumnName("selected_option_id");
-
-                    b.Property<Guid>("StudentId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("student_id");
-
-                    b.Property<DateTime?>("SubmittedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("submitted_at");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("QuizId");
-
-                    b.HasIndex("SelectedOptionId");
-
-                    b.HasIndex("StudentId");
-
-                    b.ToTable("quiz_submissions");
                 });
 
             modelBuilder.Entity("Learn2Code.Domain.Entities.Role", b =>
@@ -786,18 +854,16 @@ namespace Learn2Code.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("Learn2Code.Domain.Entities.Section", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("SectionId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
+                        .HasColumnType("uuid")
+                        .HasColumnName("section_id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CourseId")
-                        .HasColumnType("integer")
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid")
                         .HasColumnName("course_id");
 
-                    b.Property<DateTime?>("CreatedAt")
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
@@ -805,141 +871,242 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("description");
 
-                    b.Property<bool?>("IsFreePreview")
+                    b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
-                        .HasColumnName("is_free_preview");
+                        .HasColumnName("is_active");
 
-                    b.Property<int?>("OrderNumber")
+                    b.Property<int>("OrderNumber")
                         .HasColumnType("integer")
                         .HasColumnName("order_number");
 
                     b.Property<string>("Title")
+                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("title");
 
-                    b.HasKey("Id");
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
-                    b.HasIndex("CourseId");
+                    b.HasKey("SectionId");
+
+                    b.HasIndex("CourseId", "OrderNumber")
+                        .IsUnique();
 
                     b.ToTable("sections");
                 });
 
-            modelBuilder.Entity("Learn2Code.Domain.Entities.Submission", b =>
+            modelBuilder.Entity("Learn2Code.Domain.Entities.SectionQuizAnswer", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("AnswerId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
+                        .HasColumnType("uuid")
+                        .HasColumnName("answer_id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    b.Property<Guid>("AttemptId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("attempt_id");
 
-                    b.Property<int?>("AttemptNumber")
-                        .HasColumnType("integer")
-                        .HasColumnName("attempt_number");
+                    b.Property<bool>("IsCorrect")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_correct");
 
-                    b.Property<int>("ExerciseId")
+                    b.Property<Guid>("OptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("option_id");
+
+                    b.Property<Guid>("QuizId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("quiz_id");
+
+                    b.HasKey("AnswerId");
+
+                    b.HasIndex("OptionId");
+
+                    b.HasIndex("QuizId");
+
+                    b.HasIndex("AttemptId", "QuizId")
+                        .IsUnique();
+
+                    b.ToTable("section_quiz_answers");
+                });
+
+            modelBuilder.Entity("Learn2Code.Domain.Entities.SectionQuizAttempt", b =>
+                {
+                    b.Property<Guid>("AttemptId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("attempt_id");
+
+                    b.Property<DateTime>("AttemptedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("attempted_at");
+
+                    b.Property<bool>("IsPassed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_passed");
+
+                    b.Property<decimal>("Score")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("score");
+
+                    b.Property<Guid>("SectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("section_id");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_id");
+
+                    b.HasKey("AttemptId");
+
+                    b.HasIndex("SectionId");
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("section_quiz_attempts");
+                });
+
+            modelBuilder.Entity("Learn2Code.Domain.Entities.SubscriptionPackage", b =>
+                {
+                    b.Property<Guid>("PackageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("package_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<decimal>("DiscountPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("discount_percent");
+
+                    b.Property<int>("DurationMonths")
                         .HasColumnType("integer")
+                        .HasColumnName("duration_months");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("price");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("PackageId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("subscription_packages");
+                });
+
+            modelBuilder.Entity("Learn2Code.Domain.Entities.TestCase", b =>
+                {
+                    b.Property<Guid>("TestCaseId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("testcase_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("ExerciseId")
+                        .HasColumnType("uuid")
                         .HasColumnName("exercise_id");
+
+                    b.Property<string>("ExpectedOutput")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("expected_output");
+
+                    b.Property<bool>("IsHidden")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_hidden");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<decimal>("Weight")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("weight");
+
+                    b.HasKey("TestCaseId");
+
+                    b.HasIndex("ExerciseId");
+
+                    b.ToTable("test_cases");
+                });
+
+            modelBuilder.Entity("Learn2Code.Domain.Entities.UserSubscription", b =>
+                {
+                    b.Property<Guid>("SubscriptionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("subscription_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("end_date");
+
+                    b.Property<Guid>("PackageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("package_id");
+
+                    b.Property<Guid?>("RenewedFromId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("renewed_from_id");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_date");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("status");
 
-                    b.Property<Guid>("StudentId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("student_id");
-
-                    b.Property<DateTime?>("SubmittedAt")
+                    b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("submitted_at");
+                        .HasColumnName("updated_at");
 
-                    b.Property<string>("SubmittedCode")
-                        .HasColumnType("text")
-                        .HasColumnName("submitted_code");
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
 
-                    b.HasKey("Id");
+                    b.HasKey("SubscriptionId");
 
-                    b.HasIndex("ExerciseId");
+                    b.HasIndex("PackageId");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("RenewedFromId");
 
-                    b.ToTable("submissions");
-                });
+                    b.HasIndex("UserId");
 
-            modelBuilder.Entity("Learn2Code.Domain.Entities.SubmissionResult", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ActualOutput")
-                        .HasColumnType("text")
-                        .HasColumnName("actual_output");
-
-                    b.Property<bool?>("IsPassed")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_passed");
-
-                    b.Property<int?>("RuntimeMs")
-                        .HasColumnType("integer")
-                        .HasColumnName("runtime_ms");
-
-                    b.Property<int>("SubmissionId")
-                        .HasColumnType("integer")
-                        .HasColumnName("submission_id");
-
-                    b.Property<int>("TestCaseId")
-                        .HasColumnType("integer")
-                        .HasColumnName("test_case_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SubmissionId");
-
-                    b.HasIndex("TestCaseId");
-
-                    b.ToTable("submission_results");
-                });
-
-            modelBuilder.Entity("Learn2Code.Domain.Entities.TestCase", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("ExerciseId")
-                        .HasColumnType("integer")
-                        .HasColumnName("exercise_id");
-
-                    b.Property<string>("ExpectedOutput")
-                        .HasColumnType("text")
-                        .HasColumnName("expected_output");
-
-                    b.Property<string>("Input")
-                        .HasColumnType("text")
-                        .HasColumnName("input");
-
-                    b.Property<bool?>("IsHidden")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_hidden");
-
-                    b.Property<decimal?>("Weight")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("numeric(5,2)")
-                        .HasColumnName("weight");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ExerciseId");
-
-                    b.ToTable("test_cases");
+                    b.ToTable("user_subscriptions");
                 });
 
             modelBuilder.Entity("Learn2Code.Domain.Entities.AccountRole", b =>
@@ -993,17 +1160,19 @@ namespace Learn2Code.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("Learn2Code.Domain.Entities.Course", b =>
                 {
-                    b.HasOne("Learn2Code.Domain.Entities.Account", "Admin")
-                        .WithMany("CreatedCourses")
-                        .HasForeignKey("AdminId");
-
                     b.HasOne("Learn2Code.Domain.Entities.CourseCategory", "Category")
                         .WithMany("Courses")
                         .HasForeignKey("CategoryId");
 
-                    b.Navigation("Admin");
+                    b.HasOne("Learn2Code.Domain.Entities.Account", "Instructor")
+                        .WithMany("CreatedCourses")
+                        .HasForeignKey("InstructorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Category");
+
+                    b.Navigation("Instructor");
                 });
 
             modelBuilder.Entity("Learn2Code.Domain.Entities.CourseCompletionRule", b =>
@@ -1015,17 +1184,6 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Course");
-                });
-
-            modelBuilder.Entity("Learn2Code.Domain.Entities.Document", b =>
-                {
-                    b.HasOne("Learn2Code.Domain.Entities.Lesson", "Lesson")
-                        .WithMany("Documents")
-                        .HasForeignKey("LessonId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Lesson");
                 });
 
             modelBuilder.Entity("Learn2Code.Domain.Entities.Enrollment", b =>
@@ -1042,9 +1200,15 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Learn2Code.Domain.Entities.UserSubscription", "Subscription")
+                        .WithMany("Enrollments")
+                        .HasForeignKey("SubscriptionId");
+
                     b.Navigation("Course");
 
                     b.Navigation("Student");
+
+                    b.Navigation("Subscription");
                 });
 
             modelBuilder.Entity("Learn2Code.Domain.Entities.Exercise", b =>
@@ -1056,6 +1220,36 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Lesson");
+                });
+
+            modelBuilder.Entity("Learn2Code.Domain.Entities.ExerciseMedia", b =>
+                {
+                    b.HasOne("Learn2Code.Domain.Entities.Exercise", "Exercise")
+                        .WithMany("ExerciseMedias")
+                        .HasForeignKey("ExerciseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Exercise");
+                });
+
+            modelBuilder.Entity("Learn2Code.Domain.Entities.ExerciseProgress", b =>
+                {
+                    b.HasOne("Learn2Code.Domain.Entities.Exercise", "Exercise")
+                        .WithMany("ExerciseProgresses")
+                        .HasForeignKey("ExerciseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Learn2Code.Domain.Entities.Account", "Student")
+                        .WithMany("ExerciseProgresses")
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Exercise");
+
+                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("Learn2Code.Domain.Entities.Feedback", b =>
@@ -1077,15 +1271,23 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                     b.Navigation("Student");
                 });
 
-            modelBuilder.Entity("Learn2Code.Domain.Entities.FinalTest", b =>
+            modelBuilder.Entity("Learn2Code.Domain.Entities.Leaderboard", b =>
                 {
                     b.HasOne("Learn2Code.Domain.Entities.Course", "Course")
-                        .WithOne("FinalTest")
-                        .HasForeignKey("Learn2Code.Domain.Entities.FinalTest", "CourseId")
+                        .WithMany("Leaderboards")
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Learn2Code.Domain.Entities.Account", "Student")
+                        .WithMany("Leaderboards")
+                        .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Course");
+
+                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("Learn2Code.Domain.Entities.Lesson", b =>
@@ -1099,27 +1301,16 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                     b.Navigation("Section");
                 });
 
-            modelBuilder.Entity("Learn2Code.Domain.Entities.Payment", b =>
-                {
-                    b.HasOne("Learn2Code.Domain.Entities.Enrollment", "Enrollment")
-                        .WithOne("Payment")
-                        .HasForeignKey("Learn2Code.Domain.Entities.Payment", "EnrollmentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Enrollment");
-                });
-
-            modelBuilder.Entity("Learn2Code.Domain.Entities.Progress", b =>
+            modelBuilder.Entity("Learn2Code.Domain.Entities.LessonProgress", b =>
                 {
                     b.HasOne("Learn2Code.Domain.Entities.Lesson", "Lesson")
-                        .WithMany("Progresses")
+                        .WithMany("LessonProgresses")
                         .HasForeignKey("LessonId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Learn2Code.Domain.Entities.Account", "Student")
-                        .WithMany("Progresses")
+                        .WithMany("LessonProgresses")
                         .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1127,6 +1318,17 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                     b.Navigation("Lesson");
 
                     b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("Learn2Code.Domain.Entities.Payment", b =>
+                {
+                    b.HasOne("Learn2Code.Domain.Entities.UserSubscription", "Subscription")
+                        .WithMany("Payments")
+                        .HasForeignKey("SubscriptionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Subscription");
                 });
 
             modelBuilder.Entity("Learn2Code.Domain.Entities.Quiz", b =>
@@ -1151,31 +1353,6 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                     b.Navigation("Quiz");
                 });
 
-            modelBuilder.Entity("Learn2Code.Domain.Entities.QuizSubmission", b =>
-                {
-                    b.HasOne("Learn2Code.Domain.Entities.Quiz", "Quiz")
-                        .WithMany("QuizSubmissions")
-                        .HasForeignKey("QuizId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Learn2Code.Domain.Entities.QuizOption", "SelectedOption")
-                        .WithMany("QuizSubmissions")
-                        .HasForeignKey("SelectedOptionId");
-
-                    b.HasOne("Learn2Code.Domain.Entities.Account", "Student")
-                        .WithMany("QuizSubmissions")
-                        .HasForeignKey("StudentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Quiz");
-
-                    b.Navigation("SelectedOption");
-
-                    b.Navigation("Student");
-                });
-
             modelBuilder.Entity("Learn2Code.Domain.Entities.Section", b =>
                 {
                     b.HasOne("Learn2Code.Domain.Entities.Course", "Course")
@@ -1187,42 +1364,50 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                     b.Navigation("Course");
                 });
 
-            modelBuilder.Entity("Learn2Code.Domain.Entities.Submission", b =>
+            modelBuilder.Entity("Learn2Code.Domain.Entities.SectionQuizAnswer", b =>
                 {
-                    b.HasOne("Learn2Code.Domain.Entities.Exercise", "Exercise")
-                        .WithMany("Submissions")
-                        .HasForeignKey("ExerciseId")
+                    b.HasOne("Learn2Code.Domain.Entities.SectionQuizAttempt", "Attempt")
+                        .WithMany("Answers")
+                        .HasForeignKey("AttemptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Learn2Code.Domain.Entities.QuizOption", "Option")
+                        .WithMany("SectionQuizAnswers")
+                        .HasForeignKey("OptionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Learn2Code.Domain.Entities.Quiz", "Quiz")
+                        .WithMany("SectionQuizAnswers")
+                        .HasForeignKey("QuizId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Attempt");
+
+                    b.Navigation("Option");
+
+                    b.Navigation("Quiz");
+                });
+
+            modelBuilder.Entity("Learn2Code.Domain.Entities.SectionQuizAttempt", b =>
+                {
+                    b.HasOne("Learn2Code.Domain.Entities.Section", "Section")
+                        .WithMany("SectionQuizAttempts")
+                        .HasForeignKey("SectionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Learn2Code.Domain.Entities.Account", "Student")
-                        .WithMany("Submissions")
+                        .WithMany("SectionQuizAttempts")
                         .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Exercise");
+                    b.Navigation("Section");
 
                     b.Navigation("Student");
-                });
-
-            modelBuilder.Entity("Learn2Code.Domain.Entities.SubmissionResult", b =>
-                {
-                    b.HasOne("Learn2Code.Domain.Entities.Submission", "Submission")
-                        .WithMany("Results")
-                        .HasForeignKey("SubmissionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Learn2Code.Domain.Entities.TestCase", "TestCase")
-                        .WithMany("SubmissionResults")
-                        .HasForeignKey("TestCaseId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Submission");
-
-                    b.Navigation("TestCase");
                 });
 
             modelBuilder.Entity("Learn2Code.Domain.Entities.TestCase", b =>
@@ -1236,6 +1421,32 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                     b.Navigation("Exercise");
                 });
 
+            modelBuilder.Entity("Learn2Code.Domain.Entities.UserSubscription", b =>
+                {
+                    b.HasOne("Learn2Code.Domain.Entities.SubscriptionPackage", "Package")
+                        .WithMany("UserSubscriptions")
+                        .HasForeignKey("PackageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Learn2Code.Domain.Entities.UserSubscription", "RenewedFrom")
+                        .WithMany("RenewedSubscriptions")
+                        .HasForeignKey("RenewedFromId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Learn2Code.Domain.Entities.Account", "User")
+                        .WithMany("UserSubscriptions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Package");
+
+                    b.Navigation("RenewedFrom");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Learn2Code.Domain.Entities.Account", b =>
                 {
                     b.Navigation("AccountRoles");
@@ -1246,13 +1457,17 @@ namespace Learn2Code.Infrastructure.Data.Migrations
 
                     b.Navigation("Enrollments");
 
+                    b.Navigation("ExerciseProgresses");
+
                     b.Navigation("Feedbacks");
 
-                    b.Navigation("Progresses");
+                    b.Navigation("Leaderboards");
 
-                    b.Navigation("QuizSubmissions");
+                    b.Navigation("LessonProgresses");
 
-                    b.Navigation("Submissions");
+                    b.Navigation("SectionQuizAttempts");
+
+                    b.Navigation("UserSubscriptions");
                 });
 
             modelBuilder.Entity("Learn2Code.Domain.Entities.Course", b =>
@@ -1267,7 +1482,7 @@ namespace Learn2Code.Infrastructure.Data.Migrations
 
                     b.Navigation("Feedbacks");
 
-                    b.Navigation("FinalTest");
+                    b.Navigation("Leaderboards");
 
                     b.Navigation("Sections");
                 });
@@ -1277,25 +1492,20 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                     b.Navigation("Courses");
                 });
 
-            modelBuilder.Entity("Learn2Code.Domain.Entities.Enrollment", b =>
-                {
-                    b.Navigation("Payment");
-                });
-
             modelBuilder.Entity("Learn2Code.Domain.Entities.Exercise", b =>
                 {
-                    b.Navigation("Submissions");
+                    b.Navigation("ExerciseMedias");
+
+                    b.Navigation("ExerciseProgresses");
 
                     b.Navigation("TestCases");
                 });
 
             modelBuilder.Entity("Learn2Code.Domain.Entities.Lesson", b =>
                 {
-                    b.Navigation("Documents");
-
                     b.Navigation("Exercises");
 
-                    b.Navigation("Progresses");
+                    b.Navigation("LessonProgresses");
 
                     b.Navigation("Quizzes");
                 });
@@ -1304,12 +1514,12 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                 {
                     b.Navigation("Options");
 
-                    b.Navigation("QuizSubmissions");
+                    b.Navigation("SectionQuizAnswers");
                 });
 
             modelBuilder.Entity("Learn2Code.Domain.Entities.QuizOption", b =>
                 {
-                    b.Navigation("QuizSubmissions");
+                    b.Navigation("SectionQuizAnswers");
                 });
 
             modelBuilder.Entity("Learn2Code.Domain.Entities.Role", b =>
@@ -1320,16 +1530,27 @@ namespace Learn2Code.Infrastructure.Data.Migrations
             modelBuilder.Entity("Learn2Code.Domain.Entities.Section", b =>
                 {
                     b.Navigation("Lessons");
+
+                    b.Navigation("SectionQuizAttempts");
                 });
 
-            modelBuilder.Entity("Learn2Code.Domain.Entities.Submission", b =>
+            modelBuilder.Entity("Learn2Code.Domain.Entities.SectionQuizAttempt", b =>
                 {
-                    b.Navigation("Results");
+                    b.Navigation("Answers");
                 });
 
-            modelBuilder.Entity("Learn2Code.Domain.Entities.TestCase", b =>
+            modelBuilder.Entity("Learn2Code.Domain.Entities.SubscriptionPackage", b =>
                 {
-                    b.Navigation("SubmissionResults");
+                    b.Navigation("UserSubscriptions");
+                });
+
+            modelBuilder.Entity("Learn2Code.Domain.Entities.UserSubscription", b =>
+                {
+                    b.Navigation("Enrollments");
+
+                    b.Navigation("Payments");
+
+                    b.Navigation("RenewedSubscriptions");
                 });
 #pragma warning restore 612, 618
         }

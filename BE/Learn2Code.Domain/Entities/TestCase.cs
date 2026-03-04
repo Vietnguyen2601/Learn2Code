@@ -7,28 +7,29 @@ namespace Learn2Code.Domain.Entities;
 public class TestCase
 {
     [Key]
-    [Column("id")]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
+    [Column("testcase_id")]
+    public Guid TestCaseId { get; set; }
 
     [Column("exercise_id")]
-    public int ExerciseId { get; set; }
+    public Guid ExerciseId { get; set; }
 
-    [Column("input")]
-    public string? Input { get; set; }
-
+    [Required]
     [Column("expected_output")]
-    public string? ExpectedOutput { get; set; }
+    public string ExpectedOutput { get; set; } = string.Empty;
 
     [Column("is_hidden")]
-    public bool? IsHidden { get; set; }
+    public bool IsHidden { get; set; } = false;
 
     [Column("weight")]
-    public decimal? Weight { get; set; }
+    public decimal Weight { get; set; } = 1;
+
+    [Column("created_at")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [Column("updated_at")]
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
     [ForeignKey("ExerciseId")]
     public virtual Exercise Exercise { get; set; } = null!;
-
-    public virtual ICollection<SubmissionResult> SubmissionResults { get; set; } = new List<SubmissionResult>();
 }

@@ -7,24 +7,26 @@ namespace Learn2Code.Domain.Entities;
 public class Feedback
 {
     [Key]
-    [Column("id")]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
+    [Column("feedback_id")]
+    public Guid FeedbackId { get; set; }
 
     [Column("course_id")]
-    public int CourseId { get; set; }
+    public Guid CourseId { get; set; }
 
     [Column("student_id")]
     public Guid StudentId { get; set; }
 
     [Column("rating")]
-    public int? Rating { get; set; }
+    public int Rating { get; set; }
 
     [Column("comment")]
     public string? Comment { get; set; }
 
     [Column("created_at")]
-    public DateTime? CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [Column("updated_at")]
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
     [ForeignKey("CourseId")]
