@@ -37,68 +37,6 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
-    private IEnrollmentRepository? _enrollmentRepository;
-    public IEnrollmentRepository EnrollmentRepository
-    {
-        get
-        {
-            return _enrollmentRepository ??= new EnrollmentRepository(_context);
-        }
-    }
-
-    private ILessonRepository? _lessonRepository;
-    public ILessonRepository LessonRepository
-    {
-        get
-        {
-            return _lessonRepository ??= new LessonRepository(_context);
-        }
-    }
-
-    private IExerciseRepository? _exerciseRepository;
-    public IExerciseRepository ExerciseRepository
-    {
-        get
-        {
-            return _exerciseRepository ??= new ExerciseRepository(_context);
-        }
-    }
-
-    private ILessonProgressRepository? _lessonProgressRepository;
-    public ILessonProgressRepository LessonProgressRepository
-    {
-        get
-        {
-            return _lessonProgressRepository ??= new LessonProgressRepository(_context);
-        }
-    }
-
-    private IExerciseProgressRepository? _exerciseProgressRepository;
-    public IExerciseProgressRepository ExerciseProgressRepository
-    {
-        get
-        {
-            return _exerciseProgressRepository ??= new ExerciseProgressRepository(_context);
-        }
-    }
-
-    private IQuizRepository? _quizRepository;
-    public IQuizRepository QuizRepository
-    {
-        get
-        {
-            return _quizRepository ??= new QuizRepository(_context);
-        }
-    }
-
-    private ISectionQuizAttemptRepository? _sectionQuizAttemptRepository;
-    public ISectionQuizAttemptRepository SectionQuizAttemptRepository
-    {
-        get
-        {
-            return _sectionQuizAttemptRepository ??= new SectionQuizAttemptRepository(_context);
-        }
-    }
 
     public IGenericRepository<T> Repository<T>() where T : class
     {
