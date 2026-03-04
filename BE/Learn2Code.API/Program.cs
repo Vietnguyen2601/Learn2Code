@@ -10,6 +10,13 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Suppress EF Core SQL/migration noise in logs (keep app-level info logs)
+builder.Logging
+    .AddFilter("Microsoft.EntityFrameworkCore.Database.Command",     LogLevel.Warning)
+    .AddFilter("Microsoft.EntityFrameworkCore.Database.Transaction", LogLevel.Warning)
+    .AddFilter("Microsoft.EntityFrameworkCore.Migrations",           LogLevel.Warning)
+    .AddFilter("Microsoft.EntityFrameworkCore.Infrastructure",       LogLevel.Warning);
+
 // Database
 builder.Services.AddDbContext<Learn2CodeDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -23,6 +30,11 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
+builder.Services.AddScoped<ILessonService, LessonService>();
+builder.Services.AddScoped<IExerciseService, ExerciseService>();
+builder.Services.AddScoped<IQuizService, QuizService>();
+builder.Services.AddScoped<IProgressService, ProgressService>();
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -88,13 +100,8 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Auto-migrate on startup (dev & staging only — skip in Production)
-if (!app.Environment.IsProduction())
-{
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<Learn2CodeDbContext>();
-    await db.Database.MigrateAsync();
-}
+// Migrate + seed (ResetSchemaIfNeededAsync inside SeedAsync handles existing tables)
+await Learn2CodeDbContextSeeder.SeedAsync(app.Services);
 
 // Configure HTTP request pipeline
 if (app.Environment.IsDevelopment())
