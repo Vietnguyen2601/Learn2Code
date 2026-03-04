@@ -10,4 +10,8 @@ public interface IAuthService
     Task<ServiceResult<LoginResponse>> LoginAsync(LoginRequest request);
     Task<ServiceResult> ForgotPasswordAsync(ForgotPasswordRequest request);
     Task<ServiceResult<ResetPasswordResponse>> ResetPasswordAsync(ResetPasswordRequest request);
+    Task<ServiceResult<RefreshTokenResponse>> RefreshTokenAsync(RefreshTokenRequest request);
+    Task<ServiceResult<MeResponse>> GetMeAsync(Guid accountId);
+    Task<ServiceResult<UpdateProfileResponse>> UpdateProfileAsync(Guid accountId, UpdateProfileRequest request);
+    Task<ServiceResult> LogoutAsync(Guid accountId);
 }

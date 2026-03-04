@@ -37,6 +37,12 @@ public class Account
     [Column("updated_at")]
     public DateTime? UpdatedAt { get; set; }
 
+    [Column("refresh_token")]
+    public string? RefreshToken { get; set; }
+
+    [Column("refresh_token_expiry")]
+    public DateTime? RefreshTokenExpiry { get; set; }
+
     // Navigation properties
     public virtual ICollection<AccountRole> AccountRoles { get; set; } = new List<AccountRole>();
     public virtual ICollection<Course> CreatedCourses { get; set; } = new List<Course>();
