@@ -4,28 +4,33 @@ using Learn2Code.Domain.Enums;
 
 namespace Learn2Code.Domain.Entities;
 
-[Table("progresses")]
-public class Progress
+[Table("lesson_progress")]
+public class LessonProgress
 {
     [Key]
-    [Column("id")]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
+    [Column("progress_id")]
+    public Guid ProgressId { get; set; }
 
     [Column("student_id")]
     public Guid StudentId { get; set; }
 
     [Column("lesson_id")]
-    public int LessonId { get; set; }
+    public Guid LessonId { get; set; }
 
     [Column("status")]
-    public ProgressStatus Status { get; set; } = ProgressStatus.NotStarted;
+    public LessonProgressStatus Status { get; set; } = LessonProgressStatus.NotStarted;
 
     [Column("last_accessed_at")]
     public DateTime? LastAccessedAt { get; set; }
 
     [Column("completed_at")]
     public DateTime? CompletedAt { get; set; }
+
+    [Column("created_at")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [Column("updated_at")]
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
     [ForeignKey("StudentId")]

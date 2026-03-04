@@ -57,58 +57,96 @@ public class Learn2CodeDbContext : DbContext
     public DbSet<Account> Accounts { get; set; } = null!;
     public DbSet<Role> Roles { get; set; } = null!;
     public DbSet<AccountRole> AccountRoles { get; set; } = null!;
+    public DbSet<SubscriptionPackage> SubscriptionPackages { get; set; } = null!;
+    public DbSet<UserSubscription> UserSubscriptions { get; set; } = null!;
     public DbSet<CourseCategory> CourseCategories { get; set; } = null!;
     public DbSet<Course> Courses { get; set; } = null!;
     public DbSet<Enrollment> Enrollments { get; set; } = null!;
     public DbSet<Payment> Payments { get; set; } = null!;
     public DbSet<Section> Sections { get; set; } = null!;
     public DbSet<Lesson> Lessons { get; set; } = null!;
-    public DbSet<Document> Documents { get; set; } = null!;
     public DbSet<Exercise> Exercises { get; set; } = null!;
+    public DbSet<ExerciseMedia> ExerciseMedias { get; set; } = null!;
     public DbSet<TestCase> TestCases { get; set; } = null!;
-    public DbSet<Submission> Submissions { get; set; } = null!;
-    public DbSet<SubmissionResult> SubmissionResults { get; set; } = null!;
     public DbSet<Quiz> Quizzes { get; set; } = null!;
     public DbSet<QuizOption> QuizOptions { get; set; } = null!;
-    public DbSet<QuizSubmission> QuizSubmissions { get; set; } = null!;
-    public DbSet<FinalTest> FinalTests { get; set; } = null!;
-    public DbSet<Progress> Progresses { get; set; } = null!;
+    public DbSet<SectionQuizAttempt> SectionQuizAttempts { get; set; } = null!;
+    public DbSet<SectionQuizAnswer> SectionQuizAnswers { get; set; } = null!;
+    public DbSet<LessonProgress> LessonProgresses { get; set; } = null!;
+    public DbSet<ExerciseProgress> ExerciseProgresses { get; set; } = null!;
     public DbSet<CertificateTemplate> CertificateTemplates { get; set; } = null!;
     public DbSet<Certification> Certifications { get; set; } = null!;
     public DbSet<CourseCompletionRule> CourseCompletionRules { get; set; } = null!;
     public DbSet<Feedback> Feedbacks { get; set; } = null!;
+    public DbSet<Leaderboard> Leaderboards { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // Configure composite key for AccountRole
+        // ── Composite keys ──────────────────────────────────────────────────────
         modelBuilder.Entity<AccountRole>()
             .HasKey(ar => new { ar.AccountId, ar.RoleId });
 
-        // Configure unique constraints
+        // ── Unique constraints ──────────────────────────────────────────────────
         modelBuilder.Entity<Account>()
-            .HasIndex(a => a.Username)
-            .IsUnique();
+            .HasIndex(a => a.Username).IsUnique();
 
         modelBuilder.Entity<Account>()
-            .HasIndex(a => a.Email)
-            .IsUnique();
+            .HasIndex(a => a.Email).IsUnique();
 
         modelBuilder.Entity<CourseCategory>()
-            .HasIndex(c => c.Name)
-            .IsUnique();
+            .HasIndex(c => c.Name).IsUnique();
 
         modelBuilder.Entity<Certification>()
-            .HasIndex(c => c.CertificateCode)
-            .IsUnique();
+            .HasIndex(c => c.CertificateCode).IsUnique();
 
-        // Configure one-to-one relationships
-        modelBuilder.Entity<Course>()
-            .HasOne(c => c.FinalTest)
-            .WithOne(f => f.Course)
-            .HasForeignKey<FinalTest>(f => f.CourseId);
+        modelBuilder.Entity<SubscriptionPackage>()
+            .HasIndex(p => p.Name).IsUnique();
 
+        modelBuilder.Entity<Payment>()
+            .HasIndex(p => p.TransactionId).IsUnique();
+
+        modelBuilder.Entity<Leaderboard>()
+            .HasIndex(l => new { l.CourseId, l.StudentId }).IsUnique();
+
+        modelBuilder.Entity<Leaderboard>()
+            .HasIndex(l => new { l.CourseId, l.Rank }).IsUnique();
+
+        modelBuilder.Entity<Feedback>()
+            .HasIndex(f => new { f.CourseId, f.StudentId }).IsUnique();
+
+        modelBuilder.Entity<Enrollment>()
+            .HasIndex(e => new { e.StudentId, e.CourseId }).IsUnique();
+
+        modelBuilder.Entity<LessonProgress>()
+            .HasIndex(lp => new { lp.StudentId, lp.LessonId }).IsUnique();
+
+        modelBuilder.Entity<ExerciseProgress>()
+            .HasIndex(ep => new { ep.StudentId, ep.ExerciseId }).IsUnique();
+
+        modelBuilder.Entity<SectionQuizAnswer>()
+            .HasIndex(a => new { a.AttemptId, a.QuizId }).IsUnique();
+
+        modelBuilder.Entity<Section>()
+            .HasIndex(s => new { s.CourseId, s.OrderNumber }).IsUnique();
+
+        modelBuilder.Entity<Lesson>()
+            .HasIndex(l => new { l.SectionId, l.OrderNumber }).IsUnique();
+
+        modelBuilder.Entity<Exercise>()
+            .HasIndex(e => new { e.LessonId, e.OrderNumber }).IsUnique();
+
+        modelBuilder.Entity<Quiz>()
+            .HasIndex(q => new { q.LessonId, q.OrderNumber }).IsUnique();
+
+        modelBuilder.Entity<ExerciseMedia>()
+            .HasIndex(m => new { m.ExerciseId, m.OrderNumber }).IsUnique();
+
+        modelBuilder.Entity<Certification>()
+            .HasIndex(c => new { c.StudentId, c.CourseId }).IsUnique();
+
+        // ── One-to-one relationships ────────────────────────────────────────────
         modelBuilder.Entity<Course>()
             .HasOne(c => c.CertificateTemplate)
             .WithOne(ct => ct.Course)
@@ -119,12 +157,14 @@ public class Learn2CodeDbContext : DbContext
             .WithOne(cr => cr.Course)
             .HasForeignKey<CourseCompletionRule>(cr => cr.CourseId);
 
-        modelBuilder.Entity<Enrollment>()
-            .HasOne(e => e.Payment)
-            .WithOne(p => p.Enrollment)
-            .HasForeignKey<Payment>(p => p.EnrollmentId);
+        // ── Self-referencing UserSubscription ──────────────────────────────────
+        modelBuilder.Entity<UserSubscription>()
+            .HasOne(u => u.RenewedFrom)
+            .WithMany(u => u.RenewedSubscriptions)
+            .HasForeignKey(u => u.RenewedFromId)
+            .OnDelete(DeleteBehavior.SetNull);
 
-        // Configure enums to be stored as strings in PostgreSQL
+        // ── Enum → string conversions ───────────────────────────────────────────
         modelBuilder.Entity<Course>()
             .Property(c => c.Difficulty)
             .HasConversion<string>();
@@ -141,61 +181,61 @@ public class Learn2CodeDbContext : DbContext
             .Property(p => p.Status)
             .HasConversion<string>();
 
-        modelBuilder.Entity<Document>()
-            .Property(d => d.DocType)
-            .HasConversion<string>();
-
         modelBuilder.Entity<Exercise>()
-            .Property(e => e.Difficulty)
+            .Property(e => e.ExerciseType)
             .HasConversion<string>();
 
-        modelBuilder.Entity<Exercise>()
-            .Property(e => e.Language)
+        modelBuilder.Entity<UserSubscription>()
+            .Property(u => u.Status)
             .HasConversion<string>();
 
-        modelBuilder.Entity<Submission>()
-            .Property(s => s.Status)
+        modelBuilder.Entity<ExerciseMedia>()
+            .Property(m => m.MediaType)
             .HasConversion<string>();
 
-        modelBuilder.Entity<Progress>()
-            .Property(p => p.Status)
+        modelBuilder.Entity<LessonProgress>()
+            .Property(lp => lp.Status)
             .HasConversion<string>();
 
-        // Configure decimal precision
-        modelBuilder.Entity<Course>()
-            .Property(c => c.Price)
+        // ── Decimal precision ───────────────────────────────────────────────────
+        modelBuilder.Entity<SubscriptionPackage>()
+            .Property(p => p.Price)
             .HasPrecision(18, 2);
 
-        modelBuilder.Entity<Course>()
-            .Property(c => c.OriginalPrice)
-            .HasPrecision(18, 2);
-
-        modelBuilder.Entity<Enrollment>()
-            .Property(e => e.ProgressPercentage)
+        modelBuilder.Entity<SubscriptionPackage>()
+            .Property(p => p.DiscountPercent)
             .HasPrecision(5, 2);
 
         modelBuilder.Entity<Payment>()
             .Property(p => p.Amount)
             .HasPrecision(18, 2);
 
+        modelBuilder.Entity<Enrollment>()
+            .Property(e => e.ProgressPct)
+            .HasPrecision(5, 2);
+
         modelBuilder.Entity<TestCase>()
             .Property(t => t.Weight)
             .HasPrecision(5, 2);
 
-        modelBuilder.Entity<FinalTest>()
-            .Property(f => f.PassingScore)
+        modelBuilder.Entity<SectionQuizAttempt>()
+            .Property(a => a.Score)
             .HasPrecision(5, 2);
 
         modelBuilder.Entity<CourseCompletionRule>()
-            .Property(c => c.MinLessonCompletionPercent)
+            .Property(c => c.MinLessonCompletionPct)
             .HasPrecision(5, 2);
 
         modelBuilder.Entity<CourseCompletionRule>()
-            .Property(c => c.MinExercisePassPercent)
+            .Property(c => c.MinExercisePassPct)
             .HasPrecision(5, 2);
 
         modelBuilder.Entity<CourseCompletionRule>()
-            .Property(c => c.MinQuizScore)
+            .Property(c => c.MinSectionQuizScore)
             .HasPrecision(5, 2);
+
+        modelBuilder.Entity<Leaderboard>()
+            .Property(l => l.TotalScore)
+            .HasPrecision(10, 2);
     }
 }

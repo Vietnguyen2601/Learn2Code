@@ -88,6 +88,14 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+// Auto-migrate on startup (dev & staging only — skip in Production)
+if (!app.Environment.IsProduction())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<Learn2CodeDbContext>();
+    await db.Database.MigrateAsync();
+}
+
 // Configure HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {

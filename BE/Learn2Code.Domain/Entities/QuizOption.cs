@@ -7,22 +7,25 @@ namespace Learn2Code.Domain.Entities;
 public class QuizOption
 {
     [Key]
-    [Column("id")]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
+    [Column("option_id")]
+    public Guid OptionId { get; set; }
 
     [Column("quiz_id")]
-    public int QuizId { get; set; }
+    public Guid QuizId { get; set; }
 
+    [Required]
     [Column("content")]
-    public string? Content { get; set; }
+    public string Content { get; set; } = string.Empty;
 
     [Column("is_correct")]
-    public bool? IsCorrect { get; set; }
+    public bool IsCorrect { get; set; } = false;
+
+    [Column("created_at")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
     [ForeignKey("QuizId")]
     public virtual Quiz Quiz { get; set; } = null!;
 
-    public virtual ICollection<QuizSubmission> QuizSubmissions { get; set; } = new List<QuizSubmission>();
+    public virtual ICollection<SectionQuizAnswer> SectionQuizAnswers { get; set; } = new List<SectionQuizAnswer>();
 }

@@ -7,24 +7,29 @@ namespace Learn2Code.Domain.Entities;
 public class CourseCompletionRule
 {
     [Key]
-    [Column("id")]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
+    [Column("rule_id")]
+    public Guid RuleId { get; set; }
 
     [Column("course_id")]
-    public int CourseId { get; set; }
+    public Guid CourseId { get; set; }
 
-    [Column("min_lesson_completion_percent")]
-    public decimal? MinLessonCompletionPercent { get; set; }
+    [Column("min_lesson_completion_pct")]
+    public decimal MinLessonCompletionPct { get; set; } = 100;
 
-    [Column("min_exercise_pass_percent")]
-    public decimal? MinExercisePassPercent { get; set; }
+    [Column("min_exercise_pass_pct")]
+    public decimal MinExercisePassPct { get; set; } = 0;
 
-    [Column("min_quiz_score")]
-    public decimal? MinQuizScore { get; set; }
+    [Column("min_section_quiz_score")]
+    public decimal MinSectionQuizScore { get; set; } = 0;
 
-    [Column("require_final_test")]
-    public bool? RequireFinalTest { get; set; }
+    [Column("require_all_section_quiz")]
+    public bool RequireAllSectionQuiz { get; set; } = true;
+
+    [Column("created_at")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [Column("updated_at")]
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
     [ForeignKey("CourseId")]

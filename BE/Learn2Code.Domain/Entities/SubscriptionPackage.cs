@@ -3,16 +3,25 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Learn2Code.Domain.Entities;
 
-[Table("course_categories")]
-public class CourseCategory
+[Table("subscription_packages")]
+public class SubscriptionPackage
 {
     [Key]
-    [Column("category_id")]
-    public Guid CategoryId { get; set; }
+    [Column("package_id")]
+    public Guid PackageId { get; set; }
 
     [Required]
     [Column("name")]
     public string Name { get; set; } = string.Empty;
+
+    [Column("duration_months")]
+    public int DurationMonths { get; set; }
+
+    [Column("price")]
+    public decimal Price { get; set; }
+
+    [Column("discount_percent")]
+    public decimal DiscountPercent { get; set; } = 0;
 
     [Column("description")]
     public string? Description { get; set; }
@@ -27,5 +36,5 @@ public class CourseCategory
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
-    public virtual ICollection<Course> Courses { get; set; } = new List<Course>();
+    public virtual ICollection<UserSubscription> UserSubscriptions { get; set; } = new List<UserSubscription>();
 }

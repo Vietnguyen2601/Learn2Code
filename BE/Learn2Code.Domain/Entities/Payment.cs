@@ -8,18 +8,17 @@ namespace Learn2Code.Domain.Entities;
 public class Payment
 {
     [Key]
-    [Column("id")]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
+    [Column("payment_id")]
+    public Guid PaymentId { get; set; }
 
-    [Column("enrollment_id")]
-    public int EnrollmentId { get; set; }
+    [Column("subscription_id")]
+    public Guid SubscriptionId { get; set; }
 
     [Column("amount")]
-    public decimal? Amount { get; set; }
+    public decimal Amount { get; set; }
 
     [Column("payment_method")]
-    public PaymentMethod? PaymentMethod { get; set; }
+    public PaymentMethod PaymentMethod { get; set; }
 
     [Column("transaction_id")]
     public string? TransactionId { get; set; }
@@ -30,7 +29,10 @@ public class Payment
     [Column("paid_at")]
     public DateTime? PaidAt { get; set; }
 
+    [Column("created_at")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
     // Navigation properties
-    [ForeignKey("EnrollmentId")]
-    public virtual Enrollment Enrollment { get; set; } = null!;
+    [ForeignKey("SubscriptionId")]
+    public virtual UserSubscription Subscription { get; set; } = null!;
 }

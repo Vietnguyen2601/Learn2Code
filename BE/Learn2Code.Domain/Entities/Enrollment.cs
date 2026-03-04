@@ -8,27 +8,32 @@ namespace Learn2Code.Domain.Entities;
 public class Enrollment
 {
     [Key]
-    [Column("id")]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
+    [Column("enrollment_id")]
+    public Guid EnrollmentId { get; set; }
 
     [Column("student_id")]
     public Guid StudentId { get; set; }
 
     [Column("course_id")]
-    public int CourseId { get; set; }
+    public Guid CourseId { get; set; }
 
     [Column("status")]
     public EnrollmentStatus Status { get; set; } = EnrollmentStatus.Enrolled;
 
-    [Column("progress_percentage")]
-    public decimal ProgressPercentage { get; set; } = 0;
+    [Column("progress_pct")]
+    public decimal ProgressPct { get; set; } = 0;
 
-    [Column("enrollment_date")]
-    public DateTime? EnrollmentDate { get; set; }
+    [Column("enrolled_at")]
+    public DateTime EnrolledAt { get; set; } = DateTime.UtcNow;
+
+    [Column("activated_at")]
+    public DateTime? ActivatedAt { get; set; }
 
     [Column("completed_at")]
     public DateTime? CompletedAt { get; set; }
+
+    [Column("subscription_id")]
+    public Guid? SubscriptionId { get; set; }
 
     // Navigation properties
     [ForeignKey("StudentId")]
@@ -37,5 +42,6 @@ public class Enrollment
     [ForeignKey("CourseId")]
     public virtual Course Course { get; set; } = null!;
 
-    public virtual Payment? Payment { get; set; }
+    [ForeignKey("SubscriptionId")]
+    public virtual UserSubscription? Subscription { get; set; }
 }
