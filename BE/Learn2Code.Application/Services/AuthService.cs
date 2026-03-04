@@ -169,6 +169,16 @@ public class AuthService : IAuthService
             };
 
             _unitOfWork.AccountRepository.PrepareCreate(account);
+
+            // Assign Student role
+            var accountRole = new AccountRole
+            {
+                AccountId = account.AccountId,
+                RoleId = studentRole.RoleId,
+                AssignedAt = DateTime.UtcNow
+            };
+            _unitOfWork.Repository<AccountRole>().PrepareCreate(accountRole);
+
             await _unitOfWork.CommitTransactionAsync();
 
             var response = new VerifyOtpResponse
