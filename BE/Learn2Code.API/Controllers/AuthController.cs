@@ -1,7 +1,9 @@
 using Learn2Code.Application.Base;
 using Learn2Code.Application.DTOs;
 using Learn2Code.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Learn2Code.API.Controllers;
 
@@ -86,4 +88,87 @@ public class AuthController : ControllerBase
     {
         var result = await _authService.ResetPasswordAsync(request);
         return result.Success ? Ok(result) : BadRequest(result);
-    }}
+    }
+
+    /// <summary>
+    /// Get a new access_token from refresh_token
+    /// </summary>
+    [HttpPost("refresh")]
+    [ProducesResponseType(typeof(ServiceResult<RefreshTokenResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ServiceResult<RefreshTokenResponse>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ServiceResult<RefreshTokenResponse>), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
+    {
+        var result = await _authService.RefreshTokenAsync(request);
+
+        if (result.Success)
+        {
+            return Ok(result);
+        }
+
+        return result.ErrorCode switch
+        {
+            "INVALID_TOKEN" => Unauthorized(result),
+            "INVALID_REFRESH_TOKEN" => Unauthorized(result),
+            "ACCOUNT_INACTIVE" => Unauthorized(result),
+            _ => BadRequest(result)
+        };
+    }
+
+    /// <summary>
+    /// Get current account info (requires authentication)
+    /// </summary>
+    [Authorize]
+    [HttpGet("me")]
+    [ProducesResponseType(typeof(ServiceResult<MeResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetMe()
+    {
+        var accountId = GetCurrentAccountId();
+        if (accountId == null) return Unauthorized();
+
+        var result = await _authService.GetMeAsync(accountId.Value);
+        return result.Success ? Ok(result) : NotFound(result);
+    }
+
+    /// <summary>
+    /// Update profile — name and/or phone_number (requires authentication)
+    /// </summary>
+    [Authorize]
+    [HttpPatch("me")]
+    [ProducesResponseType(typeof(ServiceResult<UpdateProfileResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ServiceResult<UpdateProfileResponse>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
+    {
+        var accountId = GetCurrentAccountId();
+        if (accountId == null) return Unauthorized();
+
+        var result = await _authService.UpdateProfileAsync(accountId.Value, request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    /// <summary>
+    /// Logout — revokes the refresh token (requires authentication)
+    /// </summary>
+    [Authorize]
+    [HttpPost("logout")]
+    [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Logout()
+    {
+        var accountId = GetCurrentAccountId();
+        if (accountId == null) return Unauthorized();
+
+        var result = await _authService.LogoutAsync(accountId.Value);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    // ─── helpers ───────────────────────────────────────────────────────────────
+    private Guid? GetCurrentAccountId()
+    {
+        var value = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                 ?? User.FindFirst("sub")?.Value;
+        return Guid.TryParse(value, out var id) ? id : null;
+    }
+}

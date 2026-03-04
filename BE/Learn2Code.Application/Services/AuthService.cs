@@ -7,7 +7,10 @@ using Learn2Code.Domain.Entities;
 using Learn2Code.Infrastructure.Repositories.IRepository;
 using Learn2Code.Infrastructure.Persistence.UnitOfWork;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace Learn2Code.Application.Services;
 
@@ -18,19 +21,22 @@ public class AuthService : IAuthService
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IMemoryCache _memoryCache;
     private readonly ILogger<AuthService> _logger;
+    private readonly IConfiguration _configuration;
 
     public AuthService(
         IUnitOfWork unitOfWork,
         IEmailService emailService,
         IJwtTokenService jwtTokenService,
         IMemoryCache memoryCache,
-        ILogger<AuthService> logger)
+        ILogger<AuthService> logger,
+        IConfiguration configuration)
     {
         _unitOfWork = unitOfWork;
         _emailService = emailService;
         _jwtTokenService = jwtTokenService;
         _memoryCache = memoryCache;
         _logger = logger;
+        _configuration = configuration;
     }
 
     public async Task<ServiceResult> RegisterAsync(RegisterRequest request)
@@ -222,10 +228,20 @@ public class AuthService : IAuthService
             .Select(ar => ar.Role.RoleName)
             .ToList();
 
-        // Generate JWT
+        // Generate JWT access token and refresh token
         var token = _jwtTokenService.GenerateToken(account, roles);
+        var refreshToken = _jwtTokenService.GenerateRefreshToken();
 
-        var response = account.ToLoginResponse(token, roles);
+        var jwtSettings = _configuration.GetSection("JwtSettings");
+        var refreshTokenExpirationDays = int.Parse(jwtSettings["RefreshTokenExpirationDays"] ?? "7");
+
+        account.RefreshToken = refreshToken;
+        account.RefreshTokenExpiry = DateTime.UtcNow.AddDays(refreshTokenExpirationDays);
+        account.UpdatedAt = DateTime.UtcNow;
+        _unitOfWork.AccountRepository.PrepareUpdate(account);
+        await _unitOfWork.SaveChangesAsync();
+
+        var response = account.ToLoginResponse(token, refreshToken, roles);
 
         _logger.LogInformation("User {Username} logged in successfully", account.Username);
         return ServiceResult<LoginResponse>.Ok(response, "Login successful");
@@ -341,6 +357,135 @@ public class AuthService : IAuthService
             _logger.LogError(ex, "Failed to reset password for {Email}", request.Email);
             return ServiceResult<ResetPasswordResponse>.Error("RESET_FAILED", "Failed to reset password. Please try again.");
         }
+    }
+
+    public async Task<ServiceResult<RefreshTokenResponse>> RefreshTokenAsync(RefreshTokenRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.AccessToken) || string.IsNullOrWhiteSpace(request.RefreshToken))
+        {
+            return ServiceResult<RefreshTokenResponse>.Error("VALIDATION_ERROR", "Access token and refresh token are required");
+        }
+
+        var principal = _jwtTokenService.GetPrincipalFromExpiredToken(request.AccessToken);
+        if (principal == null)
+        {
+            return ServiceResult<RefreshTokenResponse>.Error("INVALID_TOKEN", "Invalid access token");
+        }
+
+        // JwtSecurityTokenHandler maps "sub" → ClaimTypes.NameIdentifier on validation
+        var accountIdStr = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                        ?? principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(accountIdStr, out var accountId))
+        {
+            return ServiceResult<RefreshTokenResponse>.Error("INVALID_TOKEN", "Invalid token claims");
+        }
+
+        var account = await _unitOfWork.AccountRepository.GetByIdWithRolesAsync(accountId);
+        if (account == null)
+        {
+            return ServiceResult<RefreshTokenResponse>.Error("ACCOUNT_NOT_FOUND", "Account not found");
+        }
+
+        if (!account.IsActive)
+        {
+            return ServiceResult<RefreshTokenResponse>.Error("ACCOUNT_INACTIVE", "Account is not active");
+        }
+
+        if (account.RefreshToken != request.RefreshToken || account.RefreshTokenExpiry < DateTime.UtcNow)
+        {
+            return ServiceResult<RefreshTokenResponse>.Error("INVALID_REFRESH_TOKEN", "Invalid or expired refresh token");
+        }
+
+        var roles = account.AccountRoles
+            .Where(ar => ar.Role.IsActive)
+            .Select(ar => ar.Role.RoleName)
+            .ToList();
+
+        var jwtSettings = _configuration.GetSection("JwtSettings");
+        var refreshTokenExpirationDays = int.Parse(jwtSettings["RefreshTokenExpirationDays"] ?? "7");
+
+        var newAccessToken = _jwtTokenService.GenerateToken(account, roles);
+        var newRefreshToken = _jwtTokenService.GenerateRefreshToken();
+
+        account.RefreshToken = newRefreshToken;
+        account.RefreshTokenExpiry = DateTime.UtcNow.AddDays(refreshTokenExpirationDays);
+        account.UpdatedAt = DateTime.UtcNow;
+        _unitOfWork.AccountRepository.PrepareUpdate(account);
+
+        await _unitOfWork.SaveChangesAsync();
+
+        _logger.LogInformation("Token refreshed for account {AccountId}", accountId);
+        return ServiceResult<RefreshTokenResponse>.Ok(new RefreshTokenResponse
+        {
+            AccessToken = newAccessToken,
+            RefreshToken = newRefreshToken
+        }, "Token refreshed successfully");
+    }
+
+    public async Task<ServiceResult<MeResponse>> GetMeAsync(Guid accountId)
+    {
+        var account = await _unitOfWork.AccountRepository.GetByIdWithRolesAsync(accountId);
+        if (account == null)
+            return ServiceResult<MeResponse>.Error("ACCOUNT_NOT_FOUND", "Account not found");
+
+        var roles = account.AccountRoles
+            .Where(ar => ar.Role.IsActive)
+            .Select(ar => ar.Role.RoleName)
+            .ToList();
+
+        return ServiceResult<MeResponse>.Ok(new MeResponse
+        {
+            AccountId   = account.AccountId,
+            Username    = account.Username,
+            Email       = account.Email,
+            Name        = account.Name,
+            PhoneNumber = account.PhoneNumber,
+            IsActive    = account.IsActive,
+            Roles       = roles,
+            CreatedAt   = account.CreatedAt
+        });
+    }
+
+    public async Task<ServiceResult<UpdateProfileResponse>> UpdateProfileAsync(Guid accountId, UpdateProfileRequest request)
+    {
+        var account = await _unitOfWork.AccountRepository.GetByIdAsync(accountId);
+        if (account == null)
+            return ServiceResult<UpdateProfileResponse>.Error("ACCOUNT_NOT_FOUND", "Account not found");
+
+        if (request.Name != null)
+            account.Name = request.Name;
+
+        if (request.PhoneNumber != null)
+            account.PhoneNumber = request.PhoneNumber;
+
+        account.UpdatedAt = DateTime.UtcNow;
+        _unitOfWork.AccountRepository.PrepareUpdate(account);
+        await _unitOfWork.SaveChangesAsync();
+
+        _logger.LogInformation("Profile updated for account {AccountId}", accountId);
+        return ServiceResult<UpdateProfileResponse>.Ok(new UpdateProfileResponse
+        {
+            Username    = account.Username,
+            Email       = account.Email,
+            Name        = account.Name,
+            PhoneNumber = account.PhoneNumber
+        }, "Profile updated successfully");
+    }
+
+    public async Task<ServiceResult> LogoutAsync(Guid accountId)
+    {
+        var account = await _unitOfWork.AccountRepository.GetByIdAsync(accountId);
+        if (account == null)
+            return ServiceResult.Error("ACCOUNT_NOT_FOUND", "Account not found");
+
+        account.RefreshToken       = null;
+        account.RefreshTokenExpiry = null;
+        account.UpdatedAt          = DateTime.UtcNow;
+        _unitOfWork.AccountRepository.PrepareUpdate(account);
+        await _unitOfWork.SaveChangesAsync();
+
+        _logger.LogInformation("Account {AccountId} logged out", accountId);
+        return ServiceResult.Ok("Logged out successfully");
     }
 
     private static string GenerateOtpCode()

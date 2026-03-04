@@ -88,6 +88,9 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+// Seed initial data (runs migrations + seeds master data on startup)
+await Learn2CodeDbContextSeeder.SeedAsync(app.Services);
+
 // Configure HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {

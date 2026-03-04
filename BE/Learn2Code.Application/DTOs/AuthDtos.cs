@@ -87,7 +87,27 @@ public class ResetPasswordRequest
     public string ConfirmPassword { get; set; } = string.Empty;
 }
 
+public class RefreshTokenRequest
+{
+    [Required]
+    [JsonPropertyName("access_token")]
+    public string AccessToken { get; set; } = string.Empty;
+
+    [Required]
+    [JsonPropertyName("refresh_token")]
+    public string RefreshToken { get; set; } = string.Empty;
+}
+
 // Response DTOs
+
+public class RefreshTokenResponse
+{
+    [JsonPropertyName("access_token")]
+    public string AccessToken { get; set; } = string.Empty;
+
+    [JsonPropertyName("refresh_token")]
+    public string RefreshToken { get; set; } = string.Empty;
+}
 
 public class LoginResponse
 {
@@ -102,6 +122,9 @@ public class LoginResponse
 
     [JsonPropertyName("token")]
     public string Token { get; set; } = string.Empty;
+
+    [JsonPropertyName("refresh_token")]
+    public string RefreshToken { get; set; } = string.Empty;
 
     [JsonPropertyName("roles")]
     public List<string> Roles { get; set; } = new();
@@ -138,4 +161,56 @@ public class ResetPasswordResponse
 
     [JsonPropertyName("message")]
     public string Message { get; set; } = string.Empty;
+}
+
+public class MeResponse
+{
+    [JsonPropertyName("account_id")]
+    public Guid AccountId { get; set; }
+
+    [JsonPropertyName("username")]
+    public string Username { get; set; } = string.Empty;
+
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = string.Empty;
+
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    [JsonPropertyName("phone_number")]
+    public string? PhoneNumber { get; set; }
+
+    [JsonPropertyName("is_active")]
+    public bool IsActive { get; set; }
+
+    [JsonPropertyName("roles")]
+    public List<string> Roles { get; set; } = new();
+
+    [JsonPropertyName("created_at")]
+    public DateTime? CreatedAt { get; set; }
+}
+
+public class UpdateProfileRequest
+{
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    [Phone]
+    [JsonPropertyName("phone_number")]
+    public string? PhoneNumber { get; set; }
+}
+
+public class UpdateProfileResponse
+{
+    [JsonPropertyName("username")]
+    public string Username { get; set; } = string.Empty;
+
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = string.Empty;
+
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    [JsonPropertyName("phone_number")]
+    public string? PhoneNumber { get; set; }
 }

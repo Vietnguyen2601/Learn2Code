@@ -31,7 +31,7 @@ public static class AccountMapper
         };
     }
 
-    public static LoginResponse ToLoginResponse(this Account account, string token, List<string> roles)
+    public static LoginResponse ToLoginResponse(this Account account, string token, string refreshToken, List<string> roles)
     {
         return new LoginResponse
         {
@@ -39,6 +39,7 @@ public static class AccountMapper
             Email = account.Email,
             Name = account.Name,
             Token = token,
+            RefreshToken = refreshToken,
             Roles = roles
         };
     }
