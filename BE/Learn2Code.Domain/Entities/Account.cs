@@ -40,10 +40,12 @@ public class Account
     // Navigation properties
     public virtual ICollection<AccountRole> AccountRoles { get; set; } = new List<AccountRole>();
     public virtual ICollection<Course> CreatedCourses { get; set; } = new List<Course>();
+    public virtual ICollection<UserSubscription> UserSubscriptions { get; set; } = new List<UserSubscription>();
     public virtual ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
-    public virtual ICollection<Submission> Submissions { get; set; } = new List<Submission>();
-    public virtual ICollection<QuizSubmission> QuizSubmissions { get; set; } = new List<QuizSubmission>();
-    public virtual ICollection<Progress> Progresses { get; set; } = new List<Progress>();
+    public virtual ICollection<LessonProgress> LessonProgresses { get; set; } = new List<LessonProgress>();
+    public virtual ICollection<ExerciseProgress> ExerciseProgresses { get; set; } = new List<ExerciseProgress>();
+    public virtual ICollection<SectionQuizAttempt> SectionQuizAttempts { get; set; } = new List<SectionQuizAttempt>();
     public virtual ICollection<Certification> Certifications { get; set; } = new List<Certification>();
     public virtual ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
+    public virtual ICollection<Leaderboard> Leaderboards { get; set; } = new List<Leaderboard>();
 }

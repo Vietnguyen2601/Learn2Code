@@ -7,34 +7,33 @@ namespace Learn2Code.Domain.Entities;
 public class Lesson
 {
     [Key]
-    [Column("id")]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
+    [Column("lesson_id")]
+    public Guid LessonId { get; set; }
 
     [Column("section_id")]
-    public int SectionId { get; set; }
+    public Guid SectionId { get; set; }
 
+    [Required]
     [Column("title")]
-    public string? Title { get; set; }
+    public string Title { get; set; } = string.Empty;
 
     [Column("order_number")]
-    public int? OrderNumber { get; set; }
+    public int OrderNumber { get; set; }
 
-    [Column("is_previewable")]
-    public bool? IsPreviewable { get; set; }
+    [Column("is_free_preview")]
+    public bool IsFreePreview { get; set; } = false;
 
     [Column("created_at")]
-    public DateTime? CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     [Column("updated_at")]
-    public DateTime? UpdatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
     [ForeignKey("SectionId")]
     public virtual Section Section { get; set; } = null!;
 
-    public virtual ICollection<Document> Documents { get; set; } = new List<Document>();
     public virtual ICollection<Exercise> Exercises { get; set; } = new List<Exercise>();
     public virtual ICollection<Quiz> Quizzes { get; set; } = new List<Quiz>();
-    public virtual ICollection<Progress> Progresses { get; set; } = new List<Progress>();
+    public virtual ICollection<LessonProgress> LessonProgresses { get; set; } = new List<LessonProgress>();
 }

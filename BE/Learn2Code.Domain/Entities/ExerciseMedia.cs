@@ -1,27 +1,31 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Learn2Code.Domain.Enums;
 
 namespace Learn2Code.Domain.Entities;
 
-[Table("test_cases")]
-public class TestCase
+[Table("exercise_media")]
+public class ExerciseMedia
 {
     [Key]
-    [Column("testcase_id")]
-    public Guid TestCaseId { get; set; }
+    [Column("media_id")]
+    public Guid MediaId { get; set; }
 
     [Column("exercise_id")]
     public Guid ExerciseId { get; set; }
 
+    [Column("media_type")]
+    public MediaType MediaType { get; set; }
+
     [Required]
-    [Column("expected_output")]
-    public string ExpectedOutput { get; set; } = string.Empty;
+    [Column("url")]
+    public string Url { get; set; } = string.Empty;
 
-    [Column("is_hidden")]
-    public bool IsHidden { get; set; } = false;
+    [Column("caption")]
+    public string? Caption { get; set; }
 
-    [Column("weight")]
-    public decimal Weight { get; set; } = 1;
+    [Column("order_number")]
+    public int OrderNumber { get; set; }
 
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

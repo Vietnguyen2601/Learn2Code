@@ -7,24 +7,24 @@ namespace Learn2Code.Domain.Entities;
 public class Certification
 {
     [Key]
-    [Column("id")]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
+    [Column("certification_id")]
+    public Guid CertificationId { get; set; }
 
     [Column("student_id")]
     public Guid StudentId { get; set; }
 
     [Column("course_id")]
-    public int CourseId { get; set; }
+    public Guid CourseId { get; set; }
 
-    [Column("issue_date")]
-    public DateTime? IssueDate { get; set; }
-
+    [Required]
     [Column("certificate_code")]
-    public string? CertificateCode { get; set; }
+    public string CertificateCode { get; set; } = string.Empty;
 
     [Column("certificate_url")]
     public string? CertificateUrl { get; set; }
+
+    [Column("issued_at")]
+    public DateTime IssuedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
     [ForeignKey("StudentId")]

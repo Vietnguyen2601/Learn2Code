@@ -8,24 +8,24 @@ namespace Learn2Code.Domain.Entities;
 public class Exercise
 {
     [Key]
-    [Column("id")]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
+    [Column("exercise_id")]
+    public Guid ExerciseId { get; set; }
 
     [Column("lesson_id")]
-    public int LessonId { get; set; }
+    public Guid LessonId { get; set; }
 
-    [Column("title")]
-    public string? Title { get; set; }
+    [Column("order_number")]
+    public int OrderNumber { get; set; }
 
-    [Column("description")]
-    public string? Description { get; set; }
+    [Column("exercise_type")]
+    public ExerciseType ExerciseType { get; set; }
 
-    [Column("difficulty")]
-    public ExerciseDifficulty? Difficulty { get; set; }
+    [Required]
+    [Column("narrative")]
+    public string Narrative { get; set; } = string.Empty;
 
     [Column("language")]
-    public ProgrammingLanguage? Language { get; set; }
+    public string? Language { get; set; }
 
     [Column("starter_code")]
     public string? StarterCode { get; set; }
@@ -33,13 +33,23 @@ public class Exercise
     [Column("solution_code")]
     public string? SolutionCode { get; set; }
 
+    [Column("instruction")]
+    public string? Instruction { get; set; }
+
+    [Column("hint")]
+    public string? Hint { get; set; }
+
     [Column("created_at")]
-    public DateTime? CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [Column("updated_at")]
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
     [ForeignKey("LessonId")]
     public virtual Lesson Lesson { get; set; } = null!;
 
     public virtual ICollection<TestCase> TestCases { get; set; } = new List<TestCase>();
-    public virtual ICollection<Submission> Submissions { get; set; } = new List<Submission>();
+    public virtual ICollection<ExerciseMedia> ExerciseMedias { get; set; } = new List<ExerciseMedia>();
+    public virtual ICollection<ExerciseProgress> ExerciseProgresses { get; set; } = new List<ExerciseProgress>();
 }

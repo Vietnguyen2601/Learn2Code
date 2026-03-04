@@ -8,9 +8,8 @@ namespace Learn2Code.Domain.Entities;
 public class Course
 {
     [Key]
-    [Column("id")]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
+    [Column("course_id")]
+    public Guid CourseId { get; set; }
 
     [Required]
     [Column("title")]
@@ -19,45 +18,36 @@ public class Course
     [Column("description")]
     public string? Description { get; set; }
 
-    [Column("price")]
-    public decimal? Price { get; set; }
-
-    [Column("original_price")]
-    public decimal? OriginalPrice { get; set; }
-
     [Column("difficulty")]
     public CourseDifficulty? Difficulty { get; set; }
 
-    [Column("thumbnail_url")]
-    public string? ThumbnailUrl { get; set; }
+    [Column("is_active")]
+    public bool IsActive { get; set; } = true;
 
-    [Column("is_published")]
-    public bool IsPublished { get; set; } = false;
-
-    [Column("admin_id")]
-    public Guid? AdminId { get; set; }
+    [Column("instructor_id")]
+    public Guid InstructorId { get; set; }
 
     [Column("category_id")]
-    public int? CategoryId { get; set; }
+    public Guid? CategoryId { get; set; }
 
     [Column("created_at")]
-    public DateTime? CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     [Column("updated_at")]
-    public DateTime? UpdatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
-    [ForeignKey("AdminId")]
-    public virtual Account? Admin { get; set; }
+    [ForeignKey("InstructorId")]
+    public virtual Account? Instructor { get; set; }
 
     [ForeignKey("CategoryId")]
     public virtual CourseCategory? Category { get; set; }
 
     public virtual ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
     public virtual ICollection<Section> Sections { get; set; } = new List<Section>();
-    public virtual FinalTest? FinalTest { get; set; }
     public virtual CertificateTemplate? CertificateTemplate { get; set; }
     public virtual ICollection<Certification> Certifications { get; set; } = new List<Certification>();
     public virtual CourseCompletionRule? CompletionRule { get; set; }
     public virtual ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
+    public virtual ICollection<Leaderboard> Leaderboards { get; set; } = new List<Leaderboard>();
 }

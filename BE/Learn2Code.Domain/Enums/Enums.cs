@@ -11,59 +11,44 @@ public enum EnrollmentStatus
 {
     Enrolled,
     InProgress,
-    Completed,
-    Dropped
+    Completed
 }
 
 public enum PaymentMethod
 {
     VNPay,
-    BankTransfer,
-    Free
+    BankTransfer
 }
 
 public enum PaymentStatus
 {
     Pending,
     Success,
-    Failed,
-    Refunded
+    Failed
 }
 
-public enum DocumentType
+public enum ExerciseType
 {
-    Theory,
-    ExerciseDescription
+    Reading,
+    FreeCode,
+    GradedCode
 }
 
-public enum ExerciseDifficulty
-{
-    Easy,
-    Medium,
-    Hard
-}
-
-public enum ProgrammingLanguage
-{
-    Python,
-    JavaScript,
-    Java,
-    CSharp,
-    CPlusPlus,
-    Go,
-    Rust,
-    Other
-}
-
-public enum SubmissionStatus
+public enum SubscriptionStatus
 {
     Pending,
-    Accepted,
-    WrongAnswer,
-    RuntimeError
+    Active,
+    Expired,
+    Cancelled
 }
 
-public enum ProgressStatus
+public enum MediaType
+{
+    Image,
+    Video
+}
+
+public enum LessonProgressStatus
 {
     NotStarted,
     InProgress,

@@ -7,15 +7,15 @@ namespace Learn2Code.Domain.Entities;
 public class CertificateTemplate
 {
     [Key]
-    [Column("id")]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
+    [Column("template_id")]
+    public Guid TemplateId { get; set; }
 
     [Column("course_id")]
-    public int CourseId { get; set; }
+    public Guid CourseId { get; set; }
 
+    [Required]
     [Column("title")]
-    public string? Title { get; set; }
+    public string Title { get; set; } = string.Empty;
 
     [Column("description")]
     public string? Description { get; set; }
@@ -30,7 +30,10 @@ public class CertificateTemplate
     public string? SignatureImageUrl { get; set; }
 
     [Column("created_at")]
-    public DateTime? CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [Column("updated_at")]
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
     [ForeignKey("CourseId")]
