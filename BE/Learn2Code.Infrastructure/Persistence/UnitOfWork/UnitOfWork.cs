@@ -37,6 +37,24 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
+    private ICourseRepository? _courseRepository;
+    public ICourseRepository CourseRepository
+    {
+        get
+        {
+            return _courseRepository ??= new CourseRepository(_context);
+        }
+    }
+
+    private ICourseCategoryRepository? _courseCategoryRepository;
+    public ICourseCategoryRepository CourseCategoryRepository
+    {
+        get
+        {
+            return _courseCategoryRepository ??= new CourseCategoryRepository(_context);
+        }
+    }
+
 
     public IGenericRepository<T> Repository<T>() where T : class
     {

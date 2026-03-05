@@ -9,7 +9,8 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
 
     IAccountRepository AccountRepository { get; }
     IRoleRepository RoleRepository { get; }
-
+    ICourseRepository CourseRepository { get; }
+    ICourseCategoryRepository CourseCategoryRepository { get; }
 
     int SaveChanges();
     Task<int> SaveChangesAsync();
