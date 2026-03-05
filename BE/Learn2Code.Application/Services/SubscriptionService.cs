@@ -48,52 +48,19 @@ public class SubscriptionService : ISubscriptionService
             return ServiceResult<CreateSubscriptionResponse>.Error("ALREADY_SUBSCRIBED", "You already have an active subscription. Use renew or cancel first.");
 
         var now            = DateTime.UtcNow;
-        var subscriptionId = Guid.NewGuid();
-        var paymentId      = Guid.NewGuid();
         var effectivePrice = package.Price * (1 - package.DiscountPercent / 100m);
-        var orderCode      = ToOrderCode(paymentId);
+        var subscription   = package.ToNewUserSubscription(userId, now);
+        var payment        = subscription.ToPendingPayment(effectivePrice);
 
-        var subscription = new UserSubscription
-        {
-            SubscriptionId = subscriptionId,
-            UserId         = userId,
-            PackageId      = request.PackageId,
-            StartDate      = now,
-            EndDate        = now.AddMonths(package.DurationMonths),
-            Status         = SubscriptionStatus.Pending,
-            CreatedAt      = now,
-            UpdatedAt      = now
-        };
-
-        var payment = new Payment
-        {
-            PaymentId      = paymentId,
-            SubscriptionId = subscriptionId,
-            Amount         = effectivePrice,
-            PaymentMethod  = PaymentMethod.PayOS,
-            TransactionId  = orderCode.ToString(),
-            Status         = PaymentStatus.Pending,
-            CreatedAt      = now
-        };
+        // TODO: replace with real PayOS SDK call when integrated
+        var checkoutUrl = $"{_returnUrl}?orderCode={payment.ToPayOSOrderCode()}&amount={(int)effectivePrice}";
 
         _unitOfWork.SubscriptionRepository.PrepareCreate(subscription);
         _unitOfWork.Repository<Payment>().PrepareCreate(payment);
         await _unitOfWork.CommitTransactionAsync();
 
-        // TODO: replace with real PayOS SDK call when integrated
-        var checkoutUrl = $"{_returnUrl}?orderCode={orderCode}&amount={(int)effectivePrice}";
-
-        return ServiceResult<CreateSubscriptionResponse>.Created(new CreateSubscriptionResponse
-        {
-            SubscriptionId = subscriptionId,
-            PaymentId      = paymentId,
-            PackageName    = package.Name,
-            Amount         = effectivePrice,
-            PaymentMethod  = "PayOS",
-            Status         = SubscriptionStatus.Pending.ToString(),
-            PaymentUrl     = checkoutUrl,
-            ExpiredAt      = now.AddMonths(package.DurationMonths)
-        });
+        return ServiceResult<CreateSubscriptionResponse>.Created(
+            subscription.ToCreateSubscriptionResponse(payment, package.Name, checkoutUrl));
     }
 
     // [S] POST /subscriptions/:id/renew
@@ -113,53 +80,19 @@ public class SubscriptionService : ISubscriptionService
         var package        = existing.Package;
         var now            = DateTime.UtcNow;
         var newStart       = existing.EndDate > now ? existing.EndDate : now;
-        var renewalId      = Guid.NewGuid();
-        var paymentId      = Guid.NewGuid();
         var effectivePrice = package.Price * (1 - package.DiscountPercent / 100m);
-        var orderCode      = ToOrderCode(paymentId);
+        var renewal        = package.ToRenewalUserSubscription(userId, newStart, subscriptionId, now);
+        var payment        = renewal.ToPendingPayment(effectivePrice);
 
-        var renewal = new UserSubscription
-        {
-            SubscriptionId = renewalId,
-            UserId         = userId,
-            PackageId      = package.PackageId,
-            StartDate      = newStart,
-            EndDate        = newStart.AddMonths(package.DurationMonths),
-            Status         = SubscriptionStatus.Pending,
-            RenewedFromId  = subscriptionId,
-            CreatedAt      = now,
-            UpdatedAt      = now
-        };
-
-        var payment = new Payment
-        {
-            PaymentId      = paymentId,
-            SubscriptionId = renewalId,
-            Amount         = effectivePrice,
-            PaymentMethod  = PaymentMethod.PayOS,
-            TransactionId  = orderCode.ToString(),
-            Status         = PaymentStatus.Pending,
-            CreatedAt      = now
-        };
+        // TODO: replace with real PayOS SDK call when integrated
+        var checkoutUrl = $"{_returnUrl}?orderCode={payment.ToPayOSOrderCode()}&amount={(int)effectivePrice}";
 
         _unitOfWork.SubscriptionRepository.PrepareCreate(renewal);
         _unitOfWork.Repository<Payment>().PrepareCreate(payment);
         await _unitOfWork.CommitTransactionAsync();
 
-        // TODO: replace with real PayOS SDK call when integrated
-        var checkoutUrl = $"{_returnUrl}?orderCode={orderCode}&amount={(int)effectivePrice}";
-
-        return ServiceResult<CreateSubscriptionResponse>.Created(new CreateSubscriptionResponse
-        {
-            SubscriptionId = renewalId,
-            PaymentId      = paymentId,
-            PackageName    = package.Name,
-            Amount         = effectivePrice,
-            PaymentMethod  = "PayOS",
-            Status         = SubscriptionStatus.Pending.ToString(),
-            PaymentUrl     = checkoutUrl,
-            ExpiredAt      = newStart.AddMonths(package.DurationMonths)
-        });
+        return ServiceResult<CreateSubscriptionResponse>.Created(
+            renewal.ToCreateSubscriptionResponse(payment, package.Name, checkoutUrl));
     }
 
     // [S] POST /subscriptions/:id/cancel
@@ -186,22 +119,11 @@ public class SubscriptionService : ISubscriptionService
         return ServiceResult.Ok("Subscription has been cancelled");
     }
 
-    // [A] GET /subscriptions
     public async Task<ServiceResult<List<SubscriptionDto>>> GetAllSubscriptionsAsync()
     {
         var subscriptions = await _unitOfWork.SubscriptionRepository.GetAllWithPackageAsync();
         return ServiceResult<List<SubscriptionDto>>.Ok(subscriptions.ToSubscriptionDtoList());
     }
 
-    // ─── Helpers ─────────────────────────────────────────────────────────────
-
-    /// <summary>Derive a unique positive long from a GUID (PayOS orderCode).</summary>
-    private static long ToOrderCode(Guid id)
-    {
-        var raw = BitConverter.ToInt64(id.ToByteArray(), 0);
-        return Math.Abs(raw == long.MinValue ? 1L : raw);
-    }
-
-    private static string Truncate(string s, int max) =>
-        s.Length <= max ? s : s[..max];
 }
+

@@ -2,7 +2,6 @@ using Learn2Code.Application.Base;
 using Learn2Code.Application.DTOs;
 using Learn2Code.Application.Interfaces;
 using Learn2Code.Application.Mapper;
-using Learn2Code.Domain.Entities;
 using Learn2Code.Infrastructure.Persistence.UnitOfWork;
 
 namespace Learn2Code.Application.Services;
@@ -38,18 +37,7 @@ public class SubscriptionPackageService : ISubscriptionPackageService
         if (nameExists)
             return ServiceResult<SubscriptionPackageDto>.Error("NAME_EXISTS", "A package with this name already exists");
 
-        var package = new SubscriptionPackage
-        {
-            PackageId      = Guid.NewGuid(),
-            Name           = request.Name,
-            DurationMonths = request.DurationMonths,
-            Price          = request.Price,
-            DiscountPercent = request.DiscountPercent,
-            Description    = request.Description,
-            IsActive       = true,
-            CreatedAt      = DateTime.UtcNow,
-            UpdatedAt      = DateTime.UtcNow
-        };
+        var package = request.ToNewPackage();
 
         _unitOfWork.SubscriptionPackageRepository.PrepareCreate(package);
         await _unitOfWork.CommitTransactionAsync();
@@ -74,13 +62,7 @@ public class SubscriptionPackageService : ISubscriptionPackageService
             package.Name = request.Name;
         }
 
-        if (request.DurationMonths.HasValue) package.DurationMonths = request.DurationMonths.Value;
-        if (request.Price.HasValue)          package.Price           = request.Price.Value;
-        if (request.DiscountPercent.HasValue) package.DiscountPercent = request.DiscountPercent.Value;
-        if (request.Description != null)     package.Description     = request.Description;
-        if (request.IsActive.HasValue)        package.IsActive        = request.IsActive.Value;
-
-        package.UpdatedAt = DateTime.UtcNow;
+        package.ApplyUpdate(request);
 
         _unitOfWork.SubscriptionPackageRepository.PrepareUpdate(package);
         await _unitOfWork.CommitTransactionAsync();
