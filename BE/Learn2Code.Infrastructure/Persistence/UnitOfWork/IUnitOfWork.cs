@@ -13,6 +13,7 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
     ICourseCategoryRepository CourseCategoryRepository { get; }
     ISectionRepository SectionRepository { get; }
     ILessonRepository LessonRepository { get; }
+    IExerciseRepository ExerciseRepository { get; }
 
     int SaveChanges();
     Task<int> SaveChangesAsync();

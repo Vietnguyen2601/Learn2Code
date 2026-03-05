@@ -73,6 +73,15 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
+    private IExerciseRepository? _exerciseRepository;
+    public IExerciseRepository ExerciseRepository
+    {
+        get
+        {
+            return _exerciseRepository ??= new ExerciseRepository(_context);
+        }
+    }
+
     public IGenericRepository<T> Repository<T>() where T : class
     {
         var key = typeof(T).Name;
