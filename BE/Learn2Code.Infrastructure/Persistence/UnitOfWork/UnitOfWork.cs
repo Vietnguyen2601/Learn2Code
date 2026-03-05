@@ -82,6 +82,15 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
+    private ITestCaseRepository? _testCaseRepository;
+    public ITestCaseRepository TestCaseRepository
+    {
+        get
+        {
+            return _testCaseRepository ??= new TestCaseRepository(_context);
+        }
+    }
+
     public IGenericRepository<T> Repository<T>() where T : class
     {
         var key = typeof(T).Name;
