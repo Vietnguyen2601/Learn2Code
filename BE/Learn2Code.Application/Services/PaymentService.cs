@@ -204,11 +204,16 @@ public class PaymentService : IPaymentService
             payment.Status = PaymentStatus.Success;
             payment.PaidAt = DateTime.UtcNow;
             _unitOfWork.Repository<Payment>().PrepareUpdate(payment);
+            
+            _logger.LogInformation("Before CommitTransaction - Payment {PaymentId} Status: {Status}, PaidAt: {PaidAt}", 
+                payment.PaymentId, payment.Status, payment.PaidAt);
+
+            await _unitOfWork.CommitTransactionAsync();
+            
+            _logger.LogInformation("After CommitTransaction - Payment {PaymentId} successfully committed", payment.PaymentId);
 
             // 9. Activate subscription
             await ActivateSubscriptionAsync(payment.SubscriptionId);
-
-            await _unitOfWork.CommitTransactionAsync();
 
             _logger.LogInformation("Payment {PaymentId} verified and subscription activated via return URL",
                 payment.PaymentId);
@@ -257,7 +262,8 @@ public class PaymentService : IPaymentService
         subscription.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.Repository<UserSubscription>().PrepareUpdate(subscription);
+        await _unitOfWork.CommitTransactionAsync();  // MUST commit the update!
 
-        _logger.LogInformation("Subscription {SubscriptionId} activated", subscriptionId);
+        _logger.LogInformation("Subscription {SubscriptionId} activated and committed", subscriptionId);
     }
 }

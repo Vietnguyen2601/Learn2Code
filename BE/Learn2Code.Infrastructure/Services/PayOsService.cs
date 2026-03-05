@@ -56,6 +56,9 @@ public class PayOsService : IPayOsService
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                 DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
             });
+            
+            _logger.LogInformation("PayOS Request JSON: {RequestJson}", json);
+
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await _httpClient.PostAsync("/v2/payment-requests", content);
@@ -63,7 +66,8 @@ public class PayOsService : IPayOsService
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogError("PayOS API error: {StatusCode} - {Response}", response.StatusCode, responseBody);
+                _logger.LogError("PayOS CreatePaymentLink failed: {StatusCode} - {Response}. Request: {Request}", 
+                    response.StatusCode, responseBody, json);
                 return null;
             }
 
@@ -71,6 +75,12 @@ public class PayOsService : IPayOsService
             { 
                 PropertyNameCaseInsensitive = true 
             });
+
+            if (result == null || result.Data == null)
+            {
+                _logger.LogError("PayOS response deserialization failed or Data is null. Response: {Response}", responseBody);
+                return null;
+            }
 
             return result;
         }
@@ -133,13 +143,19 @@ public class PayOsService : IPayOsService
 
     private string GenerateSignature(int amount, string cancelUrl, string description, long orderCode, string returnUrl, string webhookUrl)
     {
-        // Data must be in alphabetical order: amount, cancelUrl, description, orderCode, returnUrl, webhookUrl
-        var dataToSign = string.IsNullOrEmpty(webhookUrl)
-            ? $"amount={amount}&cancelUrl={cancelUrl}&description={description}&orderCode={orderCode}&returnUrl={returnUrl}"
-            : $"amount={amount}&cancelUrl={cancelUrl}&description={description}&orderCode={orderCode}&returnUrl={returnUrl}&webhookUrl={webhookUrl}";
+        // Try approach 1: Plain values without URL encoding
+        var dataToSign = $"amount={amount}&cancelUrl={cancelUrl}&description={description}&orderCode={orderCode}&returnUrl={returnUrl}";
+
+        _logger.LogInformation("Signature input - Amount: {Amount}, CancelUrl: {CancelUrl}, Description: {Description}, OrderCode: {OrderCode}, ReturnUrl: {ReturnUrl}", 
+            amount, cancelUrl, description, orderCode, returnUrl);
+        _logger.LogInformation("Signature data (PLAIN, NO ENCODING): {DataToSign}", dataToSign);
+        _logger.LogInformation("Checksum key: {ChecksumKey}", _options.ChecksumKey);
 
         using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_options.ChecksumKey));
         var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(dataToSign));
-        return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+        var signature = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+        
+        _logger.LogInformation("Generated signature: {Signature}", signature);
+        return signature;
     }
 }

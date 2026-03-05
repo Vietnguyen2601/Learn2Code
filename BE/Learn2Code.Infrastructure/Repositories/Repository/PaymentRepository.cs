@@ -15,6 +15,7 @@ public class PaymentRepository : GenericRepository<Payment>, IPaymentRepository
     public async Task<List<Payment>> GetByStudentIdAsync(Guid studentId)
     {
         return await _context.Set<Payment>()
+            .AsNoTracking()  // Force fresh read from database
             .Include(p => p.Subscription)
             .Where(p => p.Subscription.UserId == studentId)
             .OrderByDescending(p => p.CreatedAt)
@@ -24,6 +25,7 @@ public class PaymentRepository : GenericRepository<Payment>, IPaymentRepository
     public async Task<List<Payment>> GetAllWithDetailsAsync()
     {
         return await _context.Set<Payment>()
+            .AsNoTracking()  // Force fresh read from database
             .Include(p => p.Subscription)
                 .ThenInclude(s => s.User)
             .OrderByDescending(p => p.CreatedAt)

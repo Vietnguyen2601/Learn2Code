@@ -77,15 +77,17 @@ public class SubscriptionService : ISubscriptionService
             Description = description,
             ReturnUrl = _returnUrl,
             CancelUrl = _cancelUrl,
-            WebhookUrl = string.IsNullOrEmpty(_webhookUrl) ? null : _webhookUrl
+            WebhookUrl = null  // PayOS v2 API doesn't accept webhookUrl in request
         };
 
         var payOsResponse = await _payOsService.CreatePaymentLinkAsync(payOsRequest);
 
         if (payOsResponse == null || payOsResponse.Data == null)
         {
-            _logger.LogError("Failed to create PayOS payment link for package {PackageId}", package.PackageId);
-            return ServiceResult<CreateSubscriptionResponse>.Error("PAYMENT_LINK_ERROR", "Failed to create payment link");
+            _logger.LogError(
+                "Failed to create PayOS payment link for package {PackageId}. OrderCode: {OrderCode}, Amount: {Amount}, Description: {Description}", 
+                package.PackageId, payOsRequest.OrderCode, payOsRequest.Amount, payOsRequest.Description);
+            return ServiceResult<CreateSubscriptionResponse>.Error("PAYMENT_LINK_ERROR", "Failed to create payment link. Please check PayOS configuration.");
         }
 
         var checkoutUrl = payOsResponse.Data.CheckoutUrl ?? string.Empty;
@@ -131,15 +133,17 @@ public class SubscriptionService : ISubscriptionService
             Description = description,
             ReturnUrl = _returnUrl,
             CancelUrl = _cancelUrl,
-            WebhookUrl = string.IsNullOrEmpty(_webhookUrl) ? null : _webhookUrl
+            WebhookUrl = null  // PayOS v2 API doesn't accept webhookUrl in request
         };
 
         var payOsResponse = await _payOsService.CreatePaymentLinkAsync(payOsRequest);
 
         if (payOsResponse == null || payOsResponse.Data == null)
         {
-            _logger.LogError("Failed to create PayOS payment link for renewal {SubscriptionId}", subscriptionId);
-            return ServiceResult<CreateSubscriptionResponse>.Error("PAYMENT_LINK_ERROR", "Failed to create payment link");
+            _logger.LogError(
+                "Failed to create PayOS payment link for renewal {SubscriptionId}. OrderCode: {OrderCode}, Amount: {Amount}, Description: {Description}", 
+                subscriptionId, payOsRequest.OrderCode, payOsRequest.Amount, payOsRequest.Description);
+            return ServiceResult<CreateSubscriptionResponse>.Error("PAYMENT_LINK_ERROR", "Failed to create payment link. Please check PayOS configuration.");
         }
 
         var checkoutUrl = payOsResponse.Data.CheckoutUrl ?? string.Empty;
