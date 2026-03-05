@@ -9,6 +9,8 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
 
     IAccountRepository AccountRepository { get; }
     IRoleRepository RoleRepository { get; }
+    ISubscriptionPackageRepository SubscriptionPackageRepository { get; }
+    ISubscriptionRepository SubscriptionRepository { get; }
 
 
     int SaveChanges();

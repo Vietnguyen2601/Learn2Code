@@ -1,10 +1,10 @@
 using Learn2Code.Application.Base;
 using Learn2Code.Application.DTOs;
 using Learn2Code.Application.Interfaces;
+using Learn2Code.Application.Mapper;
 using Learn2Code.Domain.Entities;
 using Learn2Code.Domain.Enums;
 using Learn2Code.Infrastructure.Persistence.UnitOfWork;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 namespace Learn2Code.Application.Services;
@@ -25,30 +25,24 @@ public class SubscriptionService : ISubscriptionService
     // [S] GET /subscriptions/me
     public async Task<ServiceResult<SubscriptionDto>> GetCurrentSubscriptionAsync(Guid userId)
     {
-        var subscription = await _unitOfWork.Repository<UserSubscription>()
-            .GetAllQueryable()
-            .Include(s => s.Package)
-            .Where(s => s.UserId == userId &&
-                        (s.Status == SubscriptionStatus.Active || s.Status == SubscriptionStatus.Pending))
-            .OrderByDescending(s => s.CreatedAt)
-            .FirstOrDefaultAsync();
+        var subscription = await _unitOfWork.SubscriptionRepository.GetCurrentActiveAsync(userId);
 
         if (subscription == null)
             return ServiceResult<SubscriptionDto>.NotFound("No active subscription found");
 
-        return ServiceResult<SubscriptionDto>.Ok(MapToDto(subscription));
+        return ServiceResult<SubscriptionDto>.Ok(subscription.ToSubscriptionDto());
     }
 
     // [S] POST /subscriptions
     public async Task<ServiceResult<CreateSubscriptionResponse>> CreateSubscriptionAsync(Guid userId, CreateSubscriptionRequest request)
     {
         // Validate package
-        var package = await _unitOfWork.Repository<SubscriptionPackage>().GetByIdAsync(request.PackageId);
+        var package = await _unitOfWork.SubscriptionPackageRepository.GetByIdAsync(request.PackageId);
         if (package == null || !package.IsActive)
             return ServiceResult<CreateSubscriptionResponse>.Error("PACKAGE_NOT_FOUND", "Subscription package not found or inactive");
 
         // Block if already active
-        var existingActive = await _unitOfWork.Repository<UserSubscription>()
+        var existingActive = await _unitOfWork.SubscriptionRepository
             .AnyAsync(s => s.UserId == userId && s.Status == SubscriptionStatus.Active);
         if (existingActive)
             return ServiceResult<CreateSubscriptionResponse>.Error("ALREADY_SUBSCRIBED", "You already have an active subscription. Use renew or cancel first.");
@@ -82,7 +76,7 @@ public class SubscriptionService : ISubscriptionService
             CreatedAt      = now
         };
 
-        _unitOfWork.Repository<UserSubscription>().PrepareCreate(subscription);
+        _unitOfWork.SubscriptionRepository.PrepareCreate(subscription);
         _unitOfWork.Repository<Payment>().PrepareCreate(payment);
         await _unitOfWork.CommitTransactionAsync();
 
@@ -105,11 +99,7 @@ public class SubscriptionService : ISubscriptionService
     // [S] POST /subscriptions/:id/renew
     public async Task<ServiceResult<CreateSubscriptionResponse>> RenewSubscriptionAsync(Guid userId, Guid subscriptionId)
     {
-        var existing = await _unitOfWork.Repository<UserSubscription>()
-            .GetAllQueryable()
-            .Include(s => s.Package)
-            .Include(s => s.Payments)
-            .FirstOrDefaultAsync(s => s.SubscriptionId == subscriptionId && s.UserId == userId);
+        var existing = await _unitOfWork.SubscriptionRepository.GetByIdWithDetailsAsync(subscriptionId, userId);
 
         if (existing == null)
             return ServiceResult<CreateSubscriptionResponse>.NotFound("Subscription not found");
@@ -152,7 +142,7 @@ public class SubscriptionService : ISubscriptionService
             CreatedAt      = now
         };
 
-        _unitOfWork.Repository<UserSubscription>().PrepareCreate(renewal);
+        _unitOfWork.SubscriptionRepository.PrepareCreate(renewal);
         _unitOfWork.Repository<Payment>().PrepareCreate(payment);
         await _unitOfWork.CommitTransactionAsync();
 
@@ -175,7 +165,7 @@ public class SubscriptionService : ISubscriptionService
     // [S] POST /subscriptions/:id/cancel
     public async Task<ServiceResult> CancelSubscriptionAsync(Guid userId, Guid subscriptionId)
     {
-        var subscription = await _unitOfWork.Repository<UserSubscription>()
+        var subscription = await _unitOfWork.SubscriptionRepository
             .GetAsync(s => s.SubscriptionId == subscriptionId && s.UserId == userId);
 
         if (subscription == null)
@@ -190,7 +180,7 @@ public class SubscriptionService : ISubscriptionService
         subscription.Status    = SubscriptionStatus.Cancelled;
         subscription.UpdatedAt = DateTime.UtcNow;
 
-        _unitOfWork.Repository<UserSubscription>().PrepareUpdate(subscription);
+        _unitOfWork.SubscriptionRepository.PrepareUpdate(subscription);
         await _unitOfWork.CommitTransactionAsync();
 
         return ServiceResult.Ok("Subscription has been cancelled");
@@ -199,14 +189,8 @@ public class SubscriptionService : ISubscriptionService
     // [A] GET /subscriptions
     public async Task<ServiceResult<List<SubscriptionDto>>> GetAllSubscriptionsAsync()
     {
-        var subscriptions = await _unitOfWork.Repository<UserSubscription>()
-            .GetAllQueryable()
-            .Include(s => s.Package)
-            .OrderByDescending(s => s.CreatedAt)
-            .ToListAsync();
-
-        var dtos = subscriptions.Select(s => MapToDto(s)).ToList();
-        return ServiceResult<List<SubscriptionDto>>.Ok(dtos);
+        var subscriptions = await _unitOfWork.SubscriptionRepository.GetAllWithPackageAsync();
+        return ServiceResult<List<SubscriptionDto>>.Ok(subscriptions.ToSubscriptionDtoList());
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
@@ -220,35 +204,4 @@ public class SubscriptionService : ISubscriptionService
 
     private static string Truncate(string s, int max) =>
         s.Length <= max ? s : s[..max];
-
-    // ─── Mappers ─────────────────────────────────────────────────────────────
-
-    private static SubscriptionDto MapToDto(UserSubscription s, SubscriptionPackage? package = null)
-    {
-        var pkg = s.Package ?? package;
-        return new SubscriptionDto
-        {
-            SubscriptionId = s.SubscriptionId,
-            UserId         = s.UserId,
-            StartDate      = s.StartDate,
-            EndDate        = s.EndDate,
-            Status         = s.Status.ToString(),
-            RenewedFromId  = s.RenewedFromId,
-            CreatedAt      = s.CreatedAt,
-            UpdatedAt      = s.UpdatedAt,
-            Package        = pkg == null ? null : new SubscriptionPackageDto
-            {
-                PackageId       = pkg.PackageId,
-                Name            = pkg.Name,
-                DurationMonths  = pkg.DurationMonths,
-                Price           = pkg.Price,
-                DiscountPercent = pkg.DiscountPercent,
-                Description     = pkg.Description,
-                IsActive        = pkg.IsActive,
-                CreatedAt       = pkg.CreatedAt,
-                UpdatedAt       = pkg.UpdatedAt
-            }
-        };
-    }
-
 }
