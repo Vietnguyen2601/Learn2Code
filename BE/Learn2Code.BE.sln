@@ -5,11 +5,11 @@ VisualStudioVersion = 17.14.36109.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Learn2Code.API", "Learn2Code.API\Learn2Code.API.csproj", "{E264A2AF-E32B-408E-B4EA-6363C8B9C908}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Learn2Code.Application", "Learn2Code.Services\Learn2Code.Application.csproj", "{8C3D5B48-BA2D-4E9E-9779-C65D4CADA6B6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Learn2Code.Application", "Learn2Code.Application\Learn2Code.Application.csproj", "{8C3D5B48-BA2D-4E9E-9779-C65D4CADA6B6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Learn2Code.Infrastructure", "Learn2Code.Repositories\Learn2Code.Infrastructure.csproj", "{E844E09B-BCC7-4781-B60F-0FE787B61A42}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Learn2Code.Infrastructure", "Learn2Code.Infrastructure\Learn2Code.Infrastructure.csproj", "{E844E09B-BCC7-4781-B60F-0FE787B61A42}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Learn2Code.Domain", "Learn2Code.Common\Learn2Code.Domain.csproj", "{31976757-6945-4F0D-AEC7-E36ED28F949E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Learn2Code.Domain", "Learn2Code.Domain\Learn2Code.Domain.csproj", "{31976757-6945-4F0D-AEC7-E36ED28F949E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

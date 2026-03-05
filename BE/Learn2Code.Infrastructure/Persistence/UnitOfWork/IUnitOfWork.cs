@@ -1,12 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Learn2Code.Infrastructure.Repositories.Base;
+using Learn2Code.Infrastructure.Repositories.IRepository;
 
-namespace Learn2Code.Infrastructure.Persistence.UnitOfWork
+namespace Learn2Code.Infrastructure.Persistence.UnitOfWork;
+
+public interface IUnitOfWork : IDisposable, IAsyncDisposable
 {
-    internal class IUnitOfWork
-    {
-    }
+    IGenericRepository<T> Repository<T>() where T : class;
+
+    IAccountRepository AccountRepository { get; }
+    IRoleRepository RoleRepository { get; }
+    ISubscriptionPackageRepository SubscriptionPackageRepository { get; }
+    ISubscriptionRepository SubscriptionRepository { get; }
+
+
+    int SaveChanges();
+    Task<int> SaveChangesAsync();
+    Task BeginTransactionAsync();
+    Task CommitTransactionAsync();
+    Task RollbackTransactionAsync();
 }
