@@ -64,6 +64,14 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
+    private ILessonRepository? _lessonRepository;
+    public ILessonRepository LessonRepository
+    {
+        get
+        {
+            return _lessonRepository ??= new LessonRepository(_context);
+        }
+    }
 
     public IGenericRepository<T> Repository<T>() where T : class
     {

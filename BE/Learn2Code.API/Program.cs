@@ -33,6 +33,7 @@ builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<ICourseService, CourseService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<ISectionService, SectionService>();
+builder.Services.AddScoped<ILessonService, LessonService>();
 
 
 // JWT Authentication
