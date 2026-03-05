@@ -42,16 +42,19 @@ public class PayOsService : IPayOsService
         try
         {
             // Generate signature
+            var webhookUrlForSignature = request.WebhookUrl ?? string.Empty;
             request.Signature = GenerateSignature(
                 request.Amount,
                 request.CancelUrl,
                 request.Description,
                 request.OrderCode,
-                request.ReturnUrl);
+                request.ReturnUrl,
+                webhookUrlForSignature);
 
             var json = JsonSerializer.Serialize(request, new JsonSerializerOptions 
             { 
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase 
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
             });
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -128,10 +131,12 @@ public class PayOsService : IPayOsService
         }
     }
 
-    private string GenerateSignature(int amount, string cancelUrl, string description, long orderCode, string returnUrl)
+    private string GenerateSignature(int amount, string cancelUrl, string description, long orderCode, string returnUrl, string webhookUrl)
     {
-        // Data must be in alphabetical order: amount, cancelUrl, description, orderCode, returnUrl
-        var dataToSign = $"amount={amount}&cancelUrl={cancelUrl}&description={description}&orderCode={orderCode}&returnUrl={returnUrl}";
+        // Data must be in alphabetical order: amount, cancelUrl, description, orderCode, returnUrl, webhookUrl
+        var dataToSign = string.IsNullOrEmpty(webhookUrl)
+            ? $"amount={amount}&cancelUrl={cancelUrl}&description={description}&orderCode={orderCode}&returnUrl={returnUrl}"
+            : $"amount={amount}&cancelUrl={cancelUrl}&description={description}&orderCode={orderCode}&returnUrl={returnUrl}&webhookUrl={webhookUrl}";
 
         using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_options.ChecksumKey));
         var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(dataToSign));

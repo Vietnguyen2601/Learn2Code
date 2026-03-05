@@ -52,27 +52,36 @@ public class PaymentController : ControllerBase
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
-    // ─── Admin endpoints ─────────────────────────────────────────────────────
-
     /// <summary>
-    /// Admin confirms bank transfer payment manually
+    /// Handle payment return from PayOS - verify and redirect to frontend
     /// </summary>
-    [HttpPost("callback/bank-transfer")]
-    [Authorize(Roles = "Admin")]
-    [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> ConfirmBankTransfer([FromQuery] Guid paymentId)
+    [HttpGet("return")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status302Found)]
+    public async Task<IActionResult> PaymentReturn(
+        [FromQuery] string orderCode,
+        [FromQuery] string status,
+        [FromQuery] string code,
+        [FromQuery] bool cancel = false,
+        [FromQuery] string? id = null)
     {
-        var result = await _paymentService.ConfirmBankTransferAsync(paymentId);
+        _logger.LogInformation(
+            "Payment return: orderCode={OrderCode}, status={Status}, code={Code}, cancel={Cancel}, id={Id}",
+            orderCode, status, code, cancel, id);
 
-        if (!result.Success)
+        var result = await _paymentService.VerifyAndUpdatePaymentAsync(orderCode, status, code, cancel);
+
+        if (result.Success)
         {
-            return result.Status == 404 ? NotFound(result) : BadRequest(result);
+            return Redirect($"https://localhost:5049/payment/success?orderCode={orderCode}");
         }
-
-        return Ok(result);
+        else
+        {
+            return Redirect($"https://localhost:5049/payment/failure?orderCode={orderCode}&status={status}");
+        }
     }
+
+    // ─── Admin endpoints ─────────────────────────────────────────────────────
 
     /// <summary>
     /// Get all payments (Admin only)
@@ -92,7 +101,7 @@ public class PaymentController : ControllerBase
     /// Get payment history of current student
     /// </summary>
     [HttpGet("me")]
-    [Authorize(Roles = "Student")]
+    [Authorize(Roles = "Student,Admin")]
     [ProducesResponseType(typeof(ServiceResult<List<PaymentDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMy()
     {

@@ -9,4 +9,5 @@ public class PayOsOptions
     public string ApiKey { get; set; } = string.Empty;
     public string ChecksumKey { get; set; } = string.Empty;
     public string BaseUrl { get; set; } = "https://api-merchant.payos.vn";
+    public string WebhookUrl { get; set; } = string.Empty;
 }

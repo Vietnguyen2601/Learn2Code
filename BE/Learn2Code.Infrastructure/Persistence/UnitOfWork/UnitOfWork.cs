@@ -55,6 +55,15 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
+    private IPaymentRepository? _paymentRepository;
+    public IPaymentRepository PaymentRepository
+    {
+        get
+        {
+            return _paymentRepository ??= new PaymentRepository(_context);
+        }
+    }
+
     public IGenericRepository<T> Repository<T>() where T : class
     {
         var key = typeof(T).Name;

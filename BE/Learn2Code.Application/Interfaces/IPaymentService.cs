@@ -21,7 +21,7 @@ public interface IPaymentService
     Task<ServiceResult<List<PaymentDto>>> GetAllPaymentsAsync();
 
     /// <summary>
-    /// Admin confirms bank transfer payment
+    /// Verify payment from PayOS return URL and update status
     /// </summary>
-    Task<ServiceResult> ConfirmBankTransferAsync(Guid paymentId);
+    Task<ServiceResult> VerifyAndUpdatePaymentAsync(string orderCode, string status, string code, bool cancel);
 }

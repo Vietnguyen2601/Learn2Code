@@ -19,6 +19,7 @@ public class SubscriptionService : ISubscriptionService
     private readonly ILogger<SubscriptionService> _logger;
     private readonly string _returnUrl;
     private readonly string _cancelUrl;
+    private readonly string _webhookUrl;
 
     public SubscriptionService(
         IUnitOfWork unitOfWork,
@@ -31,6 +32,7 @@ public class SubscriptionService : ISubscriptionService
         _logger = logger;
         _returnUrl = configuration["PayOS:ReturnUrl"] ?? "https://localhost:5001/payment/success";
         _cancelUrl = configuration["PayOS:CancelUrl"] ?? "https://localhost:5001/payment/cancel";
+        _webhookUrl = configuration["PayOS:WebhookUrl"] ?? string.Empty;
     }
 
     // [S] GET /subscriptions/me
@@ -74,7 +76,8 @@ public class SubscriptionService : ISubscriptionService
             Amount = (int)effectivePrice,
             Description = description,
             ReturnUrl = _returnUrl,
-            CancelUrl = _cancelUrl
+            CancelUrl = _cancelUrl,
+            WebhookUrl = string.IsNullOrEmpty(_webhookUrl) ? null : _webhookUrl
         };
 
         var payOsResponse = await _payOsService.CreatePaymentLinkAsync(payOsRequest);
@@ -127,7 +130,8 @@ public class SubscriptionService : ISubscriptionService
             Amount = (int)effectivePrice,
             Description = description,
             ReturnUrl = _returnUrl,
-            CancelUrl = _cancelUrl
+            CancelUrl = _cancelUrl,
+            WebhookUrl = string.IsNullOrEmpty(_webhookUrl) ? null : _webhookUrl
         };
 
         var payOsResponse = await _payOsService.CreatePaymentLinkAsync(payOsRequest);

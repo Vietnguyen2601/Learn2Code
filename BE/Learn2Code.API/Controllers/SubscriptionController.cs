@@ -33,7 +33,7 @@ public class SubscriptionController : ControllerBase
     /// Get the current student's active subscription
     /// </summary>
     [HttpGet("me")]
-    [Authorize(Roles = "Student")]
+    [Authorize(Roles = "Student,Admin")]
     [ProducesResponseType(typeof(ServiceResult<SubscriptionDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ServiceResult<SubscriptionDto>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetMySubscription()
@@ -49,7 +49,7 @@ public class SubscriptionController : ControllerBase
     /// Subscribe to a package — creates UserSubscription (Pending) + Payment (Pending) and returns payment_url
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = "Student")]
+    [Authorize(Roles = "Student,Admin")]
     [ProducesResponseType(typeof(ServiceResult<CreateSubscriptionResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ServiceResult<CreateSubscriptionResponse>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Subscribe([FromBody] CreateSubscriptionRequest request)
@@ -65,7 +65,7 @@ public class SubscriptionController : ControllerBase
     /// Renew a subscription — creates a new subscription starting from the previous end date and returns payment_url
     /// </summary>
     [HttpPost("{id:guid}/renew")]
-    [Authorize(Roles = "Student")]
+    [Authorize(Roles = "Student,Admin")]
     [ProducesResponseType(typeof(ServiceResult<CreateSubscriptionResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ServiceResult<CreateSubscriptionResponse>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ServiceResult<CreateSubscriptionResponse>), StatusCodes.Status404NotFound)]
@@ -88,7 +88,7 @@ public class SubscriptionController : ControllerBase
     /// Cancel a subscription
     /// </summary>
     [HttpPost("{id:guid}/cancel")]
-    [Authorize(Roles = "Student")]
+    [Authorize(Roles = "Student,Admin")]
     [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status404NotFound)]

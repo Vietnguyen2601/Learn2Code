@@ -22,6 +22,9 @@ public class PayOsCreatePaymentRequest
     [JsonPropertyName("cancelUrl")]
     public string CancelUrl { get; set; } = string.Empty;
 
+    [JsonPropertyName("webhookUrl")]
+    public string? WebhookUrl { get; set; }
+
     [JsonPropertyName("signature")]
     public string? Signature { get; set; }
 }

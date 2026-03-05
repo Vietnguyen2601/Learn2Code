@@ -6,7 +6,6 @@ using Learn2Code.Domain.Entities;
 using Learn2Code.Domain.Enums;
 using Learn2Code.Infrastructure.Persistence.UnitOfWork;
 using Learn2Code.Infrastructure.Services;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Learn2Code.Application.Services;
@@ -121,61 +120,112 @@ public class PaymentService : IPaymentService
 
     public async Task<ServiceResult<List<PaymentDto>>> GetMyPaymentsAsync(Guid studentId)
     {
-        var payments = await _unitOfWork.Repository<Payment>()
-            .GetAllQueryable()
-            .Include(p => p.Subscription)
-            .Where(p => p.Subscription.UserId == studentId)
-            .OrderByDescending(p => p.CreatedAt)
-            .ToListAsync();
-
+        var payments = await _unitOfWork.PaymentRepository.GetByStudentIdAsync(studentId);
         return ServiceResult<List<PaymentDto>>.Ok(payments.ToPaymentDtoList());
     }
 
     public async Task<ServiceResult<List<PaymentDto>>> GetAllPaymentsAsync()
     {
-        var payments = await _unitOfWork.Repository<Payment>()
-            .GetAllQueryable()
-            .Include(p => p.Subscription)
-                .ThenInclude(s => s.User)
-            .OrderByDescending(p => p.CreatedAt)
-            .ToListAsync();
-
+        var payments = await _unitOfWork.PaymentRepository.GetAllWithDetailsAsync();
         return ServiceResult<List<PaymentDto>>.Ok(payments.ToPaymentDtoList());
     }
 
-    public async Task<ServiceResult> ConfirmBankTransferAsync(Guid paymentId)
+    public async Task<ServiceResult> VerifyAndUpdatePaymentAsync(string orderCode, string status, string code, bool cancel)
     {
-        var payment = await _unitOfWork.Repository<Payment>()
-            .GetByIdAsync(paymentId);
+        await _unitOfWork.BeginTransactionAsync();
 
-        if (payment == null)
+        try
         {
-            return ServiceResult.NotFound("Payment not found");
-        }
+            // 1. Find payment by orderCode
+            var payment = await _unitOfWork.Repository<Payment>()
+                .GetAsync(p => p.TransactionId == orderCode);
 
-        if (payment.Status == PaymentStatus.Success)
+            if (payment == null)
+            {
+                _logger.LogWarning("Payment not found for orderCode: {OrderCode}", orderCode);
+                return ServiceResult.NotFound("Payment not found");
+            }
+
+            // 2. Handle cancelled payment
+            if (cancel || status == "CANCELLED")
+            {
+                if (payment.Status == PaymentStatus.Pending)
+                {
+                    payment.Status = PaymentStatus.Failed;
+                    _unitOfWork.Repository<Payment>().PrepareUpdate(payment);
+                    await _unitOfWork.CommitTransactionAsync();
+                    _logger.LogInformation("Payment {PaymentId} marked as Failed (cancelled by user)", payment.PaymentId);
+                }
+                return ServiceResult.BadRequest("Payment was cancelled");
+            }
+
+            // 3. Skip if already processed
+            if (payment.Status == PaymentStatus.Success)
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                return ServiceResult.Ok("Payment already confirmed");
+            }
+
+            // 4. Validate PayOS code and status
+            if (code != "00" || status != "PAID")
+            {
+                _logger.LogWarning("Payment return with non-success: code={Code}, status={Status}", code, status);
+                await _unitOfWork.RollbackTransactionAsync();
+                return ServiceResult.BadRequest($"Payment not successful: status={status}");
+            }
+
+            // 5. Verify with PayOS API
+            var payOsPayment = await _payOsService.GetPaymentInfoAsync(long.Parse(orderCode));
+
+            if (payOsPayment == null)
+            {
+                _logger.LogError("Cannot verify payment from PayOS for orderCode: {OrderCode}", orderCode);
+                await _unitOfWork.RollbackTransactionAsync();
+                return ServiceResult.Error("PAYOS_ERROR", "Cannot verify payment from PayOS", 500);
+            }
+
+            // 6. Verify amount matches
+            if (payOsPayment.Amount != (int)payment.Amount)
+            {
+                _logger.LogError("Amount mismatch: expected {Expected}, got {Actual}", payment.Amount, payOsPayment.Amount);
+                await _unitOfWork.RollbackTransactionAsync();
+                return ServiceResult.Error("AMOUNT_MISMATCH", "Payment amount mismatch", 400);
+            }
+
+            // 7. Verify PayOS status is PAID
+            if (payOsPayment.Status?.ToUpper() != "PAID")
+            {
+                _logger.LogWarning("PayOS status not PAID: {Status}", payOsPayment.Status);
+                await _unitOfWork.RollbackTransactionAsync();
+                return ServiceResult.BadRequest($"PayOS payment status: {payOsPayment.Status}");
+            }
+
+            // 8. Update payment to Success
+            payment.Status = PaymentStatus.Success;
+            payment.PaidAt = DateTime.UtcNow;
+            _unitOfWork.Repository<Payment>().PrepareUpdate(payment);
+
+            // 9. Activate subscription
+            await ActivateSubscriptionAsync(payment.SubscriptionId);
+
+            await _unitOfWork.CommitTransactionAsync();
+
+            _logger.LogInformation("Payment {PaymentId} verified and subscription activated via return URL",
+                payment.PaymentId);
+
+            return ServiceResult.Ok("Payment confirmed and subscription activated");
+        }
+        catch (Exception ex)
         {
-            return ServiceResult.Error("ALREADY_CONFIRMED", "Payment already confirmed", 400);
+            await _unitOfWork.RollbackTransactionAsync();
+            _logger.LogError(ex, "Error verifying payment for orderCode {OrderCode}", orderCode);
+            return ServiceResult.Error("VERIFY_FAILED", "Failed to verify payment", 500);
         }
-
-        payment.Status = PaymentStatus.Success;
-        payment.PaidAt = DateTime.UtcNow;
-
-        _unitOfWork.Repository<Payment>().PrepareUpdate(payment);
-
-        // Activate subscription
-        await ActivateSubscriptionAsync(payment.SubscriptionId);
-
-        await _unitOfWork.CommitTransactionAsync();
-
-        _logger.LogInformation("Bank transfer payment {PaymentId} confirmed by admin", paymentId);
-
-        return ServiceResult.Ok("Payment confirmed and subscription activated");
     }
 
     // ─── Private Helpers ─────────────────────────────────────────────────────
 
-    private PaymentStatus DeterminePaymentStatus(string webhookCode, string dataCode)
+    private static PaymentStatus DeterminePaymentStatus(string webhookCode, string dataCode)
     {
         // PayOS returns code "00" for success
         if (webhookCode == "00" && dataCode == "00")
