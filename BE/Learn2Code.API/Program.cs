@@ -30,6 +30,8 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<ISubscriptionPackageService, SubscriptionPackageService>();
+builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 
 
 // JWT Authentication

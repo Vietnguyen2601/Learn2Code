@@ -37,6 +37,23 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
+    private ISubscriptionPackageRepository? _subscriptionPackageRepository;
+    public ISubscriptionPackageRepository SubscriptionPackageRepository
+    {
+        get
+        {
+            return _subscriptionPackageRepository ??= new SubscriptionPackageRepository(_context);
+        }
+    }
+
+    private ISubscriptionRepository? _subscriptionRepository;
+    public ISubscriptionRepository SubscriptionRepository
+    {
+        get
+        {
+            return _subscriptionRepository ??= new SubscriptionRepository(_context);
+        }
+    }
 
     public IGenericRepository<T> Repository<T>() where T : class
     {

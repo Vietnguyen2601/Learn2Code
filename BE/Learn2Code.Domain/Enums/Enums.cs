@@ -16,8 +16,7 @@ public enum EnrollmentStatus
 
 public enum PaymentMethod
 {
-    VNPay,
-    BankTransfer
+    PayOS
 }
 
 public enum PaymentStatus
