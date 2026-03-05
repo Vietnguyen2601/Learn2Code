@@ -44,13 +44,15 @@ public static class SubscriptionMapper
     public static Payment ToPendingPayment(this UserSubscription subscription, decimal amount)
     {
         var paymentId = Guid.NewGuid();
+        var orderCode = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        
         return new Payment
         {
             PaymentId      = paymentId,
             SubscriptionId = subscription.SubscriptionId,
             Amount         = amount,
             PaymentMethod  = PaymentMethod.PayOS,
-            TransactionId  = ToOrderCode(paymentId).ToString(),
+            TransactionId  = orderCode.ToString(),
             Status         = PaymentStatus.Pending,
             CreatedAt      = DateTime.UtcNow
         };
