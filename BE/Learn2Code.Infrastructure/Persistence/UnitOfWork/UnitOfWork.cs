@@ -55,6 +55,15 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
+    private ISectionRepository? _sectionRepository;
+    public ISectionRepository SectionRepository
+    {
+        get
+        {
+            return _sectionRepository ??= new SectionRepository(_context);
+        }
+    }
+
 
     public IGenericRepository<T> Repository<T>() where T : class
     {

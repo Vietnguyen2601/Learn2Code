@@ -20,12 +20,12 @@ public static class SectionMapper
         };
     }
 
-    public static Section ToEntity(this CreateSectionRequest request)
+    public static Section ToEntity(this CreateSectionRequest request, Guid courseId)
     {
         return new Section
         {
             SectionId = Guid.NewGuid(),
-            CourseId = request.CourseId,
+            CourseId = courseId,
             Title = request.Title,
             Description = request.Description,
             OrderNumber = request.OrderNumber,
