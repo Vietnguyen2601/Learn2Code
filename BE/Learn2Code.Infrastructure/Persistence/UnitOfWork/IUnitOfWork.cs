@@ -9,6 +9,14 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
 
     IAccountRepository AccountRepository { get; }
     IRoleRepository RoleRepository { get; }
+    ICourseRepository CourseRepository { get; }
+    ICourseCategoryRepository CourseCategoryRepository { get; }
+    ISectionRepository SectionRepository { get; }
+    ILessonRepository LessonRepository { get; }
+    IExerciseRepository ExerciseRepository { get; }
+    ITestCaseRepository TestCaseRepository { get; }
+    IQuizRepository QuizRepository { get; }
+    IQuizOptionRepository QuizOptionRepository { get; }
     ISubscriptionPackageRepository SubscriptionPackageRepository { get; }
     ISubscriptionRepository SubscriptionRepository { get; }
     IPaymentRepository PaymentRepository { get; }

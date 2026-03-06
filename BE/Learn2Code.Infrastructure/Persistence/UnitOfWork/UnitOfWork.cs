@@ -37,6 +37,75 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
+    private ICourseRepository? _courseRepository;
+    public ICourseRepository CourseRepository
+    {
+        get
+        {
+            return _courseRepository ??= new CourseRepository(_context);
+        }
+    }
+
+    private ICourseCategoryRepository? _courseCategoryRepository;
+    public ICourseCategoryRepository CourseCategoryRepository
+    {
+        get
+        {
+            return _courseCategoryRepository ??= new CourseCategoryRepository(_context);
+        }
+    }
+
+    private ISectionRepository? _sectionRepository;
+    public ISectionRepository SectionRepository
+    {
+        get
+        {
+            return _sectionRepository ??= new SectionRepository(_context);
+        }
+    }
+
+    private ILessonRepository? _lessonRepository;
+    public ILessonRepository LessonRepository
+    {
+        get
+        {
+            return _lessonRepository ??= new LessonRepository(_context);
+        }
+    }
+
+    private IExerciseRepository? _exerciseRepository;
+    public IExerciseRepository ExerciseRepository
+    {
+        get
+        {
+            return _exerciseRepository ??= new ExerciseRepository(_context);
+        }
+    }
+
+    private ITestCaseRepository? _testCaseRepository;
+    public ITestCaseRepository TestCaseRepository
+    {
+        get
+        {
+            return _testCaseRepository ??= new TestCaseRepository(_context);
+        }
+    }
+
+    private IQuizRepository? _quizRepository;
+    public IQuizRepository QuizRepository
+    {
+        get
+        {
+            return _quizRepository ??= new QuizRepository(_context);
+        }
+    }
+
+    private IQuizOptionRepository? _quizOptionRepository;
+    public IQuizOptionRepository QuizOptionRepository
+    {
+        get
+        {
+            return _quizOptionRepository ??= new QuizOptionRepository(_context);
     private ISubscriptionPackageRepository? _subscriptionPackageRepository;
     public ISubscriptionPackageRepository SubscriptionPackageRepository
     {

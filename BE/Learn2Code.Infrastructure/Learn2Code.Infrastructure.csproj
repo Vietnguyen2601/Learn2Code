@@ -13,8 +13,6 @@
 
   <ItemGroup>
     <Folder Include="Data\Context\" />
-    <Folder Include="Repositories\IRepository\" />
-    <Folder Include="Repositories\Repository\" />
   </ItemGroup>
 
   <ItemGroup>
