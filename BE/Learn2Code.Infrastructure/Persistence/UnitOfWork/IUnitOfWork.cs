@@ -17,6 +17,9 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
     ITestCaseRepository TestCaseRepository { get; }
     IQuizRepository QuizRepository { get; }
     IQuizOptionRepository QuizOptionRepository { get; }
+    ISubscriptionPackageRepository SubscriptionPackageRepository { get; }
+    ISubscriptionRepository SubscriptionRepository { get; }
+    IPaymentRepository PaymentRepository { get; }
 
     int SaveChanges();
     Task<int> SaveChangesAsync();

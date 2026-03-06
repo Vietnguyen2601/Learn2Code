@@ -106,6 +106,30 @@ public class UnitOfWork : IUnitOfWork
         get
         {
             return _quizOptionRepository ??= new QuizOptionRepository(_context);
+    private ISubscriptionPackageRepository? _subscriptionPackageRepository;
+    public ISubscriptionPackageRepository SubscriptionPackageRepository
+    {
+        get
+        {
+            return _subscriptionPackageRepository ??= new SubscriptionPackageRepository(_context);
+        }
+    }
+
+    private ISubscriptionRepository? _subscriptionRepository;
+    public ISubscriptionRepository SubscriptionRepository
+    {
+        get
+        {
+            return _subscriptionRepository ??= new SubscriptionRepository(_context);
+        }
+    }
+
+    private IPaymentRepository? _paymentRepository;
+    public IPaymentRepository PaymentRepository
+    {
+        get
+        {
+            return _paymentRepository ??= new PaymentRepository(_context);
         }
     }
 
