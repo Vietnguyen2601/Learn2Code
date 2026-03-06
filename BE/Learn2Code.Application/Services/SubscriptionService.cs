@@ -4,22 +4,35 @@ using Learn2Code.Application.Interfaces;
 using Learn2Code.Application.Mapper;
 using Learn2Code.Domain.Entities;
 using Learn2Code.Domain.Enums;
+using Learn2Code.Infrastructure.DTOs;
 using Learn2Code.Infrastructure.Persistence.UnitOfWork;
+using Learn2Code.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Learn2Code.Application.Services;
 
 public class SubscriptionService : ISubscriptionService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IPayOsService _payOsService;
+    private readonly ILogger<SubscriptionService> _logger;
     private readonly string _returnUrl;
     private readonly string _cancelUrl;
+    private readonly string _webhookUrl;
 
-    public SubscriptionService(IUnitOfWork unitOfWork, IConfiguration configuration)
+    public SubscriptionService(
+        IUnitOfWork unitOfWork,
+        IPayOsService payOsService,
+        ILogger<SubscriptionService> logger,
+        IConfiguration configuration)
     {
         _unitOfWork = unitOfWork;
-        _returnUrl  = configuration["PayOS:ReturnUrl"] ?? "https://localhost:5001/payment/success";
-        _cancelUrl  = configuration["PayOS:CancelUrl"] ?? "https://localhost:5001/payment/cancel";
+        _payOsService = payOsService;
+        _logger = logger;
+        _returnUrl = configuration["PayOS:ReturnUrl"] ?? "https://localhost:5001/payment/success";
+        _cancelUrl = configuration["PayOS:CancelUrl"] ?? "https://localhost:5001/payment/cancel";
+        _webhookUrl = configuration["PayOS:WebhookUrl"] ?? string.Empty;
     }
 
     // [S] GET /subscriptions/me
@@ -52,8 +65,32 @@ public class SubscriptionService : ISubscriptionService
         var subscription   = package.ToNewUserSubscription(userId, now);
         var payment        = subscription.ToPendingPayment(effectivePrice);
 
-        // TODO: replace with real PayOS SDK call when integrated
-        var checkoutUrl = $"{_returnUrl}?orderCode={payment.ToPayOSOrderCode()}&amount={(int)effectivePrice}";
+        // Create PayOS payment link
+        var description = $"Sub {package.Name}";
+        if (description.Length > 25)
+            description = description.Substring(0, 25);
+
+        var payOsRequest = new PayOsCreatePaymentRequest
+        {
+            OrderCode = payment.ToPayOSOrderCode(),
+            Amount = (int)effectivePrice,
+            Description = description,
+            ReturnUrl = _returnUrl,
+            CancelUrl = _cancelUrl,
+            WebhookUrl = null  // PayOS v2 API doesn't accept webhookUrl in request
+        };
+
+        var payOsResponse = await _payOsService.CreatePaymentLinkAsync(payOsRequest);
+
+        if (payOsResponse == null || payOsResponse.Data == null)
+        {
+            _logger.LogError(
+                "Failed to create PayOS payment link for package {PackageId}. OrderCode: {OrderCode}, Amount: {Amount}, Description: {Description}", 
+                package.PackageId, payOsRequest.OrderCode, payOsRequest.Amount, payOsRequest.Description);
+            return ServiceResult<CreateSubscriptionResponse>.Error("PAYMENT_LINK_ERROR", "Failed to create payment link. Please check PayOS configuration.");
+        }
+
+        var checkoutUrl = payOsResponse.Data.CheckoutUrl ?? string.Empty;
 
         _unitOfWork.SubscriptionRepository.PrepareCreate(subscription);
         _unitOfWork.Repository<Payment>().PrepareCreate(payment);
@@ -84,8 +121,32 @@ public class SubscriptionService : ISubscriptionService
         var renewal        = package.ToRenewalUserSubscription(userId, newStart, subscriptionId, now);
         var payment        = renewal.ToPendingPayment(effectivePrice);
 
-        // TODO: replace with real PayOS SDK call when integrated
-        var checkoutUrl = $"{_returnUrl}?orderCode={payment.ToPayOSOrderCode()}&amount={(int)effectivePrice}";
+        // Create PayOS payment link
+        var description = $"Renew {package.Name}";
+        if (description.Length > 25)
+            description = description.Substring(0, 25);
+
+        var payOsRequest = new PayOsCreatePaymentRequest
+        {
+            OrderCode = payment.ToPayOSOrderCode(),
+            Amount = (int)effectivePrice,
+            Description = description,
+            ReturnUrl = _returnUrl,
+            CancelUrl = _cancelUrl,
+            WebhookUrl = null  // PayOS v2 API doesn't accept webhookUrl in request
+        };
+
+        var payOsResponse = await _payOsService.CreatePaymentLinkAsync(payOsRequest);
+
+        if (payOsResponse == null || payOsResponse.Data == null)
+        {
+            _logger.LogError(
+                "Failed to create PayOS payment link for renewal {SubscriptionId}. OrderCode: {OrderCode}, Amount: {Amount}, Description: {Description}", 
+                subscriptionId, payOsRequest.OrderCode, payOsRequest.Amount, payOsRequest.Description);
+            return ServiceResult<CreateSubscriptionResponse>.Error("PAYMENT_LINK_ERROR", "Failed to create payment link. Please check PayOS configuration.");
+        }
+
+        var checkoutUrl = payOsResponse.Data.CheckoutUrl ?? string.Empty;
 
         _unitOfWork.SubscriptionRepository.PrepareCreate(renewal);
         _unitOfWork.Repository<Payment>().PrepareCreate(payment);

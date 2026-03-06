@@ -17,6 +17,7 @@ public class SubscriptionRepository : GenericRepository<UserSubscription>, ISubs
     public async Task<UserSubscription?> GetCurrentActiveAsync(Guid userId)
     {
         return await _context.UserSubscriptions
+            .AsNoTracking()  // Force fresh read from database
             .Include(s => s.Package)
             .Where(s => s.UserId == userId &&
                         (s.Status == SubscriptionStatus.Active || s.Status == SubscriptionStatus.Pending))
@@ -28,6 +29,7 @@ public class SubscriptionRepository : GenericRepository<UserSubscription>, ISubs
     public async Task<UserSubscription?> GetByIdWithDetailsAsync(Guid subscriptionId, Guid userId)
     {
         return await _context.UserSubscriptions
+            .AsNoTracking()  // Force fresh read from database
             .Include(s => s.Package)
             .Include(s => s.Payments)
             .FirstOrDefaultAsync(s => s.SubscriptionId == subscriptionId && s.UserId == userId);
@@ -37,6 +39,7 @@ public class SubscriptionRepository : GenericRepository<UserSubscription>, ISubs
     public async Task<List<UserSubscription>> GetAllWithPackageAsync()
     {
         return await _context.UserSubscriptions
+            .AsNoTracking()  // Force fresh read from database
             .Include(s => s.Package)
             .OrderByDescending(s => s.CreatedAt)
             .ToListAsync();
