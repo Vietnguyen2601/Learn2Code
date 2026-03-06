@@ -91,6 +91,24 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
+    private IQuizRepository? _quizRepository;
+    public IQuizRepository QuizRepository
+    {
+        get
+        {
+            return _quizRepository ??= new QuizRepository(_context);
+        }
+    }
+
+    private IQuizOptionRepository? _quizOptionRepository;
+    public IQuizOptionRepository QuizOptionRepository
+    {
+        get
+        {
+            return _quizOptionRepository ??= new QuizOptionRepository(_context);
+        }
+    }
+
     public IGenericRepository<T> Repository<T>() where T : class
     {
         var key = typeof(T).Name;
