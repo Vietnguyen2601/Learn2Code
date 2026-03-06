@@ -106,6 +106,8 @@ public class UnitOfWork : IUnitOfWork
         get
         {
             return _quizOptionRepository ??= new QuizOptionRepository(_context);
+        }
+    }
     private ISubscriptionPackageRepository? _subscriptionPackageRepository;
     public ISubscriptionPackageRepository SubscriptionPackageRepository
     {

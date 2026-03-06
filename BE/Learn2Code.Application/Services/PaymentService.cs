@@ -130,6 +130,69 @@ public class PaymentService : IPaymentService
         return ServiceResult<List<PaymentDto>>.Ok(payments.ToPaymentDtoList());
     }
 
+    public async Task<ServiceResult> VerifyAndUpdatePaymentAsync(string orderCode, string status, string code, bool cancel)
+    {
+        try
+        {
+            // 1. Find payment by orderCode
+            var payment = await _unitOfWork.Repository<Payment>()
+                .GetAsync(p => p.TransactionId == orderCode);
+
+            if (payment == null)
+                return ServiceResult.NotFound("Payment not found");
+
+            // 2. Handle cancelled payment
+            if (cancel || status == "CANCELLED")
+            {
+                if (payment.Status == PaymentStatus.Pending)
+                {
+                    payment.Status = PaymentStatus.Failed;
+                    _unitOfWork.Repository<Payment>().PrepareUpdate(payment);
+                    await _unitOfWork.CommitTransactionAsync();
+                }
+                return ServiceResult.BadRequest("Payment was cancelled");
+            }
+
+            // 3. Skip if already processed
+            if (payment.Status == PaymentStatus.Success)
+                return ServiceResult.Ok("Payment already confirmed");
+
+            // 4. Validate PayOS code and status
+            if (code != "00" || status != "PAID")
+                return ServiceResult.BadRequest($"Payment not successful: status={status}");
+
+            // 5. Verify with PayOS API
+            var payOsPayment = await _payOsService.GetPaymentInfoAsync(long.Parse(orderCode));
+
+            if (payOsPayment == null)
+                return ServiceResult.Error("PAYOS_ERROR", "Cannot verify payment from PayOS", 500);
+
+            // 6. Verify amount matches
+            if (payOsPayment.Amount != (int)payment.Amount)
+                return ServiceResult.Error("AMOUNT_MISMATCH", "Payment amount mismatch", 400);
+
+            // 7. Verify PayOS status is PAID
+            if (payOsPayment.Status?.ToUpper() != "PAID")
+                return ServiceResult.BadRequest($"PayOS payment status: {payOsPayment.Status}");
+
+            // 8. Update payment to Success
+            payment.Status = PaymentStatus.Success;
+            payment.PaidAt = DateTime.UtcNow;
+            _unitOfWork.Repository<Payment>().PrepareUpdate(payment);
+            await _unitOfWork.CommitTransactionAsync();
+
+            // 9. Activate subscription
+            await ActivateSubscriptionAsync(payment.SubscriptionId);
+
+            return ServiceResult.Ok("Payment confirmed and subscription activated");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error verifying payment for orderCode {OrderCode}", orderCode);
+            return ServiceResult.Error("VERIFY_FAILED", "Failed to verify payment", 500);
+        }
+    }
+
     // ─── Private Helpers ─────────────────────────────────────────────────────
 
     private static PaymentStatus DeterminePaymentStatus(string webhookCode, string dataCode)
