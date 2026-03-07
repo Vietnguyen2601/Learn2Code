@@ -19,4 +19,9 @@ public interface IPaymentService
     /// Get all payments (Admin only)
     /// </summary>
     Task<ServiceResult<List<PaymentDto>>> GetAllPaymentsAsync();
+
+    /// <summary>
+    /// Verify payment from PayOS return URL and update status
+    /// </summary>
+    Task<ServiceResult> VerifyAndUpdatePaymentAsync(string orderCode, string status, string code, bool cancel);
 }

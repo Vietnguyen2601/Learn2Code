@@ -52,6 +52,27 @@ public class PaymentController : ControllerBase
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
+    /// <summary>
+    /// Handle payment return from PayOS - verify and update status
+    /// </summary>
+    [HttpGet("return")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status302Found)]
+    public async Task<IActionResult> PaymentReturn(
+        [FromQuery] string orderCode,
+        [FromQuery] string status,
+        [FromQuery] string code,
+        [FromQuery] bool cancel = false,
+        [FromQuery] string? id = null)
+    {
+        var result = await _paymentService.VerifyAndUpdatePaymentAsync(orderCode, status, code, cancel);
+
+        if (result.Success)
+            return Redirect($"https://localhost:5173/payment/success?orderCode={orderCode}");
+        else
+            return Redirect($"https://localhost:5173/payment/failure?orderCode={orderCode}&status={status}");
+    }
+
     // ─── Admin endpoints ─────────────────────────────────────────────────────
 
     /// <summary>
