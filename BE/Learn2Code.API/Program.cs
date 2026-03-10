@@ -61,9 +61,12 @@ builder.Services.AddScoped<ILessonService, LessonService>();
 builder.Services.AddScoped<IExerciseService, ExerciseService>();
 builder.Services.AddScoped<ITestCaseService, TestCaseService>();
 builder.Services.AddScoped<IQuizService, QuizService>();
+builder.Services.AddScoped<ISectionQuizService, SectionQuizService>();
+builder.Services.AddScoped<IProgressService, ProgressService>();
 builder.Services.AddScoped<ISubscriptionPackageService, SubscriptionPackageService>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 
 
 // JWT Authentication

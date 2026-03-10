@@ -3,6 +3,7 @@ using Learn2Code.Application.DTOs;
 using Learn2Code.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Learn2Code.API.Controllers;
 
@@ -100,13 +101,29 @@ public class QuizController : ControllerBase
     [HttpDelete("quizzes/{quizId}/options/{optionId}")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> DeleteQuizOption(Guid quizId, Guid optionId)
     {
         var result = await _quizService.DeleteQuizOptionAsync(quizId, optionId);
-        return result.Success ? Ok(result) : BadRequest(result);
+        return result.Success ? Ok(result) : NotFound(result);
+    }
+
+    /// <summary>
+    /// Student answers a quiz and gets immediate feedback (Student only)
+    /// </summary>
+    [HttpPost("quizzes/{quizId}/answer")]
+    [Authorize(Roles = "Student")]
+    [ProducesResponseType(typeof(ServiceResult<AnswerQuizResultDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ServiceResult<AnswerQuizResultDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ServiceResult<AnswerQuizResultDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ServiceResult<AnswerQuizResultDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> AnswerQuiz(Guid quizId, [FromBody] AnswerQuizRequest request)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)!);
+        var result = await _quizService.AnswerQuizAsync(quizId, userId, request);
+        return result.Success ? Ok(result) : StatusCode(result.Status, result);
     }
 }

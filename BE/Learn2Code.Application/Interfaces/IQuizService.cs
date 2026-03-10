@@ -11,4 +11,5 @@ public interface IQuizService
     Task<ServiceResult> DeleteQuizAsync(Guid quizId);
     Task<ServiceResult<QuizOptionDto>> UpdateQuizOptionAsync(Guid quizId, Guid optionId, UpdateSingleQuizOptionRequest request);
     Task<ServiceResult> DeleteQuizOptionAsync(Guid quizId, Guid optionId);
+    Task<ServiceResult<AnswerQuizResultDto>> AnswerQuizAsync(Guid quizId, Guid studentId, AnswerQuizRequest request);
 }
