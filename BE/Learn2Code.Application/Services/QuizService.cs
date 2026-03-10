@@ -17,7 +17,7 @@ public class QuizService : IQuizService
 
     public async Task<ServiceResult<List<QuizDto>>> GetQuizzesByLessonIdAsync(Guid lessonId)
     {
-        // Ki?m tra lesson cÛ t?n t?i khÙng
+        // Ki?m tra lesson cÔøΩ t?n t?i khÔøΩng
         var lesson = await _unitOfWork.LessonRepository.GetByIdAsync(lessonId);
         if (lesson == null)
             return ServiceResult<List<QuizDto>>.NotFound("Lesson not found");
@@ -30,16 +30,16 @@ public class QuizService : IQuizService
 
     public async Task<ServiceResult<QuizDto>> CreateQuizAsync(Guid lessonId, CreateQuizRequest request)
     {
-        // Ki?m tra lesson cÛ t?n t?i khÙng
+        // Ki?m tra lesson cÔøΩ t?n t?i khÔøΩng
         var lesson = await _unitOfWork.LessonRepository.GetByIdAsync(lessonId);
         if (lesson == null)
             return ServiceResult<QuizDto>.NotFound("Lesson not found");
 
-        // Validate: Ph?i cÛ Ìt nh?t 2 options
+        // Validate: Ph?i cÔøΩ ÔøΩt nh?t 2 options
         if (request.Options == null || request.Options.Count < 2)
             return ServiceResult<QuizDto>.Error("INVALID_OPTIONS", "Quiz must have at least 2 options");
 
-        // Validate: Ph?i cÛ Ìt nh?t 1 ?·p ·n ?˙ng
+        // Validate: Ph?i cÔøΩ ÔøΩt nh?t 1 ?ÔøΩp ÔøΩn ?ÔøΩng
         if (!request.Options.Any(o => o.IsCorrect))
             return ServiceResult<QuizDto>.Error("NO_CORRECT_ANSWER", "Quiz must have at least 1 correct answer");
 
@@ -75,18 +75,18 @@ public class QuizService : IQuizService
         quiz.UpdateQuiz(request);
         _unitOfWork.QuizRepository.PrepareUpdate(quiz);
 
-        // N?u cÛ update options
+        // N?u cÔøΩ update options
         if (request.Options != null && request.Options.Count > 0)
         {
-            // Validate: Ph?i cÛ Ìt nh?t 2 options
+            // Validate: Ph?i cÔøΩ ÔøΩt nh?t 2 options
             if (request.Options.Count < 2)
                 return ServiceResult<QuizDto>.Error("INVALID_OPTIONS", "Quiz must have at least 2 options");
 
-            // Validate: Ph?i cÛ Ìt nh?t 1 ?·p ·n ?˙ng
+            // Validate: Ph?i cÔøΩ ÔøΩt nh?t 1 ?ÔøΩp ÔøΩn ?ÔøΩng
             if (!request.Options.Any(o => o.IsCorrect))
                 return ServiceResult<QuizDto>.Error("NO_CORRECT_ANSWER", "Quiz must have at least 1 correct answer");
 
-            // XÛa t?t c? options c?
+            // XÔøΩa t?t c? options c?
             await _unitOfWork.QuizOptionRepository.DeleteOptionsByQuizIdAsync(quizId);
 
             // T?o options m?i t? request
@@ -117,10 +117,10 @@ public class QuizService : IQuizService
         if (quiz == null)
             return ServiceResult.NotFound("Quiz not found");
 
-        // XÛa options tr??c (cascade s? t? ??ng xÛa n?u cÛ config, nh?ng ?? ch?c ch?n)
+        // XÔøΩa options tr??c (cascade s? t? ??ng xÔøΩa n?u cÔøΩ config, nh?ng ?? ch?c ch?n)
         await _unitOfWork.QuizOptionRepository.DeleteOptionsByQuizIdAsync(quizId);
 
-        // XÛa quiz
+        // XÔøΩa quiz
         _unitOfWork.QuizRepository.PrepareRemove(quiz);
         await _unitOfWork.SaveChangesAsync();
 
@@ -129,12 +129,12 @@ public class QuizService : IQuizService
 
     public async Task<ServiceResult<QuizOptionDto>> UpdateQuizOptionAsync(Guid quizId, Guid optionId, UpdateSingleQuizOptionRequest request)
     {
-        // Ki?m tra quiz cÛ t?n t?i khÙng
+        // Ki?m tra quiz cÔøΩ t?n t?i khÔøΩng
         var quiz = await _unitOfWork.QuizRepository.GetByIdAsync(quizId);
         if (quiz == null)
             return ServiceResult<QuizOptionDto>.NotFound("Quiz not found");
 
-        // Ki?m tra option cÛ t?n t?i v‡ thu?c quiz n‡y khÙng
+        // Ki?m tra option cÔøΩ t?n t?i vÔøΩ thu?c quiz nÔøΩy khÔøΩng
         var option = await _unitOfWork.QuizOptionRepository.GetOptionByIdAsync(quizId, optionId);
         if (option == null)
             return ServiceResult<QuizOptionDto>.NotFound("Quiz option not found or does not belong to this quiz");
@@ -149,22 +149,22 @@ public class QuizService : IQuizService
 
     public async Task<ServiceResult> DeleteQuizOptionAsync(Guid quizId, Guid optionId)
     {
-        // Ki?m tra quiz cÛ t?n t?i khÙng
+        // Ki?m tra quiz cÔøΩ t?n t?i khÔøΩng
         var quiz = await _unitOfWork.QuizRepository.GetByIdAsync(quizId);
         if (quiz == null)
             return ServiceResult.NotFound("Quiz not found");
 
-        // Ki?m tra option cÛ t?n t?i v‡ thu?c quiz n‡y khÙng
+        // Ki?m tra option cÔøΩ t?n t?i vÔøΩ thu?c quiz nÔøΩy khÔøΩng
         var option = await _unitOfWork.QuizOptionRepository.GetOptionByIdAsync(quizId, optionId);
         if (option == null)
             return ServiceResult.NotFound("Quiz option not found or does not belong to this quiz");
 
-        // Ki?m tra sau khi xÛa ph?i cÚn Ìt nh?t 2 options
+        // Ki?m tra sau khi xÔøΩa ph?i cÔøΩn ÔøΩt nh?t 2 options
         var currentOptionCount = await _unitOfWork.QuizOptionRepository.CountOptionsByQuizIdAsync(quizId);
         if (currentOptionCount <= 2)
             return ServiceResult.Error("MINIMUM_OPTIONS_REQUIRED", "Quiz must have at least 2 options. Cannot delete this option.");
 
-        // Ki?m tra n?u xÛa option ?˙ng, ph?i cÚn Ìt nh?t 1 option ?˙ng kh·c
+        // Ki?m tra n?u xÔøΩa option ?ÔøΩng, ph?i cÔøΩn ÔøΩt nh?t 1 option ?ÔøΩng khÔøΩc
         if (option.IsCorrect)
         {
             var otherCorrectOptions = await _unitOfWork.QuizOptionRepository
@@ -178,5 +178,33 @@ public class QuizService : IQuizService
         await _unitOfWork.SaveChangesAsync();
 
         return ServiceResult.Ok("Quiz option deleted successfully");
+    }
+
+    public async Task<ServiceResult<AnswerQuizResultDto>> AnswerQuizAsync(Guid quizId, Guid studentId, AnswerQuizRequest request)
+    {
+        // Ki·ªÉm tra quiz c√≥ t·ªìn t·∫°i kh√¥ng
+        var quiz = await _unitOfWork.QuizRepository.GetQuizWithOptionsAsync(quizId);
+        if (quiz == null)
+            return ServiceResult<AnswerQuizResultDto>.NotFound("Quiz not found");
+
+        // Ki·ªÉm tra option c√≥ t·ªìn t·∫°i v√† thu·ªôc quiz n√†y kh√¥ng
+        var selectedOption = quiz.Options.FirstOrDefault(o => o.OptionId == request.OptionId);
+        if (selectedOption == null)
+            return ServiceResult<AnswerQuizResultDto>.Error("INVALID_OPTION", "Selected option does not belong to this quiz", 400);
+
+        // Ki·ªÉm tra quy·ªÅn truy c·∫≠p lesson c·ªßa quiz
+        var canAccess = await _unitOfWork.LessonRepository.CanUserAccessLessonAsync(quiz.LessonId, studentId);
+        if (!canAccess)
+            return ServiceResult<AnswerQuizResultDto>.Error("ACCESS_DENIED", "You don't have permission to access this quiz", 403);
+
+        var resultDto = new AnswerQuizResultDto
+        {
+            QuizId = quizId,
+            OptionId = request.OptionId,
+            IsCorrect = selectedOption.IsCorrect,
+            Explanation = quiz.Explanation
+        };
+
+        return ServiceResult<AnswerQuizResultDto>.Ok(resultDto);
     }
 }

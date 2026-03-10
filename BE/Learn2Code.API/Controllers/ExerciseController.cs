@@ -102,4 +102,79 @@ public class ExerciseController : ControllerBase
         var result = await _exerciseService.DeleteExerciseAsync(exerciseId);
         return result.Success ? Ok(result) : NotFound(result);
     }
+
+    /// <summary>
+    /// Run code for an exercise (saves last code, no judge) (Student)
+    /// </summary>
+    [HttpPost("exercises/{exerciseId}/run")]
+    [Authorize(Roles = "Student,Admin")]
+    [ProducesResponseType(typeof(ServiceResult<ExerciseProgressDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ServiceResult<ExerciseProgressDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ServiceResult<ExerciseProgressDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> RunCode(Guid exerciseId, [FromBody] RunCodeRequest request)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var result = await _exerciseService.RunCodeAsync(exerciseId, userId, request);
+
+        if (!result.Success)
+            return result.Status == 403 ? StatusCode(403, result) : NotFound(result);
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Submit code for an exercise (marks as completed) (Student)
+    /// </summary>
+    [HttpPost("exercises/{exerciseId}/submit")]
+    [Authorize(Roles = "Student,Admin")]
+    [ProducesResponseType(typeof(ServiceResult<ExerciseProgressDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ServiceResult<ExerciseProgressDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ServiceResult<ExerciseProgressDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> SubmitCode(Guid exerciseId, [FromBody] SubmitCodeRequest request)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var result = await _exerciseService.SubmitCodeAsync(exerciseId, userId, request);
+
+        if (!result.Success)
+            return result.Status == 403 ? StatusCode(403, result) : NotFound(result);
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Update exercise progress manually (for Reading exercises) (Student)
+    /// </summary>
+    [HttpPatch("exercises/{exerciseId}/progress")]
+    [Authorize(Roles = "Student,Admin")]
+    [ProducesResponseType(typeof(ServiceResult<ExerciseProgressDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ServiceResult<ExerciseProgressDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ServiceResult<ExerciseProgressDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateProgress(Guid exerciseId, [FromBody] UpdateExerciseProgressRequest request)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var result = await _exerciseService.UpdateExerciseProgressAsync(exerciseId, userId, request);
+
+        if (!result.Success)
+            return result.Status == 403 ? StatusCode(403, result) : NotFound(result);
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Get current student's progress for an exercise (Student)
+    /// </summary>
+    [HttpGet("exercises/{exerciseId}/progress")]
+    [Authorize(Roles = "Student,Admin")]
+    [ProducesResponseType(typeof(ServiceResult<ExerciseProgressDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ServiceResult<ExerciseProgressDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetProgress(Guid exerciseId)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var result = await _exerciseService.GetExerciseProgressAsync(exerciseId, userId);
+        return result.Success ? Ok(result) : NotFound(result);
+    }
 }

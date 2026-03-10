@@ -105,4 +105,19 @@ public static class ExerciseMapper
 
         exercise.UpdatedAt = DateTime.UtcNow;
     }
+
+    public static ExerciseProgressDto ToProgressDto(this ExerciseProgress progress)
+    {
+        return new ExerciseProgressDto
+        {
+            ExProgressId = progress.ExProgressId,
+            StudentId = progress.StudentId,
+            ExerciseId = progress.ExerciseId,
+            IsCompleted = progress.IsCompleted,
+            IsPassed = progress.IsPassed,
+            LastCode = progress.LastCode,
+            CompletedAt = progress.CompletedAt,
+            UpdatedAt = progress.UpdatedAt
+        };
+    }
 }

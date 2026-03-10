@@ -21,6 +21,17 @@ public class QuizRepository : GenericRepository<Quiz>, IQuizRepository
             .ToListAsync();
     }
 
+    public async Task<List<Quiz>> GetQuizzesBySectionIdAsync(Guid sectionId)
+    {
+        return await _context.Set<Quiz>()
+            .Include(q => q.Options)
+            .Include(q => q.Lesson)
+            .Where(q => q.Lesson.SectionId == sectionId)
+            .OrderBy(q => q.Lesson.OrderNumber)
+                .ThenBy(q => q.OrderNumber)
+            .ToListAsync();
+    }
+
     public async Task<Quiz?> GetQuizWithOptionsAsync(Guid quizId)
     {
         return await _context.Set<Quiz>()

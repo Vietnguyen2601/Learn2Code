@@ -20,6 +20,7 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
     ISubscriptionPackageRepository SubscriptionPackageRepository { get; }
     ISubscriptionRepository SubscriptionRepository { get; }
     IPaymentRepository PaymentRepository { get; }
+    IEnrollmentRepository EnrollmentRepository { get; }
 
     int SaveChanges();
     Task<int> SaveChangesAsync();

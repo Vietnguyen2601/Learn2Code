@@ -92,7 +92,7 @@ public class UpdateQuizRequest
 public class UpdateQuizOptionRequest
 {
     [JsonPropertyName("option_id")]
-    public Guid? OptionId { get; set; } // null = t?o m?i, có giá tr? = update
+    public Guid? OptionId { get; set; } // null = t?o m?i, cï¿½ giï¿½ tr? = update
 
     [Required]
     [JsonPropertyName("content")]
@@ -110,4 +110,28 @@ public class UpdateSingleQuizOptionRequest
 
     [JsonPropertyName("is_correct")]
     public bool IsCorrect { get; set; } = false;
+}
+
+// --- Quiz Answer (Student) ---
+
+public class AnswerQuizRequest
+{
+    [Required]
+    [JsonPropertyName("option_id")]
+    public Guid OptionId { get; set; }
+}
+
+public class AnswerQuizResultDto
+{
+    [JsonPropertyName("quiz_id")]
+    public Guid QuizId { get; set; }
+
+    [JsonPropertyName("option_id")]
+    public Guid OptionId { get; set; }
+
+    [JsonPropertyName("is_correct")]
+    public bool IsCorrect { get; set; }
+
+    [JsonPropertyName("explanation")]
+    public string? Explanation { get; set; }
 }

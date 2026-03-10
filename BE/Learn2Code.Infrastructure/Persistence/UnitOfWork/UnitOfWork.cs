@@ -135,6 +135,15 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
+    private IEnrollmentRepository? _enrollmentRepository;
+    public IEnrollmentRepository EnrollmentRepository
+    {
+        get
+        {
+            return _enrollmentRepository ??= new EnrollmentRepository(_context);
+        }
+    }
+
     public IGenericRepository<T> Repository<T>() where T : class
     {
         var key = typeof(T).Name;
