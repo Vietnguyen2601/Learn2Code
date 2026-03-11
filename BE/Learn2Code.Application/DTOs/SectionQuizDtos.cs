@@ -85,6 +85,13 @@ public class SectionQuizAttemptResultDto
 
     [JsonPropertyName("answers")]
     public List<SectionQuizAnswerResultDto> Answers { get; set; } = new();
+
+    /// <summary>
+    /// Certification result if certificate was issued after this attempt
+    /// </summary>
+    [JsonPropertyName("certification_result")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IssueCertificationResultDto? CertificationResult { get; set; }
 }
 
 public class SectionQuizAnswerResultDto

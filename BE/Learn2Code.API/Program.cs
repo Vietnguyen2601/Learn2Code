@@ -67,6 +67,7 @@ builder.Services.AddScoped<ISubscriptionPackageService, SubscriptionPackageServi
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
+builder.Services.AddScoped<ICertificationService, CertificationService>();
 
 
 // JWT Authentication

@@ -144,6 +144,15 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
+    private ICertificationRepository? _certificationRepository;
+    public ICertificationRepository CertificationRepository
+    {
+        get
+        {
+            return _certificationRepository ??= new CertificationRepository(_context);
+        }
+    }
+
     public IGenericRepository<T> Repository<T>() where T : class
     {
         var key = typeof(T).Name;
