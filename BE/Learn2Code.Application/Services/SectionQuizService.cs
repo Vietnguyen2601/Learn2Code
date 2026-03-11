@@ -12,10 +12,12 @@ namespace Learn2Code.Application.Services;
 public class SectionQuizService : ISectionQuizService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICertificationService _certificationService;
 
-    public SectionQuizService(IUnitOfWork unitOfWork)
+    public SectionQuizService(IUnitOfWork unitOfWork, ICertificationService certificationService)
     {
         _unitOfWork = unitOfWork;
+        _certificationService = certificationService;
     }
 
     public async Task<ServiceResult<SectionQuizDto>> GetSectionQuizAsync(Guid sectionId, Guid studentId)
@@ -149,7 +151,85 @@ public class SectionQuizService : ISectionQuizService
             return ServiceResult<SectionQuizAttemptResultDto>.Error("SAVE_FAILED", "Failed to save attempt", 500);
 
         var resultDto = savedAttempt.ToResultDto();
+
+        // ========== TRIGGER: Auto-issue certification after quiz attempt ==========
+        // Get courseId from section
+        var sectionWithCourse = await _unitOfWork.SectionRepository.GetAllQueryable()
+            .Where(s => s.SectionId == sectionId)
+            .Select(s => new { s.CourseId })
+            .FirstOrDefaultAsync();
+
+        if (sectionWithCourse != null)
+        {
+            // Check if this is potentially the "final" quiz attempt
+            // by verifying if student has attempted all sections with quizzes
+            var shouldTriggerCertification = await ShouldTriggerCertificationCheckAsync(
+                studentId, 
+                sectionWithCourse.CourseId, 
+                sectionId);
+
+            if (shouldTriggerCertification)
+            {
+                // Try to issue certification (will check eligibility internally)
+                var certResult = await _certificationService.TryIssueCertificateAsync(
+                    studentId, 
+                    sectionWithCourse.CourseId);
+                
+                // Always include certification result in response (whether certified or not)
+                resultDto.CertificationResult = certResult.Data;
+            }
+        }
+        // ==========================================================================
+
         return ServiceResult<SectionQuizAttemptResultDto>.Ok(resultDto, "Quiz submitted successfully");
+    }
+
+    /// <summary>
+    /// Check if we should trigger certification check after this quiz attempt.
+    /// Returns true if student has now attempted quizzes in all sections that have quizzes.
+    /// </summary>
+    private async Task<bool> ShouldTriggerCertificationCheckAsync(
+        Guid studentId, 
+        Guid courseId, 
+        Guid currentSectionId)
+    {
+        // Get all active sections of the course
+        var allSections = await _unitOfWork.SectionRepository.GetAllQueryable()
+            .Where(s => s.CourseId == courseId && s.IsActive)
+            .Include(s => s.Lessons)
+            .ToListAsync();
+
+        var allLessonIds = allSections.SelectMany(s => s.Lessons.Select(l => l.LessonId)).ToList();
+
+        // Get sections that have quizzes
+        var sectionsWithQuizzes = await _unitOfWork.Repository<Quiz>().GetAllQueryable()
+            .Where(q => allLessonIds.Contains(q.LessonId))
+            .Select(q => q.Lesson.SectionId)
+            .Distinct()
+            .ToListAsync();
+
+        // If no sections have quizzes, don't trigger
+        if (sectionsWithQuizzes.Count == 0)
+            return false;
+
+        // Get sections where student has made at least one attempt
+        var sectionIds = allSections.Select(s => s.SectionId).ToList();
+        var sectionsAttempted = await _unitOfWork.Repository<SectionQuizAttempt>().GetAllQueryable()
+            .Where(qa => qa.StudentId == studentId && sectionIds.Contains(qa.SectionId))
+            .Select(qa => qa.SectionId)
+            .Distinct()
+            .ToListAsync();
+
+        // Include current section (just attempted)
+        if (!sectionsAttempted.Contains(currentSectionId))
+        {
+            sectionsAttempted.Add(currentSectionId);
+        }
+
+        // Check if all sections with quizzes have been attempted
+        var allSectionsAttempted = sectionsWithQuizzes.All(s => sectionsAttempted.Contains(s));
+
+        return allSectionsAttempted;
     }
 
     public async Task<ServiceResult<List<SectionQuizAttemptResultDto>>> GetStudentAttemptsAsync(Guid sectionId, Guid studentId)
