@@ -5,9 +5,8 @@ namespace Learn2Code.Infrastructure.Repositories.IRepository;
 
 public interface IEnrollmentRepository : IGenericRepository<Enrollment>
 {
-    Task<List<Enrollment>> GetByStudentIdAsync(Guid studentId);
-    Task<Enrollment?> GetByStudentAndCourseAsync(Guid studentId, Guid courseId);
-    Task<Enrollment?> GetDetailByIdAsync(Guid enrollmentId);
-    Task<Enrollment?> GetDetailByStudentAndCourseAsync(Guid studentId, Guid courseId);
-    Task<bool> IsEnrolledAsync(Guid studentId, Guid courseId);
+    Task<List<Enrollment>> GetEnrollmentsByStudentAsync(Guid studentId);
+    Task<Enrollment?> GetEnrollmentByStudentAndCourseAsync(Guid studentId, Guid courseId);
+    Task<Enrollment?> GetEnrollmentWithDetailsAsync(Guid enrollmentId);
+    Task<List<Enrollment>> GetAllWithDetailsAsync();
 }

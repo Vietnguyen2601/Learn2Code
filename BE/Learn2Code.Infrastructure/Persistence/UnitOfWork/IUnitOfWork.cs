@@ -9,13 +9,19 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
 
     IAccountRepository AccountRepository { get; }
     IRoleRepository RoleRepository { get; }
-    IEnrollmentRepository EnrollmentRepository { get; }
+    ICourseRepository CourseRepository { get; }
+    ICourseCategoryRepository CourseCategoryRepository { get; }
+    ISectionRepository SectionRepository { get; }
     ILessonRepository LessonRepository { get; }
     IExerciseRepository ExerciseRepository { get; }
-    ILessonProgressRepository LessonProgressRepository { get; }
-    IExerciseProgressRepository ExerciseProgressRepository { get; }
+    ITestCaseRepository TestCaseRepository { get; }
     IQuizRepository QuizRepository { get; }
-    ISectionQuizAttemptRepository SectionQuizAttemptRepository { get; }
+    IQuizOptionRepository QuizOptionRepository { get; }
+    ISubscriptionPackageRepository SubscriptionPackageRepository { get; }
+    ISubscriptionRepository SubscriptionRepository { get; }
+    IPaymentRepository PaymentRepository { get; }
+    IEnrollmentRepository EnrollmentRepository { get; }
+    ICertificationRepository CertificationRepository { get; }
 
     int SaveChanges();
     Task<int> SaveChangesAsync();

@@ -1,12 +1,11 @@
 using Learn2Code.Application.DTOs;
 using Learn2Code.Domain.Entities;
-using Learn2Code.Domain.Enums;
 
 namespace Learn2Code.Application.Mapper;
 
 public static class LessonMapper
 {
-    public static LessonDto ToLessonDto(this Lesson lesson)
+    public static LessonDto ToDto(this Lesson lesson)
     {
         return new LessonDto
         {
@@ -15,48 +14,13 @@ public static class LessonMapper
             Title = lesson.Title,
             OrderNumber = lesson.OrderNumber,
             IsFreePreview = lesson.IsFreePreview,
-            CreatedAt = lesson.CreatedAt
+            CreatedAt = lesson.CreatedAt,
+            UpdatedAt = lesson.UpdatedAt
         };
     }
 
-    public static LessonDetailDto ToLessonDetailDto(
-        this Lesson lesson,
-        bool isAccessible,
-        string? accessMessage,
-        List<Exercise> exercises,
-        List<ExerciseProgress> exerciseProgresses,
-        LessonProgress? lessonProgress)
+    public static LessonDetailDto ToDetailDto(this Lesson lesson)
     {
-        var exerciseInLessonDtos = new List<ExerciseInLessonDto>();
-
-        foreach (var exercise in exercises.OrderBy(e => e.OrderNumber))
-        {
-            var progress = exerciseProgresses.FirstOrDefault(ep => ep.ExerciseId == exercise.ExerciseId);
-
-            exerciseInLessonDtos.Add(new ExerciseInLessonDto
-            {
-                ExerciseId = exercise.ExerciseId,
-                OrderNumber = exercise.OrderNumber,
-                ExerciseType = exercise.ExerciseType.ToString(),
-                Narrative = exercise.Narrative,
-                Language = exercise.Language,
-                StarterCode = exercise.StarterCode,
-                Instruction = exercise.Instruction,
-                Hint = exercise.Hint,
-                IsCompleted = progress?.IsCompleted ?? false,
-                IsPassed = progress?.IsPassed ?? false,
-                LastCode = progress?.LastCode,
-                Media = exercise.ExerciseMedias.OrderBy(m => m.OrderNumber)
-                    .Select(m => new ExerciseMediaDto
-                    {
-                        MediaId = m.MediaId,
-                        MediaType = m.MediaType.ToString(),
-                        MediaUrl = m.Url,
-                        OrderNumber = m.OrderNumber
-                    }).ToList()
-            });
-        }
-
         return new LessonDetailDto
         {
             LessonId = lesson.LessonId,
@@ -64,11 +28,40 @@ public static class LessonMapper
             Title = lesson.Title,
             OrderNumber = lesson.OrderNumber,
             IsFreePreview = lesson.IsFreePreview,
-            IsAccessible = isAccessible,
-            AccessMessage = accessMessage,
-            Exercises = exerciseInLessonDtos,
-            ProgressStatus = lessonProgress?.Status.ToString() ?? "NotStarted",
-            CreatedAt = lesson.CreatedAt
+            CreatedAt = lesson.CreatedAt,
+            UpdatedAt = lesson.UpdatedAt,
+            SectionTitle = lesson.Section?.Title ?? string.Empty,
+            CourseTitle = lesson.Section?.Course?.Title ?? string.Empty,
+            ExerciseCount = lesson.Exercises?.Count ?? 0,
+            QuizCount = lesson.Quizzes?.Count ?? 0
         };
+    }
+
+    public static Lesson ToEntity(this CreateLessonRequest request, Guid sectionId, int orderNumber)
+    {
+        return new Lesson
+        {
+            LessonId = Guid.NewGuid(),
+            SectionId = sectionId,
+            Title = request.Title,
+            IsFreePreview = request.IsFreePreview,
+            OrderNumber = orderNumber,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+    }
+
+    public static void UpdateLesson(this Lesson lesson, UpdateLessonRequest request)
+    {
+        if (!string.IsNullOrWhiteSpace(request.Title))
+            lesson.Title = request.Title;
+
+        if (request.IsFreePreview.HasValue)
+            lesson.IsFreePreview = request.IsFreePreview.Value;
+
+        if (request.OrderNumber.HasValue)
+            lesson.OrderNumber = request.OrderNumber.Value;
+
+        lesson.UpdatedAt = DateTime.UtcNow;
     }
 }

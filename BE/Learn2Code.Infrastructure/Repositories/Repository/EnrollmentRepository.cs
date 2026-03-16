@@ -12,43 +12,39 @@ public class EnrollmentRepository : GenericRepository<Enrollment>, IEnrollmentRe
     {
     }
 
-    public async Task<List<Enrollment>> GetByStudentIdAsync(Guid studentId)
+    public async Task<List<Enrollment>> GetEnrollmentsByStudentAsync(Guid studentId)
     {
-        return await _context.Set<Enrollment>()
+        return await _context.Enrollments
+            .AsNoTracking()
             .Include(e => e.Course)
             .Where(e => e.StudentId == studentId)
             .OrderByDescending(e => e.EnrolledAt)
             .ToListAsync();
     }
 
-    public async Task<Enrollment?> GetByStudentAndCourseAsync(Guid studentId, Guid courseId)
+    public async Task<Enrollment?> GetEnrollmentByStudentAndCourseAsync(Guid studentId, Guid courseId)
     {
-        return await _context.Set<Enrollment>()
-            .Include(e => e.Course)
+        return await _context.Enrollments
+            .AsNoTracking()
             .FirstOrDefaultAsync(e => e.StudentId == studentId && e.CourseId == courseId);
     }
 
-    public async Task<Enrollment?> GetDetailByIdAsync(Guid enrollmentId)
+    public async Task<Enrollment?> GetEnrollmentWithDetailsAsync(Guid enrollmentId)
     {
-        return await _context.Set<Enrollment>()
+        return await _context.Enrollments
+            .AsNoTracking()
             .Include(e => e.Course)
-                .ThenInclude(c => c.Sections.OrderBy(s => s.OrderNumber))
-                .ThenInclude(s => s.Lessons.OrderBy(l => l.OrderNumber))
+            .Include(e => e.Student)
             .FirstOrDefaultAsync(e => e.EnrollmentId == enrollmentId);
     }
 
-    public async Task<Enrollment?> GetDetailByStudentAndCourseAsync(Guid studentId, Guid courseId)
+    public async Task<List<Enrollment>> GetAllWithDetailsAsync()
     {
-        return await _context.Set<Enrollment>()
+        return await _context.Enrollments
+            .AsNoTracking()
             .Include(e => e.Course)
-                .ThenInclude(c => c.Sections.OrderBy(s => s.OrderNumber))
-                .ThenInclude(s => s.Lessons.OrderBy(l => l.OrderNumber))
-            .FirstOrDefaultAsync(e => e.StudentId == studentId && e.CourseId == courseId);
-    }
-
-    public async Task<bool> IsEnrolledAsync(Guid studentId, Guid courseId)
-    {
-        return await _context.Set<Enrollment>()
-            .AnyAsync(e => e.StudentId == studentId && e.CourseId == courseId);
+            .Include(e => e.Student)
+            .OrderByDescending(e => e.EnrolledAt)
+            .ToListAsync();
     }
 }

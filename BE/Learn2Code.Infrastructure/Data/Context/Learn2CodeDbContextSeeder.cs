@@ -27,6 +27,8 @@ public static class Learn2CodeDbContextSeeder
             await SeedAdminAccountAsync(context, logger);
             await SeedCourseCategoriesAsync(context, logger);
             await SeedDevAccountsAsync(context, logger);
+            await SeedStudentAccountsAsync(context, logger);
+            await SeedSubscriptionPackagesAsync(context, logger);
             await SeedCoursesAsync(context, logger);
             await SeedSectionsAsync(context, logger);
             await SeedLessonsAsync(context, logger);
@@ -159,6 +161,106 @@ public static class Learn2CodeDbContextSeeder
         await context.SaveChangesAsync();
 
         logger.LogInformation("Seeded admin account: {Username}", username);
+    }
+
+    // 
+    // Extra student accounts (password: Student@123)
+    // 
+    private static async Task SeedStudentAccountsAsync(Learn2CodeDbContext context, ILogger logger)
+    {
+        // BCrypt hash of "Student@123"
+        const string hash = "$2a$11$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi";
+
+        var studentRole = await context.Roles.FirstOrDefaultAsync(r => r.RoleName == "Student");
+        if (studentRole == null) return;
+
+        var students = new[]
+        {
+            new { Username = "student01", Email = "student01@learn2code.com", Name = "Nguyen Van A" },
+            new { Username = "student02", Email = "student02@learn2code.com", Name = "Tran Thi B"  },
+            new { Username = "student03", Email = "student03@learn2code.com", Name = "Le Van C"    },
+        };
+
+        foreach (var s in students)
+        {
+            if (await context.Accounts.AnyAsync(a => a.Username == s.Username)) continue;
+
+            var account = new Account
+            {
+                AccountId = Guid.NewGuid(),
+                Username  = s.Username,
+                Email     = s.Email,
+                Password  = hash,
+                Name      = s.Name,
+                IsActive  = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            context.Accounts.Add(account);
+            await context.SaveChangesAsync();
+
+            context.AccountRoles.Add(new AccountRole
+            {
+                AccountId  = account.AccountId,
+                RoleId     = studentRole.RoleId,
+                AssignedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
+            logger.LogInformation("Seeded student: {Username}", s.Username);
+        }
+    }
+
+    // 
+    // Subscription packages
+    // 
+    private static async Task SeedSubscriptionPackagesAsync(Learn2CodeDbContext context, ILogger logger)
+    {
+        if (await context.SubscriptionPackages.AnyAsync()) return;
+
+        var packages = new[]
+        {
+            new SubscriptionPackage
+            {
+                PackageId      = Guid.NewGuid(),
+                Name           = "Basic",
+                DurationMonths = 1,
+                Price          = 99000,
+                DiscountPercent = 0,
+                Description    = "Truy cập toàn bộ khoá học trong 1 tháng",
+                IsActive       = true,
+                CreatedAt      = DateTime.UtcNow,
+                UpdatedAt      = DateTime.UtcNow
+            },
+            new SubscriptionPackage
+            {
+                PackageId      = Guid.NewGuid(),
+                Name           = "Standard",
+                DurationMonths = 3,
+                Price          = 249000,
+                DiscountPercent = 10,
+                Description    = "Truy cập toàn bộ khoá học trong 3 tháng, tiết kiệm 10%",
+                IsActive       = true,
+                CreatedAt      = DateTime.UtcNow,
+                UpdatedAt      = DateTime.UtcNow
+            },
+            new SubscriptionPackage
+            {
+                PackageId      = Guid.NewGuid(),
+                Name           = "Pro",
+                DurationMonths = 6,
+                Price          = 449000,
+                DiscountPercent = 20,
+                Description    = "Truy cập toàn bộ khoá học trong 6 tháng, tiết kiệm 20%",
+                IsActive       = true,
+                CreatedAt      = DateTime.UtcNow,
+                UpdatedAt      = DateTime.UtcNow
+            }
+        };
+
+        context.SubscriptionPackages.AddRange(packages);
+        await context.SaveChangesAsync();
+        logger.LogInformation("Seeded {Count} subscription packages", packages.Length);
     }
 
     // 

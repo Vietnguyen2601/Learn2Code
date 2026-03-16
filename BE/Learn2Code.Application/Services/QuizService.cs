@@ -2,426 +2,209 @@ using Learn2Code.Application.Base;
 using Learn2Code.Application.DTOs;
 using Learn2Code.Application.Interfaces;
 using Learn2Code.Application.Mapper;
-using Learn2Code.Domain.Entities;
-using Learn2Code.Domain.Enums;
 using Learn2Code.Infrastructure.Persistence.UnitOfWork;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace Learn2Code.Application.Services;
 
 public class QuizService : IQuizService
 {
     private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<QuizService> _logger;
 
-    public QuizService(IUnitOfWork unitOfWork, ILogger<QuizService> logger)
+    public QuizService(IUnitOfWork unitOfWork)
     {
         _unitOfWork = unitOfWork;
-        _logger = logger;
     }
 
-    public async Task<ServiceResult<AnswerQuizResponse>> AnswerQuizAsync(
-        Guid quizId,
-        Guid studentId,
-        AnswerQuizRequest request)
+    public async Task<ServiceResult<List<QuizDto>>> GetQuizzesByLessonIdAsync(Guid lessonId)
     {
-        // Get quiz with options
-        var quiz = await _unitOfWork.QuizRepository.GetWithOptionsAsync(quizId);
+        // Ki?m tra lesson c� t?n t?i kh�ng
+        var lesson = await _unitOfWork.LessonRepository.GetByIdAsync(lessonId);
+        if (lesson == null)
+            return ServiceResult<List<QuizDto>>.NotFound("Lesson not found");
 
+        var quizzes = await _unitOfWork.QuizRepository.GetQuizzesByLessonIdAsync(lessonId);
+        var quizDtos = quizzes.Select(q => q.ToDto()).ToList();
+
+        return ServiceResult<List<QuizDto>>.Ok(quizDtos);
+    }
+
+    public async Task<ServiceResult<QuizDto>> CreateQuizAsync(Guid lessonId, CreateQuizRequest request)
+    {
+        // Ki?m tra lesson c� t?n t?i kh�ng
+        var lesson = await _unitOfWork.LessonRepository.GetByIdAsync(lessonId);
+        if (lesson == null)
+            return ServiceResult<QuizDto>.NotFound("Lesson not found");
+
+        // Validate: Ph?i c� �t nh?t 2 options
+        if (request.Options == null || request.Options.Count < 2)
+            return ServiceResult<QuizDto>.Error("INVALID_OPTIONS", "Quiz must have at least 2 options");
+
+        // Validate: Ph?i c� �t nh?t 1 ?�p �n ?�ng
+        if (!request.Options.Any(o => o.IsCorrect))
+            return ServiceResult<QuizDto>.Error("NO_CORRECT_ANSWER", "Quiz must have at least 1 correct answer");
+
+        // L?y order number ti?p theo
+        var maxOrder = await _unitOfWork.QuizRepository.GetMaxOrderNumberInLessonAsync(lessonId);
+        var newOrderNumber = maxOrder + 1;
+
+        // T?o Quiz
+        var quiz = request.ToEntity(lessonId, newOrderNumber);
+        _unitOfWork.QuizRepository.PrepareCreate(quiz);
+
+        // T?o Options
+        foreach (var optionRequest in request.Options)
+        {
+            var option = optionRequest.ToOptionEntity(quiz.QuizId);
+            _unitOfWork.QuizOptionRepository.PrepareCreate(option);
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+
+        // Load l?i quiz v?i options
+        var createdQuiz = await _unitOfWork.QuizRepository.GetQuizWithOptionsAsync(quiz.QuizId);
+        return ServiceResult<QuizDto>.Created(createdQuiz!.ToDto(), "Quiz created successfully");
+    }
+
+    public async Task<ServiceResult<QuizDto>> UpdateQuizAsync(Guid quizId, UpdateQuizRequest request)
+    {
+        var quiz = await _unitOfWork.QuizRepository.GetQuizWithOptionsAsync(quizId);
         if (quiz == null)
+            return ServiceResult<QuizDto>.NotFound("Quiz not found");
+
+        // C?p nh?t quiz
+        quiz.UpdateQuiz(request);
+        _unitOfWork.QuizRepository.PrepareUpdate(quiz);
+
+        // N?u c� update options
+        if (request.Options != null && request.Options.Count > 0)
         {
-            return ServiceResult<AnswerQuizResponse>.NotFound("Quiz not found");
-        }
+            // Validate: Ph?i c� �t nh?t 2 options
+            if (request.Options.Count < 2)
+                return ServiceResult<QuizDto>.Error("INVALID_OPTIONS", "Quiz must have at least 2 options");
 
-        // Find selected option
-        var selectedOption = quiz.Options.FirstOrDefault(o => o.OptionId == request.OptionId);
+            // Validate: Ph?i c� �t nh?t 1 ?�p �n ?�ng
+            if (!request.Options.Any(o => o.IsCorrect))
+                return ServiceResult<QuizDto>.Error("NO_CORRECT_ANSWER", "Quiz must have at least 1 correct answer");
 
-        if (selectedOption == null)
-        {
-            return ServiceResult<AnswerQuizResponse>.Error(
-                "INVALID_OPTION",
-                "Invalid option selected",
-                400);
-        }
+            // X�a t?t c? options c?
+            await _unitOfWork.QuizOptionRepository.DeleteOptionsByQuizIdAsync(quizId);
 
-        // Find correct option
-        var correctOption = quiz.Options.FirstOrDefault(o => o.IsCorrect);
-
-        if (correctOption == null)
-        {
-            _logger.LogError("Quiz {QuizId} has no correct answer defined", quizId);
-            return ServiceResult<AnswerQuizResponse>.Error(
-                "QUIZ_CONFIGURATION_ERROR",
-                "Quiz configuration error",
-                500);
-        }
-
-        var response = new AnswerQuizResponse
-        {
-            QuizId = quiz.QuizId,
-            IsCorrect = selectedOption.IsCorrect,
-            Explanation = quiz.Explanation,
-            CorrectOptionId = correctOption.OptionId
-        };
-
-        return ServiceResult<AnswerQuizResponse>.Ok(response);
-    }
-
-    public async Task<ServiceResult<SectionQuizDto>> GetSectionQuizAsync(
-        Guid sectionId,
-        Guid studentId)
-    {
-        // Get section
-        var section = await _unitOfWork.Repository<Section>().GetByIdAsync(sectionId);
-
-        if (section == null)
-        {
-            return ServiceResult<SectionQuizDto>.NotFound("Section not found");
-        }
-
-        // Get all lessons in section
-        var lessons = await _unitOfWork.LessonRepository.GetBySectionIdAsync(sectionId);
-
-        if (!lessons.Any())
-        {
-            return ServiceResult<SectionQuizDto>.Error(
-                "NO_LESSONS",
-                "Section has no lessons",
-                400);
-        }
-
-        // Check if all lessons are completed
-        var lessonProgresses = await _unitOfWork.LessonProgressRepository
-            .GetByStudentAndCourseAsync(studentId, section.CourseId);
-
-        var allLessonsCompleted = lessons.All(lesson =>
-            lessonProgresses.Any(lp =>
-                lp.LessonId == lesson.LessonId &&
-                lp.Status == LessonProgressStatus.Completed));
-
-        if (!allLessonsCompleted)
-        {
-            var response = new SectionQuizDto
+            // T?o options m?i t? request
+            foreach (var optionRequest in request.Options)
             {
-                SectionId = sectionId,
-                SectionTitle = section.Title,
-                TotalQuestions = 0,
-                IsUnlocked = false,
-                UnlockMessage = "You must complete all lessons in this section before taking the section quiz",
-                Quizzes = new List<QuizDto>()
-            };
-
-            return ServiceResult<SectionQuizDto>.Ok(response);
-        }
-
-        // Get all quizzes from all lessons in section
-        var quizzes = await _unitOfWork.QuizRepository.GetBySectionIdAsync(sectionId);
-
-        if (!quizzes.Any())
-        {
-            return ServiceResult<SectionQuizDto>.Error(
-                "NO_QUIZZES",
-                "Section has no quizzes",
-                400);
-        }
-
-        var quizDtos = quizzes.Select(q => q.ToQuizDto(includeCorrectAnswer: false)).ToList();
-
-        var sectionQuizDto = new SectionQuizDto
-        {
-            SectionId = sectionId,
-            SectionTitle = section.Title,
-            TotalQuestions = quizzes.Count,
-            IsUnlocked = true,
-            UnlockMessage = null,
-            Quizzes = quizDtos
-        };
-
-        return ServiceResult<SectionQuizDto>.Ok(sectionQuizDto);
-    }
-
-    public async Task<ServiceResult<SubmitSectionQuizResponse>> SubmitSectionQuizAsync(
-        Guid sectionId,
-        Guid studentId,
-        SubmitSectionQuizRequest request)
-    {
-        // Validate section
-        var section = await _unitOfWork.Repository<Section>().GetByIdAsync(sectionId);
-
-        if (section == null)
-        {
-            return ServiceResult<SubmitSectionQuizResponse>.NotFound("Section not found");
-        }
-
-        // Get all quizzes in section
-        var quizzes = await _unitOfWork.QuizRepository.GetBySectionIdAsync(sectionId);
-
-        if (!quizzes.Any())
-        {
-            return ServiceResult<SubmitSectionQuizResponse>.Error(
-                "NO_QUIZZES",
-                "Section has no quizzes",
-                400);
-        }
-
-        // Validate all answers are for quizzes in this section
-        var quizIds = quizzes.Select(q => q.QuizId).ToHashSet();
-        var invalidQuizzes = request.Answers.Where(a => !quizIds.Contains(a.QuizId)).ToList();
-
-        if (invalidQuizzes.Any())
-        {
-            return ServiceResult<SubmitSectionQuizResponse>.Error(
-                "INVALID_QUIZ_IDS",
-                "Some quiz IDs are not part of this section",
-                400);
-        }
-
-        // Grade answers
-        var answerResults = new List<SectionQuizAnswerResult>();
-        var correctCount = 0;
-
-        foreach (var answer in request.Answers)
-        {
-            var quiz = quizzes.First(q => q.QuizId == answer.QuizId);
-            var selectedOption = quiz.Options.FirstOrDefault(o => o.OptionId == answer.OptionId);
-            var correctOption = quiz.Options.First(o => o.IsCorrect);
-
-            var isCorrect = selectedOption?.IsCorrect ?? false;
-            if (isCorrect) correctCount++;
-
-            answerResults.Add(new SectionQuizAnswerResult
-            {
-                QuizId = quiz.QuizId,
-                Question = quiz.Question,
-                IsCorrect = isCorrect,
-                SelectedOptionId = answer.OptionId,
-                CorrectOptionId = correctOption.OptionId,
-                Explanation = quiz.Explanation
-            });
-        }
-
-        // Calculate score
-        var score = quizzes.Count > 0 ? (decimal)correctCount / quizzes.Count * 100 : 0;
-
-        // Determine pass/fail (default: 70% to pass)
-        var isPassed = score >= 70;
-
-        // Create attempt record
-        var attempt = new SectionQuizAttempt
-        {
-            AttemptId = Guid.NewGuid(),
-            SectionId = sectionId,
-            StudentId = studentId,
-            Score = score,
-            IsPassed = isPassed,
-            AttemptedAt = DateTime.UtcNow
-        };
-
-        _unitOfWork.Repository<SectionQuizAttempt>().PrepareCreate(attempt);
-
-        // Save individual answers
-        foreach (var answer in request.Answers)
-        {
-            var quiz = quizzes.First(q => q.QuizId == answer.QuizId);
-            var selectedOption = quiz.Options.FirstOrDefault(o => o.OptionId == answer.OptionId);
-
-            var sectionQuizAnswer = new SectionQuizAnswer
-            {
-                AnswerId = Guid.NewGuid(),
-                AttemptId = attempt.AttemptId,
-                QuizId = answer.QuizId,
-                OptionId = answer.OptionId,
-                IsCorrect = selectedOption?.IsCorrect ?? false
-            };
-
-            _unitOfWork.Repository<SectionQuizAnswer>().PrepareCreate(sectionQuizAnswer);
-        }
-
-        await _unitOfWork.CommitTransactionAsync();
-
-        // Check if certification should be issued
-        var certificationIssued = false;
-        string? certificateCode = null;
-
-        if (isPassed)
-        {
-            var certResult = await CheckAndIssueCertificationAsync(studentId, section.CourseId);
-            certificationIssued = certResult.issued;
-            certificateCode = certResult.code;
-        }
-
-        var response = new SubmitSectionQuizResponse
-        {
-            AttemptId = attempt.AttemptId,
-            Score = score,
-            IsPassed = isPassed,
-            TotalQuestions = quizzes.Count,
-            CorrectAnswers = correctCount,
-            AttemptedAt = attempt.AttemptedAt,
-            Answers = answerResults,
-            CertificationIssued = certificationIssued,
-            CertificateCode = certificateCode
-        };
-
-        return ServiceResult<SubmitSectionQuizResponse>.Ok(response);
-    }
-
-    public async Task<ServiceResult<SectionQuizAttemptListDto>> GetMyAttemptsAsync(
-        Guid sectionId,
-        Guid studentId)
-    {
-        var attempts = await _unitOfWork.SectionQuizAttemptRepository
-            .GetByStudentAndSectionAsync(studentId, sectionId);
-
-        var attemptDtos = attempts.Select(a =>
-        {
-            var correctAnswers = a.Answers.Count(ans => ans.IsCorrect);
-            var totalQuestions = a.Answers.Count;
-
-            return a.ToSectionQuizAttemptDto(totalQuestions, correctAnswers);
-        }).ToList();
-
-        var bestScore = attemptDtos.Any() ? attemptDtos.Max(a => a.Score) : (decimal?)null;
-        var bestAttempt = attemptDtos.FirstOrDefault(a => a.Score == bestScore);
-
-        var result = new SectionQuizAttemptListDto
-        {
-            Attempts = attemptDtos,
-            TotalCount = attemptDtos.Count,
-            BestScore = bestScore,
-            BestAttemptId = bestAttempt?.AttemptId
-        };
-
-        return ServiceResult<SectionQuizAttemptListDto>.Ok(result);
-    }
-
-    #region Private Helper Methods
-
-    /// <summary>
-    /// Check course completion rules and issue certification if qualified
-    /// </summary>
-    private async Task<(bool issued, string? code)> CheckAndIssueCertificationAsync(
-        Guid studentId,
-        Guid courseId)
-    {
-        // Check if student already has certification
-        var existingCert = await _unitOfWork.Repository<Certification>()
-            .GetAsync(c => c.StudentId == studentId && c.CourseId == courseId);
-
-        if (existingCert != null)
-        {
-            return (false, null); // Already certified
-        }
-
-        // Get completion rules
-        var rules = await _unitOfWork.Repository<CourseCompletionRule>()
-            .GetAsync(r => r.CourseId == courseId);
-
-        if (rules == null)
-        {
-            _logger.LogWarning("No completion rules found for course {CourseId}", courseId);
-            return (false, null);
-        }
-
-        // Check lesson completion
-        var allLessons = await _unitOfWork.Repository<Lesson>()
-            .GetAllQueryable()
-            .Where(l => l.Section.CourseId == courseId)
-            .ToListAsync();
-
-        var lessonProgresses = await _unitOfWork.LessonProgressRepository
-            .GetByStudentAndCourseAsync(studentId, courseId);
-
-        var completedLessonsCount = lessonProgresses.Count(lp => lp.Status == LessonProgressStatus.Completed);
-        var lessonCompletionPct = allLessons.Any() ? (decimal)completedLessonsCount / allLessons.Count() * 100 : 0;
-
-        if (lessonCompletionPct < rules.MinLessonCompletionPct)
-        {
-            return (false, null);
-        }
-
-        // Check GradedCode exercise pass percentage
-        var allGradedExercises = await _unitOfWork.Repository<Exercise>()
-            .GetAllQueryable()
-            .Where(e => e.Lesson.Section.CourseId == courseId && e.ExerciseType == ExerciseType.GradedCode)
-            .ToListAsync();
-
-        if (allGradedExercises.Any())
-        {
-            var gradedExerciseIds = allGradedExercises.Select(e => e.ExerciseId).ToList();
-            var exerciseProgresses = await _unitOfWork.Repository<ExerciseProgress>()
-                .GetAllQueryable()
-                .Where(ep => ep.StudentId == studentId && gradedExerciseIds.Contains(ep.ExerciseId))
-                .ToListAsync();
-
-            var passedCount = exerciseProgresses.Count(ep => ep.IsPassed);
-            var passedPct = (decimal)passedCount / allGradedExercises.Count() * 100;
-
-            if (passedPct < rules.MinExercisePassPct)
-            {
-                _logger.LogInformation(
-                    "Student {StudentId} failed exercise pass requirement: {PassedPct}% < {Required}%",
-                    studentId, Math.Round(passedPct, 1), rules.MinExercisePassPct);
-                return (false, null);
-            }
-        }
-
-        // Check section quiz requirements
-        if (rules.RequireAllSectionQuiz)
-        {
-            var sections = await _unitOfWork.Repository<Section>()
-                .GetAllQueryable()
-                .Where(s => s.CourseId == courseId)
-                .ToListAsync();
-
-            foreach (var section in sections)
-            {
-                var sectionAttempts = await _unitOfWork.SectionQuizAttemptRepository
-                    .GetByStudentAndSectionAsync(studentId, section.SectionId);
-
-                var bestAttempt = sectionAttempts
-                    .Where(a => a.IsPassed && a.Score >= rules.MinSectionQuizScore)
-                    .OrderByDescending(a => a.Score)
-                    .FirstOrDefault();
-
-                if (bestAttempt == null)
+                var newOption = new Domain.Entities.QuizOption
                 {
-                    return (false, null); // Not all sections passed
-                }
+                    OptionId = Guid.NewGuid(),
+                    QuizId = quizId,
+                    Content = optionRequest.Content,
+                    IsCorrect = optionRequest.IsCorrect,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _unitOfWork.QuizOptionRepository.PrepareCreate(newOption);
             }
         }
 
-        // Issue certification
-        var certificateCode = GenerateCertificateCode();
+        await _unitOfWork.SaveChangesAsync();
 
-        var certification = new Certification
+        // Load l?i quiz v?i options
+        var updatedQuiz = await _unitOfWork.QuizRepository.GetQuizWithOptionsAsync(quizId);
+        return ServiceResult<QuizDto>.Ok(updatedQuiz!.ToDto(), "Quiz updated successfully");
+    }
+
+    public async Task<ServiceResult> DeleteQuizAsync(Guid quizId)
+    {
+        var quiz = await _unitOfWork.QuizRepository.GetByIdAsync(quizId);
+        if (quiz == null)
+            return ServiceResult.NotFound("Quiz not found");
+
+        // X�a options tr??c (cascade s? t? ??ng x�a n?u c� config, nh?ng ?? ch?c ch?n)
+        await _unitOfWork.QuizOptionRepository.DeleteOptionsByQuizIdAsync(quizId);
+
+        // X�a quiz
+        _unitOfWork.QuizRepository.PrepareRemove(quiz);
+        await _unitOfWork.SaveChangesAsync();
+
+        return ServiceResult.Ok("Quiz deleted successfully");
+    }
+
+    public async Task<ServiceResult<QuizOptionDto>> UpdateQuizOptionAsync(Guid quizId, Guid optionId, UpdateSingleQuizOptionRequest request)
+    {
+        // Ki?m tra quiz c� t?n t?i kh�ng
+        var quiz = await _unitOfWork.QuizRepository.GetByIdAsync(quizId);
+        if (quiz == null)
+            return ServiceResult<QuizOptionDto>.NotFound("Quiz not found");
+
+        // Ki?m tra option c� t?n t?i v� thu?c quiz n�y kh�ng
+        var option = await _unitOfWork.QuizOptionRepository.GetOptionByIdAsync(quizId, optionId);
+        if (option == null)
+            return ServiceResult<QuizOptionDto>.NotFound("Quiz option not found or does not belong to this quiz");
+
+        // C?p nh?t option
+        option.UpdateOption(request);
+        _unitOfWork.QuizOptionRepository.PrepareUpdate(option);
+        await _unitOfWork.SaveChangesAsync();
+
+        return ServiceResult<QuizOptionDto>.Ok(option.ToOptionDto(), "Quiz option updated successfully");
+    }
+
+    public async Task<ServiceResult> DeleteQuizOptionAsync(Guid quizId, Guid optionId)
+    {
+        // Ki?m tra quiz c� t?n t?i kh�ng
+        var quiz = await _unitOfWork.QuizRepository.GetByIdAsync(quizId);
+        if (quiz == null)
+            return ServiceResult.NotFound("Quiz not found");
+
+        // Ki?m tra option c� t?n t?i v� thu?c quiz n�y kh�ng
+        var option = await _unitOfWork.QuizOptionRepository.GetOptionByIdAsync(quizId, optionId);
+        if (option == null)
+            return ServiceResult.NotFound("Quiz option not found or does not belong to this quiz");
+
+        // Ki?m tra sau khi x�a ph?i c�n �t nh?t 2 options
+        var currentOptionCount = await _unitOfWork.QuizOptionRepository.CountOptionsByQuizIdAsync(quizId);
+        if (currentOptionCount <= 2)
+            return ServiceResult.Error("MINIMUM_OPTIONS_REQUIRED", "Quiz must have at least 2 options. Cannot delete this option.");
+
+        // Ki?m tra n?u x�a option ?�ng, ph?i c�n �t nh?t 1 option ?�ng kh�c
+        if (option.IsCorrect)
         {
-            CertificationId = Guid.NewGuid(),
-            StudentId = studentId,
-            CourseId = courseId,
-            CertificateCode = certificateCode,
-            IssuedAt = DateTime.UtcNow
+            var otherCorrectOptions = await _unitOfWork.QuizOptionRepository
+                .GetAsync(o => o.QuizId == quizId && o.OptionId != optionId && o.IsCorrect);
+            
+            if (otherCorrectOptions == null)
+                return ServiceResult.Error("CORRECT_ANSWER_REQUIRED", "Quiz must have at least 1 correct answer. Cannot delete the only correct option.");
+        }
+
+        _unitOfWork.QuizOptionRepository.PrepareRemove(option);
+        await _unitOfWork.SaveChangesAsync();
+
+        return ServiceResult.Ok("Quiz option deleted successfully");
+    }
+
+    public async Task<ServiceResult<AnswerQuizResultDto>> AnswerQuizAsync(Guid quizId, Guid studentId, AnswerQuizRequest request)
+    {
+        // Kiểm tra quiz có tồn tại không
+        var quiz = await _unitOfWork.QuizRepository.GetQuizWithOptionsAsync(quizId);
+        if (quiz == null)
+            return ServiceResult<AnswerQuizResultDto>.NotFound("Quiz not found");
+
+        // Kiểm tra option có tồn tại và thuộc quiz này không
+        var selectedOption = quiz.Options.FirstOrDefault(o => o.OptionId == request.OptionId);
+        if (selectedOption == null)
+            return ServiceResult<AnswerQuizResultDto>.Error("INVALID_OPTION", "Selected option does not belong to this quiz", 400);
+
+        // Kiểm tra quyền truy cập lesson của quiz
+        var canAccess = await _unitOfWork.LessonRepository.CanUserAccessLessonAsync(quiz.LessonId, studentId);
+        if (!canAccess)
+            return ServiceResult<AnswerQuizResultDto>.Error("ACCESS_DENIED", "You don't have permission to access this quiz", 403);
+
+        var resultDto = new AnswerQuizResultDto
+        {
+            QuizId = quizId,
+            OptionId = request.OptionId,
+            IsCorrect = selectedOption.IsCorrect,
+            Explanation = quiz.Explanation
         };
 
-        _unitOfWork.Repository<Certification>().PrepareCreate(certification);
-        await _unitOfWork.CommitTransactionAsync();
-
-        _logger.LogInformation(
-            "Certification {Code} issued to student {StudentId} for course {CourseId}",
-            certificateCode,
-            studentId,
-            courseId);
-
-        return (true, certificateCode);
+        return ServiceResult<AnswerQuizResultDto>.Ok(resultDto);
     }
-
-    private static string GenerateCertificateCode()
-    {
-        var timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
-        var random = new Random().Next(1000, 9999);
-        return $"CERT-{timestamp}-{random}";
-    }
-
-    #endregion
 }

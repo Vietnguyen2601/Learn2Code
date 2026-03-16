@@ -6,233 +6,213 @@ using Learn2Code.Domain.Entities;
 using Learn2Code.Domain.Enums;
 using Learn2Code.Infrastructure.Persistence.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace Learn2Code.Application.Services;
 
 public class ProgressService : IProgressService
 {
     private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<ProgressService> _logger;
 
-    public ProgressService(IUnitOfWork unitOfWork, ILogger<ProgressService> logger)
+    public ProgressService(IUnitOfWork unitOfWork)
     {
         _unitOfWork = unitOfWork;
-        _logger = logger;
     }
 
-    public async Task<ServiceResult<CourseProgressDto>> GetMyCourseProgressAsync(Guid studentId, Guid courseId)
+    public async Task<ServiceResult<CourseProgressDto>> GetCourseProgressAsync(Guid courseId, Guid studentId)
     {
-        try
+        // Kiểm tra course có tồn tại không
+        var course = await _unitOfWork.CourseRepository.GetByIdAsync(courseId);
+        if (course == null)
+            return ServiceResult<CourseProgressDto>.NotFound("Course not found");
+
+        // Kiểm tra enrollment
+        var enrollment = await _unitOfWork.EnrollmentRepository
+            .GetEnrollmentByStudentAndCourseAsync(studentId, courseId);
+        if (enrollment == null)
+            return ServiceResult<CourseProgressDto>.Error("NOT_ENROLLED", "You are not enrolled in this course", 403);
+
+        // Lấy tất cả sections của course
+        var sections = await _unitOfWork.SectionRepository.GetByCourseIdAsync(courseId);
+        if (!sections.Any())
         {
-            // Check enrollment
-            var enrollment = await _unitOfWork.EnrollmentRepository
-                .GetByStudentAndCourseAsync(studentId, courseId);
-
-            if (enrollment == null)
+            return ServiceResult<CourseProgressDto>.Ok(new CourseProgressDto
             {
-                return ServiceResult<CourseProgressDto>.Error("NOT_ENROLLED", "You are not enrolled in this course", 403);
-            }
+                EnrollmentStatus = enrollment.Status.ToString(),
+                ProgressPct = 0,
+                Sections = new List<SectionProgressDto>()
+            });
+        }
 
-            // Get all sections with lessons
-            var sections = await _unitOfWork.Repository<Section>()
+        var sectionProgressDtos = new List<SectionProgressDto>();
+        var totalLessons = 0;
+        var totalCompletedLessons = 0;
+
+        foreach (var section in sections.OrderBy(s => s.OrderNumber))
+        {
+            // Lấy tất cả lessons trong section
+            var lessons = await _unitOfWork.LessonRepository.GetLessonsBySectionIdAsync(section.SectionId);
+            totalLessons += lessons.Count();
+
+            // Lấy lesson progresses
+            var lessonIds = lessons.Select(l => l.LessonId).ToList();
+            var lessonProgresses = await _unitOfWork.Repository<LessonProgress>()
                 .GetAllQueryable()
-                .Where(s => s.CourseId == courseId)
-                .Include(s => s.Lessons)
-                .OrderBy(s => s.OrderNumber)
+                .Where(lp => lp.StudentId == studentId && lessonIds.Contains(lp.LessonId))
                 .ToListAsync();
 
-            // Get all lesson progresses for this student in this course
-            var lessonProgresses = await _unitOfWork.LessonProgressRepository
-                .GetByStudentAndCourseAsync(studentId, courseId);
+            var completedCount = lessonProgresses.Count(lp => lp.Status == LessonProgressStatus.Completed);
+            totalCompletedLessons += completedCount;
 
-            var sectionProgressDtos = new List<SectionProgressSummaryDto>();
+            // Check section quiz unlocked
+            var sectionQuizUnlocked = completedCount >= lessons.Count();
 
-            foreach (var section in sections)
+            // Lấy best attempt của section quiz
+            var bestAttempt = await _unitOfWork.Repository<SectionQuizAttempt>()
+                .GetAllQueryable()
+                .Where(a => a.SectionId == section.SectionId && a.StudentId == studentId)
+                .OrderByDescending(a => a.Score)
+                .ToListAsync();
+
+            var sectionQuizPassed = bestAttempt.Any() && bestAttempt.First().IsPassed;
+            var sectionQuizScore = bestAttempt.Any() ? (decimal?)bestAttempt.First().Score : null;
+
+            sectionProgressDtos.Add(new SectionProgressDto
             {
-                // Get lesson progresses for this section
-                var lessonIds = section.Lessons?.Select(l => l.LessonId).ToList() ?? new List<Guid>();
-                var sectionLessonProgresses = lessonProgresses
-                    .Where(lp => lessonIds.Contains(lp.LessonId))
-                    .ToList();
-
-                // Get best section quiz attempt
-                var sectionAttempts = await _unitOfWork.SectionQuizAttemptRepository
-                    .GetByStudentAndSectionAsync(studentId, section.SectionId);
-
-                var bestAttempt = sectionAttempts
-                    .Where(a => a.IsPassed)
-                    .OrderByDescending(a => a.Score)
-                    .FirstOrDefault();
-
-                var sectionProgressDto = section.ToSectionProgressSummaryDto(sectionLessonProgresses, bestAttempt);
-                sectionProgressDtos.Add(sectionProgressDto);
-            }
-
-            // Calculate overall progress percentage
-            var totalLessons = sections.Sum(s => s.Lessons?.Count ?? 0);
-            var completedLessons = lessonProgresses.Count(lp => lp.Status == LessonProgressStatus.Completed);
-            var progressPct = totalLessons > 0 ? (decimal)completedLessons / totalLessons * 100 : 0;
-
-            var result = new CourseProgressDto
-            {
-                EnrollmentStatus = enrollment.Status,
-                ProgressPct = Math.Round(progressPct, 1),
-                Sections = sectionProgressDtos
-            };
-
-            return ServiceResult<CourseProgressDto>.Ok(result);
+                SectionId = section.SectionId,
+                Title = section.Title,
+                LessonsTotal = lessons.Count(),
+                LessonsCompleted = completedCount,
+                SectionQuizUnlocked = sectionQuizUnlocked,
+                SectionQuizPassed = sectionQuizPassed,
+                SectionQuizScore = sectionQuizScore
+            });
         }
-        catch (Exception ex)
+
+        var progressPct = totalLessons > 0 
+            ? Math.Round((decimal)totalCompletedLessons / totalLessons * 100, 2) 
+            : 0;
+
+        var courseProgressDto = new CourseProgressDto
         {
-            _logger.LogError(ex, "Error getting course progress for student {StudentId}, course {CourseId}", studentId, courseId);
-            return ServiceResult<CourseProgressDto>.Error("ERROR", "An error occurred while retrieving course progress", 500);
-        }
+            EnrollmentStatus = enrollment.Status.ToString(),
+            ProgressPct = progressPct,
+            Sections = sectionProgressDtos
+        };
+
+        return ServiceResult<CourseProgressDto>.Ok(courseProgressDto);
     }
 
-    public async Task<ServiceResult<LessonProgressDetailDto>> GetMyLessonProgressAsync(Guid studentId, Guid lessonId)
+    public async Task<ServiceResult<LessonProgressDetailDto>> GetLessonProgressAsync(Guid lessonId, Guid studentId)
     {
-        try
+        // Kiểm tra lesson có tồn tại không
+        var lesson = await _unitOfWork.LessonRepository.GetByIdAsync(lessonId);
+        if (lesson == null)
+            return ServiceResult<LessonProgressDetailDto>.NotFound("Lesson not found");
+
+        // Kiểm tra quyền truy cập
+        var canAccess = await _unitOfWork.LessonRepository.CanUserAccessLessonAsync(lessonId, studentId);
+        if (!canAccess)
+            return ServiceResult<LessonProgressDetailDto>.Error("ACCESS_DENIED", "You don't have permission to access this lesson", 403);
+
+        // Lấy lesson progress
+        var lessonProgress = await _unitOfWork.Repository<LessonProgress>()
+            .GetAsync(lp => lp.LessonId == lessonId && lp.StudentId == studentId);
+
+        var status = lessonProgress?.Status.ToString() ?? LessonProgressStatus.NotStarted.ToString();
+
+        // Lấy tất cả exercises trong lesson
+        var exercises = await _unitOfWork.ExerciseRepository.GetExercisesByLessonIdAsync(lessonId);
+        var exerciseIds = exercises.Select(e => e.ExerciseId).ToList();
+
+        // Lấy exercise progresses
+        var exerciseProgresses = await _unitOfWork.Repository<ExerciseProgress>()
+            .GetAllQueryable()
+            .Where(ep => ep.StudentId == studentId && exerciseIds.Contains(ep.ExerciseId))
+            .ToListAsync();
+
+        var exerciseProgressDict = exerciseProgresses.ToDictionary(ep => ep.ExerciseId);
+
+        var exerciseSummaries = exercises.OrderBy(e => e.OrderNumber).Select(e =>
         {
-            // Get lesson with exercises and quizzes
-            var lesson = await _unitOfWork.Repository<Lesson>()
-                .GetAllQueryable()
-                .Include(l => l.Exercises!)
-                    .ThenInclude(e => e.TestCases)
-                .Include(l => l.Quizzes!)
-                    .ThenInclude(q => q.Options)
-                .FirstOrDefaultAsync(l => l.LessonId == lessonId);
-
-            if (lesson == null)
+            var hasProgress = exerciseProgressDict.TryGetValue(e.ExerciseId, out var progress);
+            return new ExerciseProgressSummaryDto
             {
-                return ServiceResult<LessonProgressDetailDto>.NotFound("Lesson not found");
-            }
-
-            // Check enrollment
-            var isEnrolled = await _unitOfWork.EnrollmentRepository
-                .IsEnrolledAsync(studentId, lesson.Section.CourseId);
-
-            if (!isEnrolled)
-            {
-                return ServiceResult<LessonProgressDetailDto>.Error("NOT_ENROLLED", "You are not enrolled in this course", 403);
-            }
-
-            // Get lesson progress
-            var lessonProgress = await _unitOfWork.Repository<LessonProgress>()
-                .GetAsync(lp => lp.StudentId == studentId && lp.LessonId == lessonId);
-
-            // Get exercise progresses
-            var exerciseIds = lesson.Exercises?.Select(e => e.ExerciseId).ToList() ?? new List<Guid>();
-            var exerciseProgresses = await _unitOfWork.Repository<ExerciseProgress>()
-                .GetAllQueryable()
-                .Where(ep => ep.StudentId == studentId && exerciseIds.Contains(ep.ExerciseId))
-                .ToListAsync();
-
-            var exerciseProgressDtos = new List<ExerciseProgressItemDto>();
-            if (lesson.Exercises != null)
-            {
-                foreach (var exercise in lesson.Exercises.OrderBy(e => e.OrderNumber))
-                {
-                    var progress = exerciseProgresses.FirstOrDefault(ep => ep.ExerciseId == exercise.ExerciseId);
-                    exerciseProgressDtos.Add(exercise.ToExerciseProgressItemDto(progress));
-                }
-            }
-
-            // Get quiz progress (first quiz in lesson if exists)
-            QuizProgressDto? quizProgressDto = null;
-            var firstQuiz = lesson.Quizzes?.FirstOrDefault();
-            if (firstQuiz != null)
-            {
-                // Get student's answer from section quiz attempts
-                var answer = await _unitOfWork.Repository<SectionQuizAnswer>()
-                    .GetAllQueryable()
-                    .Include(a => a.Attempt)
-                    .FirstOrDefaultAsync(a => a.Attempt.StudentId == studentId && a.QuizId == firstQuiz.QuizId);
-
-                var isAnswered = answer != null;
-                bool? isCorrect = answer?.IsCorrect;
-
-                quizProgressDto = firstQuiz.ToQuizProgressDto(isAnswered, isCorrect);
-            }
-
-            var result = new LessonProgressDetailDto
-            {
-                LessonId = lesson.LessonId,
-                Title = lesson.Title,
-                Status = lessonProgress?.Status ?? LessonProgressStatus.NotStarted,
-                Exercises = exerciseProgressDtos,
-                Quiz = quizProgressDto
+                ExerciseId = e.ExerciseId,
+                ExerciseType = e.ExerciseType.ToString(),
+                OrderNumber = e.OrderNumber,
+                IsCompleted = hasProgress && progress.IsCompleted,
+                IsPassed = hasProgress && progress.IsPassed
             };
+        }).ToList();
 
-            return ServiceResult<LessonProgressDetailDto>.Ok(result);
-        }
-        catch (Exception ex)
+        var detailDto = new LessonProgressDetailDto
         {
-            _logger.LogError(ex, "Error getting lesson progress for student {StudentId}, lesson {LessonId}", studentId, lessonId);
-            return ServiceResult<LessonProgressDetailDto>.Error("ERROR", "An error occurred while retrieving lesson progress", 500);
-        }
+            LessonId = lessonId,
+            LessonTitle = lesson.Title,
+            Status = status,
+            Exercises = exerciseSummaries
+        };
+
+        return ServiceResult<LessonProgressDetailDto>.Ok(detailDto);
     }
 
-    public async Task<ServiceResult<AllStudentsProgressDto>> GetAllStudentsProgressAsync(Guid courseId)
+    public async Task<ServiceResult<LessonProgressDto>> UpdateLessonProgressAsync(
+        Guid lessonId, Guid studentId, UpdateLessonProgressRequest request)
     {
-        try
+        // Kiểm tra lesson có tồn tại không
+        var lesson = await _unitOfWork.LessonRepository.GetByIdAsync(lessonId);
+        if (lesson == null)
+            return ServiceResult<LessonProgressDto>.NotFound("Lesson not found");
+
+        // Validate status
+        if (!Enum.TryParse<LessonProgressStatus>(request.Status, true, out var newStatus))
+            return ServiceResult<LessonProgressDto>.Error("INVALID_STATUS", "Status must be one of: NotStarted, InProgress, Completed", 400);
+
+        // Lấy hoặc tạo lesson progress
+        var lessonProgress = await _unitOfWork.Repository<LessonProgress>()
+            .GetAsync(lp => lp.LessonId == lessonId && lp.StudentId == studentId);
+
+        if (lessonProgress == null)
         {
-            // Get course
-            var course = await _unitOfWork.Repository<Course>()
-                .GetByIdAsync(courseId);
-
-            if (course == null)
+            lessonProgress = new LessonProgress
             {
-                return ServiceResult<AllStudentsProgressDto>.NotFound("Course not found");
-            }
-
-            // Get all enrollments with student info
-            var enrollments = await _unitOfWork.Repository<Enrollment>()
-                .GetAllQueryable()
-                .Where(e => e.CourseId == courseId)
-                .Include(e => e.Student)
-                .OrderByDescending(e => e.EnrolledAt)
-                .ToListAsync();
-
-            // Get total lessons in course
-            var totalLessons = await _unitOfWork.Repository<Lesson>()
-                .GetAllQueryable()
-                .Where(l => l.Section.CourseId == courseId)
-                .CountAsync();
-
-            var studentProgressDtos = new List<StudentCourseProgressDto>();
-
-            foreach (var enrollment in enrollments)
-            {
-                // Get lesson progresses for this student
-                var lessonProgresses = await _unitOfWork.LessonProgressRepository
-                    .GetByStudentAndCourseAsync(enrollment.StudentId, courseId);
-
-                var completedLessons = lessonProgresses.Count(lp => lp.Status == LessonProgressStatus.Completed);
-                var progressPct = totalLessons > 0 ? (decimal)completedLessons / totalLessons * 100 : 0;
-
-                studentProgressDtos.Add(enrollment.ToStudentCourseProgressDto(Math.Round(progressPct, 1)));
-            }
-
-            var completedStudents = studentProgressDtos.Count(s => s.EnrollmentStatus == EnrollmentStatus.Completed);
-            var avgProgress = studentProgressDtos.Any() ? studentProgressDtos.Average(s => s.ProgressPct) : 0;
-
-            var result = new AllStudentsProgressDto
-            {
-                CourseId = courseId,
-                CourseName = course.Title,
-                TotalStudents = enrollments.Count(),
-                CompletedStudents = completedStudents,
-                AverageProgress = Math.Round(avgProgress, 1),
-                Students = studentProgressDtos
+                ProgressId = Guid.NewGuid(),
+                StudentId = studentId,
+                LessonId = lessonId,
+                Status = newStatus,
+                LastAccessedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
-            return ServiceResult<AllStudentsProgressDto>.Ok(result);
+            if (newStatus == LessonProgressStatus.Completed)
+            {
+                lessonProgress.CompletedAt = DateTime.UtcNow;
+            }
+
+            _unitOfWork.Repository<LessonProgress>().PrepareCreate(lessonProgress);
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogError(ex, "Error getting all students progress for course {CourseId}", courseId);
-            return ServiceResult<AllStudentsProgressDto>.Error("ERROR", "An error occurred while retrieving students progress", 500);
+            lessonProgress.Status = newStatus;
+            lessonProgress.LastAccessedAt = DateTime.UtcNow;
+            lessonProgress.UpdatedAt = DateTime.UtcNow;
+
+            if (newStatus == LessonProgressStatus.Completed && lessonProgress.CompletedAt == null)
+            {
+                lessonProgress.CompletedAt = DateTime.UtcNow;
+            }
+            else if (newStatus != LessonProgressStatus.Completed)
+            {
+                lessonProgress.CompletedAt = null;
+            }
+
+            _unitOfWork.Repository<LessonProgress>().PrepareUpdate(lessonProgress);
         }
+
+        await _unitOfWork.SaveChangesAsync();
+
+        var dto = lessonProgress.ToDto();
+        return ServiceResult<LessonProgressDto>.Ok(dto, "Lesson progress updated successfully");
     }
 }

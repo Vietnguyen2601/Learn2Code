@@ -5,7 +5,7 @@ namespace Learn2Code.Application.Interfaces;
 
 public interface IProgressService
 {
-    Task<ServiceResult<CourseProgressDto>> GetMyCourseProgressAsync(Guid studentId, Guid courseId);
-    Task<ServiceResult<LessonProgressDetailDto>> GetMyLessonProgressAsync(Guid studentId, Guid lessonId);
-    Task<ServiceResult<AllStudentsProgressDto>> GetAllStudentsProgressAsync(Guid courseId);
+    Task<ServiceResult<CourseProgressDto>> GetCourseProgressAsync(Guid courseId, Guid studentId);
+    Task<ServiceResult<LessonProgressDetailDto>> GetLessonProgressAsync(Guid lessonId, Guid studentId);
+    Task<ServiceResult<LessonProgressDto>> UpdateLessonProgressAsync(Guid lessonId, Guid studentId, UpdateLessonProgressRequest request);
 }

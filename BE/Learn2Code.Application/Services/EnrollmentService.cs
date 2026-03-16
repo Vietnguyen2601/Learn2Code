@@ -4,7 +4,6 @@ using Learn2Code.Application.Interfaces;
 using Learn2Code.Application.Mapper;
 using Learn2Code.Domain.Enums;
 using Learn2Code.Infrastructure.Persistence.UnitOfWork;
-using Microsoft.EntityFrameworkCore;
 
 namespace Learn2Code.Application.Services;
 
@@ -17,104 +16,51 @@ public class EnrollmentService : IEnrollmentService
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<ServiceResult<List<EnrollmentDto>>> GetMyEnrollmentsAsync(Guid studentId)
+    public async Task<ServiceResult<List<EnrollmentDetailDto>>> GetMyEnrollmentsAsync(Guid studentId)
     {
-        var enrollments = await _unitOfWork.EnrollmentRepository.GetByStudentIdAsync(studentId);
-        
-        var enrollmentDtos = enrollments.Select(e => e.ToEnrollmentDto()).ToList();
-        
-        return ServiceResult<List<EnrollmentDto>>.Ok(enrollmentDtos);
+        var enrollments = await _unitOfWork.EnrollmentRepository.GetEnrollmentsByStudentAsync(studentId);
+        var dtos = enrollments.Select(e => e.ToDetailDto()).ToList();
+        return ServiceResult<List<EnrollmentDetailDto>>.Ok(dtos);
     }
 
-    public async Task<ServiceResult<EnrollmentDto>> EnrollCourseAsync(Guid studentId, CreateEnrollmentRequest request)
+    public async Task<ServiceResult<EnrollmentDetailDto>> GetEnrollmentByIdAsync(Guid enrollmentId, Guid userId, bool isAdmin)
     {
-        // Check if already enrolled
-        var existingEnrollment = await _unitOfWork.EnrollmentRepository
-            .GetByStudentAndCourseAsync(studentId, request.CourseId);
-        
-        if (existingEnrollment != null)
-        {
-            return ServiceResult<EnrollmentDto>.Error(
-                "ALREADY_ENROLLED", 
-                "You are already enrolled in this course", 
-                400);
-        }
-
-        // Check if course exists
-        var course = await _unitOfWork.Repository<Domain.Entities.Course>()
-            .GetByIdAsync(request.CourseId);
-        
-        if (course == null)
-        {
-            return ServiceResult<EnrollmentDto>.NotFound("Course not found");
-        }
-
-        if (!course.IsActive)
-        {
-            return ServiceResult<EnrollmentDto>.Error(
-                "COURSE_INACTIVE", 
-                "This course is not active", 
-                400);
-        }
-
-        // Check if student has active subscription
-        var activeSubscription = await _unitOfWork.Repository<Domain.Entities.UserSubscription>()
-            .GetAsync(us => us.UserId == studentId && us.Status == SubscriptionStatus.Active);
-
-        Guid? subscriptionId = null;
-        if (activeSubscription != null)
-        {
-            subscriptionId = activeSubscription.SubscriptionId;
-        }
-
-        // Create enrollment
-        var enrollment = request.ToEnrollment(studentId, subscriptionId);
-        
-        _unitOfWork.EnrollmentRepository.PrepareCreate(enrollment);
-        await _unitOfWork.CommitTransactionAsync();
-
-        // Reload with course info
-        var createdEnrollment = await _unitOfWork.EnrollmentRepository
-            .GetByStudentAndCourseAsync(studentId, request.CourseId);
-
-        return ServiceResult<EnrollmentDto>.Created(
-            createdEnrollment!.ToEnrollmentDto(), 
-            "Successfully enrolled in course");
-    }
-
-    public async Task<ServiceResult<EnrollmentDetailDto>> GetMyEnrollmentDetailAsync(Guid studentId, Guid courseId)
-    {
-        var enrollment = await _unitOfWork.EnrollmentRepository
-            .GetDetailByStudentAndCourseAsync(studentId, courseId);
-        
+        var enrollment = await _unitOfWork.EnrollmentRepository.GetEnrollmentWithDetailsAsync(enrollmentId);
         if (enrollment == null)
-        {
             return ServiceResult<EnrollmentDetailDto>.NotFound("Enrollment not found");
-        }
 
-        // Get lesson progresses for this course
-        var lessonProgresses = await _unitOfWork.LessonProgressRepository
-            .GetByStudentAndCourseAsync(studentId, courseId);
+        if (!isAdmin && enrollment.StudentId != userId)
+            return ServiceResult<EnrollmentDetailDto>.Error("ACCESS_DENIED", "You don't have permission to view this enrollment", 403);
 
-        var sections = enrollment.Course.Sections.ToList();
-        
-        var enrollmentDetail = enrollment.ToEnrollmentDetailDto(sections, lessonProgresses);
-
-        return ServiceResult<EnrollmentDetailDto>.Ok(enrollmentDetail);
+        return ServiceResult<EnrollmentDetailDto>.Ok(enrollment.ToDetailDto());
     }
 
-    public async Task<ServiceResult<EnrollmentListDto>> GetAllEnrollmentsAsync()
+    public async Task<ServiceResult<EnrollmentDto>> CreateEnrollmentAsync(Guid studentId, CreateEnrollmentRequest request)
     {
-        var enrollments = await _unitOfWork.EnrollmentRepository.GetAllAsync();
-        
-        var enrollmentDtos = enrollments.Select(e => e.ToEnrollmentDto()).ToList();
-        
-        var result = new EnrollmentListDto
-        {
-            Enrollments = enrollmentDtos,
-            TotalCount = enrollmentDtos.Count
-        };
+        var course = await _unitOfWork.CourseRepository.GetByIdAsync(request.CourseId);
+        if (course == null || !course.IsActive)
+            return ServiceResult<EnrollmentDto>.NotFound("Course not found or inactive");
 
-        return ServiceResult<EnrollmentListDto>.Ok(result);
+        var existing = await _unitOfWork.EnrollmentRepository
+            .GetEnrollmentByStudentAndCourseAsync(studentId, request.CourseId);
+        if (existing != null)
+            return ServiceResult<EnrollmentDto>.Error("ALREADY_ENROLLED", "You are already enrolled in this course");
+
+        var subscription = await _unitOfWork.SubscriptionRepository.GetCurrentActiveAsync(studentId);
+        if (subscription == null || subscription.Status != SubscriptionStatus.Active)
+            return ServiceResult<EnrollmentDto>.Error("NO_ACTIVE_SUBSCRIPTION", "An active subscription is required to enroll in a course", 403);
+
+        var enrollment = request.ToEntity(studentId, subscription.SubscriptionId);
+        _unitOfWork.EnrollmentRepository.PrepareCreate(enrollment);
+        await _unitOfWork.SaveChangesAsync();
+
+        return ServiceResult<EnrollmentDto>.Created(enrollment.ToDto(), "Enrolled successfully");
+    }
+
+    public async Task<ServiceResult<List<EnrollmentDetailDto>>> GetAllEnrollmentsAsync()
+    {
+        var enrollments = await _unitOfWork.EnrollmentRepository.GetAllWithDetailsAsync();
+        var dtos = enrollments.Select(e => e.ToDetailDto()).ToList();
+        return ServiceResult<List<EnrollmentDetailDto>>.Ok(dtos);
     }
 }

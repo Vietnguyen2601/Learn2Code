@@ -5,6 +5,9 @@ namespace Learn2Code.Infrastructure.Repositories.IRepository;
 
 public interface IQuizRepository : IGenericRepository<Quiz>
 {
-    Task<Quiz?> GetWithOptionsAsync(Guid quizId);
-    Task<List<Quiz>> GetBySectionIdAsync(Guid sectionId);
+    Task<List<Quiz>> GetQuizzesByLessonIdAsync(Guid lessonId);
+    Task<List<Quiz>> GetQuizzesBySectionIdAsync(Guid sectionId);
+    Task<Quiz?> GetQuizWithOptionsAsync(Guid quizId);
+    Task<int> GetMaxOrderNumberInLessonAsync(Guid lessonId);
+    Task<bool> ExistsInLessonAsync(Guid lessonId, Guid quizId);
 }

@@ -5,8 +5,10 @@ namespace Learn2Code.Application.Interfaces;
 
 public interface ILessonService
 {
-    /// <summary>
-    /// Get lesson detail with access control checks
-    /// </summary>
-    Task<ServiceResult<LessonDetailDto>> GetLessonAsync(Guid lessonId, Guid studentId);
+    Task<ServiceResult<List<LessonDto>>> GetLessonsBySectionIdAsync(Guid sectionId);
+    Task<ServiceResult<LessonDetailDto>> GetLessonByIdAsync(Guid lessonId, Guid? userId);
+    Task<ServiceResult<LessonDto>> CreateLessonAsync(Guid sectionId, CreateLessonRequest request);
+    Task<ServiceResult<LessonDto>> UpdateLessonAsync(Guid lessonId, UpdateLessonRequest request);
+    Task<ServiceResult> DeleteLessonAsync(Guid lessonId);
+    Task<ServiceResult> ReorderLessonsAsync(Guid sectionId, ReorderLessonsRequest request);
 }

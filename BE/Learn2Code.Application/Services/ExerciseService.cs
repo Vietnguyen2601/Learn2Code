@@ -2,7 +2,7 @@ using Learn2Code.Application.Base;
 using Learn2Code.Application.DTOs;
 using Learn2Code.Application.Interfaces;
 using Learn2Code.Application.Mapper;
-using Learn2Code.Domain.Enums;
+using Learn2Code.Domain.Entities;
 using Learn2Code.Infrastructure.Persistence.UnitOfWork;
 
 namespace Learn2Code.Application.Services;
@@ -16,261 +16,191 @@ public class ExerciseService : IExerciseService
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<ServiceResult<RunCodeResponse>> RunCodeAsync(
-        Guid exerciseId, 
-        Guid studentId, 
-        RunCodeRequest request)
+    public async Task<ServiceResult<List<ExerciseDto>>> GetExercisesByLessonIdAsync(Guid lessonId)
     {
-        // Verify exercise exists
-        var exercise = await _unitOfWork.ExerciseRepository.GetByIdAsync(exerciseId);
-        
-        if (exercise == null)
-        {
-            return ServiceResult<RunCodeResponse>.NotFound("Exercise not found");
-        }
+        // Ki?m tra lesson c� t?n t?i kh�ng
+        var lesson = await _unitOfWork.LessonRepository.GetByIdAsync(lessonId);
+        if (lesson == null)
+            return ServiceResult<List<ExerciseDto>>.NotFound("Lesson not found");
 
-        // Verify exercise type is FreeCode
-        if (exercise.ExerciseType != ExerciseType.FreeCode)
-        {
-            return ServiceResult<RunCodeResponse>.Error(
-                "INVALID_EXERCISE_TYPE",
-                "This exercise type does not support run code. Use submit instead.",
-                400);
-        }
+        var exercises = await _unitOfWork.ExerciseRepository.GetExercisesByLessonIdAsync(lessonId);
+        var exerciseDtos = exercises.Select(e => e.ToDto()).ToList();
 
-        // TODO: Call code execution service (Mock for now)
-        var runResult = await ExecuteCodeAsync(request.Code, request.Language, request.Input);
-
-        return ServiceResult<RunCodeResponse>.Ok(runResult);
+        return ServiceResult<List<ExerciseDto>>.Ok(exerciseDtos);
     }
 
-    public async Task<ServiceResult<SubmitCodeResponse>> SubmitCodeAsync(
-        Guid exerciseId, 
-        Guid studentId, 
-        SubmitCodeRequest request)
+    public async Task<ServiceResult<ExerciseDetailDto>> GetExerciseByIdAsync(Guid exerciseId, Guid? userId)
     {
-        // Get exercise with test cases
-        var exercise = await _unitOfWork.ExerciseRepository.GetWithTestCasesAsync(exerciseId);
-        
+        var exercise = await _unitOfWork.ExerciseRepository.GetExerciseWithDetailsAsync(exerciseId);
         if (exercise == null)
-        {
-            return ServiceResult<SubmitCodeResponse>.NotFound("Exercise not found");
-        }
+            return ServiceResult<ExerciseDetailDto>.NotFound("Exercise not found");
 
-        // Verify exercise type is GradedCode
-        if (exercise.ExerciseType != ExerciseType.GradedCode)
-        {
-            return ServiceResult<SubmitCodeResponse>.Error(
-                "INVALID_EXERCISE_TYPE",
-                "This exercise type does not support code submission.",
-                400);
-        }
+        // Ki?m tra quy?n truy c?p
+        var canAccess = await _unitOfWork.ExerciseRepository.CanUserAccessExerciseAsync(exerciseId, userId);
+        if (!canAccess)
+            return ServiceResult<ExerciseDetailDto>.Error("ACCESS_DENIED", "You don't have permission to access this exercise", 403);
 
-        var testCases = exercise.TestCases.ToList();
-        
-        if (!testCases.Any())
-        {
-            return ServiceResult<SubmitCodeResponse>.Error(
-                "NO_TEST_CASES",
-                "No test cases found for this exercise.",
-                500);
-        }
-
-        // Run code against all test cases
-        var results = new List<TestCaseResultDto>();
-        var passedCount = 0;
-
-        foreach (var testCase in testCases)
-        {
-            // TODO: Call code execution service with test case input
-            var runResult = await ExecuteCodeAsync(
-                request.Code, 
-                request.Language, 
-                testCase.ExpectedOutput); // Mock: using expected as input
-
-            var isPassed = runResult.IsSuccess && 
-                           runResult.Output?.Trim() == testCase.ExpectedOutput.Trim();
-
-            if (isPassed) passedCount++;
-
-            results.Add(new TestCaseResultDto
-            {
-                TestCaseId = testCase.TestCaseId,
-                IsPassed = isPassed,
-                ExpectedOutput = testCase.IsHidden ? null : testCase.ExpectedOutput,
-                ActualOutput = testCase.IsHidden ? null : runResult.Output,
-                Error = runResult.Error,
-                RuntimeMs = runResult.RuntimeMs,
-                IsHidden = testCase.IsHidden
-            });
-        }
-
-        var allPassed = passedCount == testCases.Count;
-
-        var response = new SubmitCodeResponse
-        {
-            IsPassed = allPassed,
-            PassedCount = passedCount,
-            TotalCount = testCases.Count,
-            Results = results,
-            Message = allPassed 
-                ? "All test cases passed! Great job!" 
-                : $"Passed {passedCount}/{testCases.Count} test cases. Keep trying!"
-        };
-
-        // Auto-update progress if passed
-        if (allPassed)
-        {
-            var progressRequest = new UpdateProgressRequest
-            {
-                IsCompleted = true,
-                IsPassed = true,
-                LastCode = request.Code
-            };
-
-            await UpdateProgressAsync(exerciseId, studentId, progressRequest);
-        }
-
-        return ServiceResult<SubmitCodeResponse>.Ok(response);
+        return ServiceResult<ExerciseDetailDto>.Ok(exercise.ToDetailDto());
     }
 
-    public async Task<ServiceResult<ExerciseProgressDto>> UpdateProgressAsync(
-        Guid exerciseId, 
-        Guid studentId, 
-        UpdateProgressRequest request)
+    public async Task<ServiceResult<ExerciseDto>> CreateExerciseAsync(Guid lessonId, CreateExerciseRequest request)
+    {
+        // Ki?m tra lesson c� t?n t?i kh�ng
+        var lesson = await _unitOfWork.LessonRepository.GetByIdAsync(lessonId);
+        if (lesson == null)
+            return ServiceResult<ExerciseDto>.NotFound("Lesson not found");
+
+        // Validate ExerciseType
+        if (!Enum.TryParse<Domain.Enums.ExerciseType>(request.ExerciseType, true, out _))
+            return ServiceResult<ExerciseDto>.Error("INVALID_EXERCISE_TYPE", "Exercise type must be one of: Reading, FreeCode, GradedCode");
+
+        // L?y order number ti?p theo
+        var maxOrder = await _unitOfWork.ExerciseRepository.GetMaxOrderNumberInLessonAsync(lessonId);
+        var newOrderNumber = maxOrder + 1;
+
+        var exercise = request.ToEntity(lessonId, newOrderNumber);
+        _unitOfWork.ExerciseRepository.PrepareCreate(exercise);
+        await _unitOfWork.SaveChangesAsync();
+
+        return ServiceResult<ExerciseDto>.Created(exercise.ToDto(), "Exercise created successfully");
+    }
+
+    public async Task<ServiceResult<ExerciseDto>> UpdateExerciseAsync(Guid exerciseId, UpdateExerciseRequest request)
     {
         var exercise = await _unitOfWork.ExerciseRepository.GetByIdAsync(exerciseId);
-        
         if (exercise == null)
+            return ServiceResult<ExerciseDto>.NotFound("Exercise not found");
+
+        // Validate ExerciseType n?u c� update
+        if (!string.IsNullOrWhiteSpace(request.ExerciseType))
         {
+            if (!Enum.TryParse<Domain.Enums.ExerciseType>(request.ExerciseType, true, out _))
+                return ServiceResult<ExerciseDto>.Error("INVALID_EXERCISE_TYPE", "Exercise type must be one of: Reading, FreeCode, GradedCode");
+        }
+
+        exercise.UpdateExercise(request);
+        _unitOfWork.ExerciseRepository.PrepareUpdate(exercise);
+        await _unitOfWork.SaveChangesAsync();
+
+        return ServiceResult<ExerciseDto>.Ok(exercise.ToDto(), "Exercise updated successfully");
+    }
+
+    public async Task<ServiceResult> DeleteExerciseAsync(Guid exerciseId)
+    {
+        var exercise = await _unitOfWork.ExerciseRepository.GetByIdAsync(exerciseId);
+        if (exercise == null)
+            return ServiceResult.NotFound("Exercise not found");
+
+        _unitOfWork.ExerciseRepository.PrepareRemove(exercise);
+        await _unitOfWork.SaveChangesAsync();
+
+        return ServiceResult.Ok("Exercise deleted successfully");
+    }
+
+    // ── Progress / Run / Submit ──────────────────────────────────────────────
+
+    public async Task<ServiceResult<ExerciseProgressDto>> RunCodeAsync(Guid exerciseId, Guid studentId, RunCodeRequest request)
+    {
+        var exercise = await _unitOfWork.ExerciseRepository.GetByIdAsync(exerciseId);
+        if (exercise == null)
             return ServiceResult<ExerciseProgressDto>.NotFound("Exercise not found");
-        }
 
-        // Get or create exercise progress
-        var progress = await _unitOfWork.ExerciseProgressRepository
-            .GetByStudentAndExerciseAsync(studentId, exerciseId);
+        var canAccess = await _unitOfWork.ExerciseRepository.CanUserAccessExerciseAsync(exerciseId, studentId);
+        if (!canAccess)
+            return ServiceResult<ExerciseProgressDto>.Error("ACCESS_DENIED", "You don't have permission to access this exercise", 403);
+
+        var progress = await UpsertProgressAsync(studentId, exerciseId, p =>
+        {
+            p.LastCode = request.Code;
+        });
+
+        return ServiceResult<ExerciseProgressDto>.Ok(progress.ToProgressDto(), "Code saved successfully");
+    }
+
+    public async Task<ServiceResult<ExerciseProgressDto>> SubmitCodeAsync(Guid exerciseId, Guid studentId, SubmitCodeRequest request)
+    {
+        var exercise = await _unitOfWork.ExerciseRepository.GetByIdAsync(exerciseId);
+        if (exercise == null)
+            return ServiceResult<ExerciseProgressDto>.NotFound("Exercise not found");
+
+        var canAccess = await _unitOfWork.ExerciseRepository.CanUserAccessExerciseAsync(exerciseId, studentId);
+        if (!canAccess)
+            return ServiceResult<ExerciseProgressDto>.Error("ACCESS_DENIED", "You don't have permission to access this exercise", 403);
+
+        var now = DateTime.UtcNow;
+        var progress = await UpsertProgressAsync(studentId, exerciseId, p =>
+        {
+            p.LastCode = request.Code;
+            p.IsCompleted = true;
+            p.IsPassed = true;
+            p.CompletedAt ??= now;
+        });
+
+        return ServiceResult<ExerciseProgressDto>.Ok(progress.ToProgressDto(), "Submitted successfully");
+    }
+
+    public async Task<ServiceResult<ExerciseProgressDto>> UpdateExerciseProgressAsync(Guid exerciseId, Guid studentId, UpdateExerciseProgressRequest request)
+    {
+        var exercise = await _unitOfWork.ExerciseRepository.GetByIdAsync(exerciseId);
+        if (exercise == null)
+            return ServiceResult<ExerciseProgressDto>.NotFound("Exercise not found");
+
+        var canAccess = await _unitOfWork.ExerciseRepository.CanUserAccessExerciseAsync(exerciseId, studentId);
+        if (!canAccess)
+            return ServiceResult<ExerciseProgressDto>.Error("ACCESS_DENIED", "You don't have permission to access this exercise", 403);
+
+        var now = DateTime.UtcNow;
+        var progress = await UpsertProgressAsync(studentId, exerciseId, p =>
+        {
+            p.IsCompleted = request.IsCompleted;
+            if (request.IsCompleted)
+            {
+                p.IsPassed = true;
+                p.CompletedAt ??= now;
+            }
+        });
+
+        return ServiceResult<ExerciseProgressDto>.Ok(progress.ToProgressDto(), "Progress updated successfully");
+    }
+
+    public async Task<ServiceResult<ExerciseProgressDto>> GetExerciseProgressAsync(Guid exerciseId, Guid studentId)
+    {
+        var progress = await _unitOfWork.Repository<ExerciseProgress>()
+            .GetAsync(p => p.StudentId == studentId && p.ExerciseId == exerciseId);
 
         if (progress == null)
+            return ServiceResult<ExerciseProgressDto>.NotFound("No progress found for this exercise");
+
+        return ServiceResult<ExerciseProgressDto>.Ok(progress.ToProgressDto());
+    }
+
+    private async Task<ExerciseProgress> UpsertProgressAsync(Guid studentId, Guid exerciseId, Action<ExerciseProgress> applyChanges)
+    {
+        var existing = await _unitOfWork.Repository<ExerciseProgress>()
+            .GetAsync(p => p.StudentId == studentId && p.ExerciseId == exerciseId);
+
+        if (existing == null)
         {
-            progress = new Domain.Entities.ExerciseProgress
+            existing = new ExerciseProgress
             {
                 ExProgressId = Guid.NewGuid(),
                 StudentId = studentId,
                 ExerciseId = exerciseId,
-                IsCompleted = false,
-                IsPassed = false,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
-            
-            progress.UpdateFromRequest(request);
-            _unitOfWork.ExerciseProgressRepository.PrepareCreate(progress);
+            applyChanges(existing);
+            existing.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.Repository<ExerciseProgress>().PrepareCreate(existing);
         }
         else
         {
-            progress.UpdateFromRequest(request);
-            _unitOfWork.ExerciseProgressRepository.PrepareUpdate(progress);
+            applyChanges(existing);
+            existing.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.Repository<ExerciseProgress>().PrepareUpdate(existing);
         }
 
-        await _unitOfWork.CommitTransactionAsync();
-
-        // Check if all exercises in lesson are completed
-        var lessonCompleted = await CheckAndUpdateLessonProgressAsync(
-            studentId, 
-            exercise.LessonId);
-
-        var message = lessonCompleted 
-            ? "Exercise completed! You've finished this lesson!" 
-            : "Exercise progress saved!";
-
-        var result = progress.ToExerciseProgressDto(lessonCompleted, message);
-
-        return ServiceResult<ExerciseProgressDto>.Ok(result);
+        await _unitOfWork.SaveChangesAsync();
+        return existing;
     }
-
-    #region Private Helper Methods
-
-    /// <summary>
-    /// Mock code execution service
-    /// TODO: Replace with actual code execution service integration
-    /// </summary>
-    private async Task<RunCodeResponse> ExecuteCodeAsync(
-        string code, 
-        string language, 
-        string? input)
-    {
-        // Simulate async execution
-        await Task.Delay(100);
-
-        // Mock response
-        return new RunCodeResponse
-        {
-            Output = $"Mock output for {language} code",
-            RuntimeMs = new Random().Next(50, 200),
-            Error = null,
-            IsSuccess = true
-        };
-    }
-
-    /// <summary>
-    /// Check if all exercises in lesson are completed and update lesson progress
-    /// </summary>
-    private async Task<bool> CheckAndUpdateLessonProgressAsync(Guid studentId, Guid lessonId)
-    {
-        // Get all exercises in lesson
-        var exercises = await _unitOfWork.ExerciseRepository.GetByLessonIdAsync(lessonId);
-        
-        if (!exercises.Any())
-        {
-            return false;
-        }
-
-        // Get all exercise progresses for this lesson
-        var exerciseProgresses = await _unitOfWork.ExerciseProgressRepository
-            .GetByStudentAndLessonAsync(studentId, lessonId);
-
-        // Check if all exercises are completed
-        var allCompleted = exercises.All(e =>
-            exerciseProgresses.Any(ep => 
-                ep.ExerciseId == e.ExerciseId && 
-                ep.IsCompleted));
-
-        if (!allCompleted)
-        {
-            return false;
-        }
-
-        // Update lesson progress to completed
-        var lessonProgress = await _unitOfWork.LessonProgressRepository
-            .GetByStudentAndLessonAsync(studentId, lessonId);
-
-        if (lessonProgress == null)
-        {
-            lessonProgress = new Domain.Entities.LessonProgress
-            {
-                ProgressId = Guid.NewGuid(),
-                StudentId = studentId,
-                LessonId = lessonId,
-                Status = LessonProgressStatus.Completed,
-                CompletedAt = DateTime.UtcNow,
-                LastAccessedAt = DateTime.UtcNow,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-            _unitOfWork.LessonProgressRepository.PrepareCreate(lessonProgress);
-        }
-        else if (lessonProgress.Status != LessonProgressStatus.Completed)
-        {
-            lessonProgress.Status = LessonProgressStatus.Completed;
-            lessonProgress.CompletedAt = DateTime.UtcNow;
-            lessonProgress.UpdatedAt = DateTime.UtcNow;
-            _unitOfWork.LessonProgressRepository.PrepareUpdate(lessonProgress);
-        }
-
-        await _unitOfWork.CommitTransactionAsync();
-
-        return true;
-    }
-
-    #endregion
 }

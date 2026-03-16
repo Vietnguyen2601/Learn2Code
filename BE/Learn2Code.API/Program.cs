@@ -3,6 +3,8 @@ using Learn2Code.Application.Interfaces;
 using Learn2Code.Infrastructure.Data.Context;
 using Learn2Code.Infrastructure.Persistence.UnitOfWork;
 using Learn2Code.Application.Services;
+using Learn2Code.Infrastructure.Options;
+using Learn2Code.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -25,16 +27,48 @@ builder.Services.AddDbContext<Learn2CodeDbContext>(options =>
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddMemoryCache();
 
+// PayOS Configuration (IOptions pattern)
+builder.Services.Configure<PayOsOptions>(options =>
+{
+    options.ClientId = builder.Configuration["PAYOS_CLIENT_ID"] 
+        ?? builder.Configuration["PayOS:ClientId"] 
+        ?? throw new InvalidOperationException("PayOS ClientId not configured");
+    
+    options.ApiKey = builder.Configuration["PAYOS_API_KEY"] 
+        ?? builder.Configuration["PayOS:ApiKey"] 
+        ?? throw new InvalidOperationException("PayOS ApiKey not configured");
+    
+    options.ChecksumKey = builder.Configuration["PAYOS_CHECKSUM_KEY"] 
+        ?? builder.Configuration["PayOS:ChecksumKey"] 
+        ?? throw new InvalidOperationException("PayOS ChecksumKey not configured");
+});
+
+// PayOS HttpClient (timeout 30s)
+builder.Services.AddHttpClient<IPayOsService, PayOsService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
 // Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
-builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
+builder.Services.AddScoped<ICourseService, CourseService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<ISectionService, SectionService>();
 builder.Services.AddScoped<ILessonService, LessonService>();
 builder.Services.AddScoped<IExerciseService, ExerciseService>();
+builder.Services.AddScoped<ITestCaseService, TestCaseService>();
 builder.Services.AddScoped<IQuizService, QuizService>();
+builder.Services.AddScoped<ISectionQuizService, SectionQuizService>();
 builder.Services.AddScoped<IProgressService, ProgressService>();
+builder.Services.AddScoped<ISubscriptionPackageService, SubscriptionPackageService>();
+builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
+builder.Services.AddScoped<ICertificationService, CertificationService>();
+
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -102,6 +136,13 @@ var app = builder.Build();
 
 // Migrate + seed (ResetSchemaIfNeededAsync inside SeedAsync handles existing tables)
 await Learn2CodeDbContextSeeder.SeedAsync(app.Services);
+
+// Enable request body buffering for webhook signature verification
+app.Use(async (context, next) =>
+{
+    context.Request.EnableBuffering();
+    await next();
+});
 
 // Configure HTTP request pipeline
 if (app.Environment.IsDevelopment())

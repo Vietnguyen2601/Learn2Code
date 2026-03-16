@@ -37,12 +37,30 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
-    private IEnrollmentRepository? _enrollmentRepository;
-    public IEnrollmentRepository EnrollmentRepository
+    private ICourseRepository? _courseRepository;
+    public ICourseRepository CourseRepository
     {
         get
         {
-            return _enrollmentRepository ??= new EnrollmentRepository(_context);
+            return _courseRepository ??= new CourseRepository(_context);
+        }
+    }
+
+    private ICourseCategoryRepository? _courseCategoryRepository;
+    public ICourseCategoryRepository CourseCategoryRepository
+    {
+        get
+        {
+            return _courseCategoryRepository ??= new CourseCategoryRepository(_context);
+        }
+    }
+
+    private ISectionRepository? _sectionRepository;
+    public ISectionRepository SectionRepository
+    {
+        get
+        {
+            return _sectionRepository ??= new SectionRepository(_context);
         }
     }
 
@@ -64,21 +82,12 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
-    private ILessonProgressRepository? _lessonProgressRepository;
-    public ILessonProgressRepository LessonProgressRepository
+    private ITestCaseRepository? _testCaseRepository;
+    public ITestCaseRepository TestCaseRepository
     {
         get
         {
-            return _lessonProgressRepository ??= new LessonProgressRepository(_context);
-        }
-    }
-
-    private IExerciseProgressRepository? _exerciseProgressRepository;
-    public IExerciseProgressRepository ExerciseProgressRepository
-    {
-        get
-        {
-            return _exerciseProgressRepository ??= new ExerciseProgressRepository(_context);
+            return _testCaseRepository ??= new TestCaseRepository(_context);
         }
     }
 
@@ -91,12 +100,56 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
-    private ISectionQuizAttemptRepository? _sectionQuizAttemptRepository;
-    public ISectionQuizAttemptRepository SectionQuizAttemptRepository
+    private IQuizOptionRepository? _quizOptionRepository;
+    public IQuizOptionRepository QuizOptionRepository
     {
         get
         {
-            return _sectionQuizAttemptRepository ??= new SectionQuizAttemptRepository(_context);
+            return _quizOptionRepository ??= new QuizOptionRepository(_context);
+        }
+    }
+    private ISubscriptionPackageRepository? _subscriptionPackageRepository;
+    public ISubscriptionPackageRepository SubscriptionPackageRepository
+    {
+        get
+        {
+            return _subscriptionPackageRepository ??= new SubscriptionPackageRepository(_context);
+        }
+    }
+
+    private ISubscriptionRepository? _subscriptionRepository;
+    public ISubscriptionRepository SubscriptionRepository
+    {
+        get
+        {
+            return _subscriptionRepository ??= new SubscriptionRepository(_context);
+        }
+    }
+
+    private IPaymentRepository? _paymentRepository;
+    public IPaymentRepository PaymentRepository
+    {
+        get
+        {
+            return _paymentRepository ??= new PaymentRepository(_context);
+        }
+    }
+
+    private IEnrollmentRepository? _enrollmentRepository;
+    public IEnrollmentRepository EnrollmentRepository
+    {
+        get
+        {
+            return _enrollmentRepository ??= new EnrollmentRepository(_context);
+        }
+    }
+
+    private ICertificationRepository? _certificationRepository;
+    public ICertificationRepository CertificationRepository
+    {
+        get
+        {
+            return _certificationRepository ??= new CertificationRepository(_context);
         }
     }
 

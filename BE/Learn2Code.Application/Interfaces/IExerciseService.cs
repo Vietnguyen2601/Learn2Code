@@ -5,18 +5,13 @@ namespace Learn2Code.Application.Interfaces;
 
 public interface IExerciseService
 {
-    /// <summary>
-    /// Run code for FreeCode exercise (no grading)
-    /// </summary>
-    Task<ServiceResult<RunCodeResponse>> RunCodeAsync(Guid exerciseId, Guid studentId, RunCodeRequest request);
-
-    /// <summary>
-    /// Submit code for GradedCode exercise (with test cases grading)
-    /// </summary>
-    Task<ServiceResult<SubmitCodeResponse>> SubmitCodeAsync(Guid exerciseId, Guid studentId, SubmitCodeRequest request);
-
-    /// <summary>
-    /// Update exercise progress (auto-save last_code, mark completed)
-    /// </summary>
-    Task<ServiceResult<ExerciseProgressDto>> UpdateProgressAsync(Guid exerciseId, Guid studentId, UpdateProgressRequest request);
+    Task<ServiceResult<List<ExerciseDto>>> GetExercisesByLessonIdAsync(Guid lessonId);
+    Task<ServiceResult<ExerciseDetailDto>> GetExerciseByIdAsync(Guid exerciseId, Guid? userId);
+    Task<ServiceResult<ExerciseDto>> CreateExerciseAsync(Guid lessonId, CreateExerciseRequest request);
+    Task<ServiceResult<ExerciseDto>> UpdateExerciseAsync(Guid exerciseId, UpdateExerciseRequest request);
+    Task<ServiceResult> DeleteExerciseAsync(Guid exerciseId);
+    Task<ServiceResult<ExerciseProgressDto>> RunCodeAsync(Guid exerciseId, Guid studentId, RunCodeRequest request);
+    Task<ServiceResult<ExerciseProgressDto>> SubmitCodeAsync(Guid exerciseId, Guid studentId, SubmitCodeRequest request);
+    Task<ServiceResult<ExerciseProgressDto>> UpdateExerciseProgressAsync(Guid exerciseId, Guid studentId, UpdateExerciseProgressRequest request);
+    Task<ServiceResult<ExerciseProgressDto>> GetExerciseProgressAsync(Guid exerciseId, Guid studentId);
 }

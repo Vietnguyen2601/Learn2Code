@@ -5,6 +5,9 @@ namespace Learn2Code.Infrastructure.Repositories.IRepository;
 
 public interface IExerciseRepository : IGenericRepository<Exercise>
 {
-    Task<Exercise?> GetWithTestCasesAsync(Guid exerciseId);
-    Task<List<Exercise>> GetByLessonIdAsync(Guid lessonId);
+    Task<List<Exercise>> GetExercisesByLessonIdAsync(Guid lessonId);
+    Task<Exercise?> GetExerciseWithDetailsAsync(Guid exerciseId);
+    Task<bool> CanUserAccessExerciseAsync(Guid exerciseId, Guid? userId);
+    Task<int> GetMaxOrderNumberInLessonAsync(Guid lessonId);
+    Task<bool> ExistsInLessonAsync(Guid lessonId, Guid exerciseId);
 }

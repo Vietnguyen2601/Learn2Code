@@ -5,23 +5,11 @@ namespace Learn2Code.Application.Interfaces;
 
 public interface IQuizService
 {
-    /// <summary>
-    /// Answer a single quiz in lesson
-    /// </summary>
-    Task<ServiceResult<AnswerQuizResponse>> AnswerQuizAsync(Guid quizId, Guid studentId, AnswerQuizRequest request);
-
-    /// <summary>
-    /// Get section quiz with all questions (check if unlocked)
-    /// </summary>
-    Task<ServiceResult<SectionQuizDto>> GetSectionQuizAsync(Guid sectionId, Guid studentId);
-
-    /// <summary>
-    /// Submit section quiz attempt
-    /// </summary>
-    Task<ServiceResult<SubmitSectionQuizResponse>> SubmitSectionQuizAsync(Guid sectionId, Guid studentId, SubmitSectionQuizRequest request);
-
-    /// <summary>
-    /// Get student's section quiz attempt history
-    /// </summary>
-    Task<ServiceResult<SectionQuizAttemptListDto>> GetMyAttemptsAsync(Guid sectionId, Guid studentId);
+    Task<ServiceResult<List<QuizDto>>> GetQuizzesByLessonIdAsync(Guid lessonId);
+    Task<ServiceResult<QuizDto>> CreateQuizAsync(Guid lessonId, CreateQuizRequest request);
+    Task<ServiceResult<QuizDto>> UpdateQuizAsync(Guid quizId, UpdateQuizRequest request);
+    Task<ServiceResult> DeleteQuizAsync(Guid quizId);
+    Task<ServiceResult<QuizOptionDto>> UpdateQuizOptionAsync(Guid quizId, Guid optionId, UpdateSingleQuizOptionRequest request);
+    Task<ServiceResult> DeleteQuizOptionAsync(Guid quizId, Guid optionId);
+    Task<ServiceResult<AnswerQuizResultDto>> AnswerQuizAsync(Guid quizId, Guid studentId, AnswerQuizRequest request);
 }

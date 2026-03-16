@@ -12,21 +12,48 @@ public class QuizRepository : GenericRepository<Quiz>, IQuizRepository
     {
     }
 
-    public async Task<Quiz?> GetWithOptionsAsync(Guid quizId)
+    public async Task<List<Quiz>> GetQuizzesByLessonIdAsync(Guid lessonId)
     {
         return await _context.Set<Quiz>()
             .Include(q => q.Options)
-            .FirstOrDefaultAsync(q => q.QuizId == quizId);
+            .Where(q => q.LessonId == lessonId)
+            .OrderBy(q => q.OrderNumber)
+            .ToListAsync();
     }
 
-    public async Task<List<Quiz>> GetBySectionIdAsync(Guid sectionId)
+    public async Task<List<Quiz>> GetQuizzesBySectionIdAsync(Guid sectionId)
     {
         return await _context.Set<Quiz>()
             .Include(q => q.Options)
             .Include(q => q.Lesson)
             .Where(q => q.Lesson.SectionId == sectionId)
             .OrderBy(q => q.Lesson.OrderNumber)
-            .ThenBy(q => q.OrderNumber)
+                .ThenBy(q => q.OrderNumber)
             .ToListAsync();
+    }
+
+    public async Task<Quiz?> GetQuizWithOptionsAsync(Guid quizId)
+    {
+        return await _context.Set<Quiz>()
+            .Include(q => q.Options)
+            .Include(q => q.Lesson)
+                .ThenInclude(l => l.Section)
+                .ThenInclude(s => s.Course)
+            .FirstOrDefaultAsync(q => q.QuizId == quizId);
+    }
+
+    public async Task<int> GetMaxOrderNumberInLessonAsync(Guid lessonId)
+    {
+        var maxOrder = await _context.Set<Quiz>()
+            .Where(q => q.LessonId == lessonId)
+            .MaxAsync(q => (int?)q.OrderNumber);
+
+        return maxOrder ?? 0;
+    }
+
+    public async Task<bool> ExistsInLessonAsync(Guid lessonId, Guid quizId)
+    {
+        return await _context.Set<Quiz>()
+            .AnyAsync(q => q.LessonId == lessonId && q.QuizId == quizId);
     }
 }

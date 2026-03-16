@@ -1,3 +1,5 @@
+using Learn2Code.Application.Base;
+using Learn2Code.Application.DTOs;
 using Learn2Code.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,47 +19,50 @@ public class ProgressController : ControllerBase
     }
 
     /// <summary>
-    /// Get my course progress overview (all sections, lessons, quizzes)
+    /// Get overall course progress for current student (Student only)
     /// </summary>
     [HttpGet("courses/{courseId}/progress/me")]
     [Authorize(Roles = "Student")]
+    [ProducesResponseType(typeof(ServiceResult<CourseProgressDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ServiceResult<CourseProgressDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ServiceResult<CourseProgressDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetMyCourseProgress(Guid courseId)
     {
-        var studentId = GetCurrentUserId();
-        var result = await _progressService.GetMyCourseProgressAsync(studentId, courseId);
-        return result.Success ? Ok(result) : BadRequest(result);
+        var studentId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var result = await _progressService.GetCourseProgressAsync(courseId, studentId);
+        return result.Success ? Ok(result) : StatusCode(result.Status, result);
     }
 
     /// <summary>
-    /// Get my lesson progress detail (exercises and quiz status)
+    /// Get detailed lesson progress with exercises (Student only)
     /// </summary>
     [HttpGet("lessons/{lessonId}/progress/me")]
     [Authorize(Roles = "Student")]
+    [ProducesResponseType(typeof(ServiceResult<LessonProgressDetailDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ServiceResult<LessonProgressDetailDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ServiceResult<LessonProgressDetailDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetMyLessonProgress(Guid lessonId)
     {
-        var studentId = GetCurrentUserId();
-        var result = await _progressService.GetMyLessonProgressAsync(studentId, lessonId);
-        return result.Success ? Ok(result) : BadRequest(result);
+        var studentId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var result = await _progressService.GetLessonProgressAsync(lessonId, studentId);
+        return result.Success ? Ok(result) : StatusCode(result.Status, result);
     }
 
     /// <summary>
-    /// Get all students' progress in a course (Admin only)
+    /// Update lesson progress status (Student only)
     /// </summary>
-    [HttpGet("courses/{courseId}/progress")]
-    [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> GetAllStudentsProgress(Guid courseId)
+    [HttpPatch("lessons/{lessonId}/progress/me")]
+    [Authorize(Roles = "Student")]
+    [ProducesResponseType(typeof(ServiceResult<LessonProgressDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ServiceResult<LessonProgressDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ServiceResult<LessonProgressDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateMyLessonProgress(Guid lessonId, [FromBody] UpdateLessonProgressRequest request)
     {
-        var result = await _progressService.GetAllStudentsProgressAsync(courseId);
-        return result.Success ? Ok(result) : BadRequest(result);
+        var studentId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var result = await _progressService.UpdateLessonProgressAsync(lessonId, studentId, request);
+        return result.Success ? Ok(result) : StatusCode(result.Status, result);
     }
-
-    #region Helper Methods
-
-    private Guid GetCurrentUserId()
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        return Guid.Parse(userIdClaim ?? throw new UnauthorizedAccessException("User ID not found"));
-    }
-
-    #endregion
 }

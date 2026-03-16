@@ -2,7 +2,6 @@ using Learn2Code.Application.Base;
 using Learn2Code.Application.DTOs;
 using Learn2Code.Application.Interfaces;
 using Learn2Code.Application.Mapper;
-using Learn2Code.Domain.Enums;
 using Learn2Code.Infrastructure.Persistence.UnitOfWork;
 
 namespace Learn2Code.Application.Services;
@@ -16,151 +15,131 @@ public class LessonService : ILessonService
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<ServiceResult<LessonDetailDto>> GetLessonAsync(Guid lessonId, Guid studentId)
+    public async Task<ServiceResult<List<LessonDto>>> GetLessonsBySectionIdAsync(Guid sectionId)
     {
-        // Get lesson with exercises
-        var lesson = await _unitOfWork.LessonRepository.GetWithExercisesAsync(lessonId);
-        
-        if (lesson == null)
-        {
-            return ServiceResult<LessonDetailDto>.NotFound("Lesson not found");
-        }
-
-        // Get section to find course
-        var section = await _unitOfWork.Repository<Domain.Entities.Section>()
-            .GetByIdAsync(lesson.SectionId);
-        
+        // Ki?m tra section có t?n t?i không
+        var section = await _unitOfWork.SectionRepository.GetByIdAsync(sectionId);
         if (section == null)
+            return ServiceResult<List<LessonDto>>.NotFound("Section not found");
+
+        var lessons = await _unitOfWork.LessonRepository.GetLessonsBySectionIdAsync(sectionId);
+        var lessonDtos = lessons.Select(l => l.ToDto()).ToList();
+
+        return ServiceResult<List<LessonDto>>.Ok(lessonDtos);
+    }
+
+    public async Task<ServiceResult<LessonDetailDto>> GetLessonByIdAsync(Guid lessonId, Guid? userId)
+    {
+        var lesson = await _unitOfWork.LessonRepository.GetLessonWithDetailsAsync(lessonId);
+        if (lesson == null)
+            return ServiceResult<LessonDetailDto>.NotFound("Lesson not found");
+
+        // Ki?m tra quy?n truy c?p
+        var canAccess = await _unitOfWork.LessonRepository.CanUserAccessLessonAsync(lessonId, userId);
+        if (!canAccess)
+            return ServiceResult<LessonDetailDto>.Error("ACCESS_DENIED", "You don't have permission to access this lesson", 403);
+
+        return ServiceResult<LessonDetailDto>.Ok(lesson.ToDetailDto());
+    }
+
+    public async Task<ServiceResult<LessonDto>> CreateLessonAsync(Guid sectionId, CreateLessonRequest request)
+    {
+        // Ki?m tra section có t?n t?i không
+        var section = await _unitOfWork.SectionRepository.GetByIdAsync(sectionId);
+        if (section == null)
+            return ServiceResult<LessonDto>.NotFound("Section not found");
+
+        // L?y order number ti?p theo
+        var maxOrder = await _unitOfWork.LessonRepository.GetMaxOrderNumberInSectionAsync(sectionId);
+        var newOrderNumber = maxOrder + 1;
+
+        var lesson = request.ToEntity(sectionId, newOrderNumber);
+        _unitOfWork.LessonRepository.PrepareCreate(lesson);
+        await _unitOfWork.SaveChangesAsync();
+
+        return ServiceResult<LessonDto>.Created(lesson.ToDto(), "Lesson created successfully");
+    }
+
+    public async Task<ServiceResult<LessonDto>> UpdateLessonAsync(Guid lessonId, UpdateLessonRequest request)
+    {
+        var lesson = await _unitOfWork.LessonRepository.GetByIdAsync(lessonId);
+        if (lesson == null)
+            return ServiceResult<LessonDto>.NotFound("Lesson not found");
+
+        lesson.UpdateLesson(request);
+        _unitOfWork.LessonRepository.PrepareUpdate(lesson);
+        await _unitOfWork.SaveChangesAsync();
+
+        return ServiceResult<LessonDto>.Ok(lesson.ToDto(), "Lesson updated successfully");
+    }
+
+    public async Task<ServiceResult> DeleteLessonAsync(Guid lessonId)
+    {
+        var lesson = await _unitOfWork.LessonRepository.GetByIdAsync(lessonId);
+        if (lesson == null)
+            return ServiceResult.NotFound("Lesson not found");
+
+        _unitOfWork.LessonRepository.PrepareRemove(lesson);
+        await _unitOfWork.SaveChangesAsync();
+
+        return ServiceResult.Ok("Lesson deleted successfully");
+    }
+
+    public async Task<ServiceResult> ReorderLessonsAsync(Guid sectionId, ReorderLessonsRequest request)
+    {
+        // Ki?m tra section có t?n t?i không
+        var section = await _unitOfWork.SectionRepository.GetByIdAsync(sectionId);
+        if (section == null)
+            return ServiceResult.NotFound("Section not found");
+
+        // Ki?m tra t?t c? lessons có thu?c section này không
+        foreach (var lessonOrder in request.LessonOrders)
         {
-            return ServiceResult<LessonDetailDto>.NotFound("Section not found");
+            var exists = await _unitOfWork.LessonRepository.ExistsInSectionAsync(sectionId, lessonOrder.LessonId);
+            if (!exists)
+                return ServiceResult.Error("INVALID_LESSON", $"Lesson {lessonOrder.LessonId} does not belong to this section");
         }
 
-        var courseId = section.CourseId;
-        bool isAccessible = false;
-        string? accessMessage = null;
-
-        // Check 1: Is this a free preview lesson?
-        if (lesson.IsFreePreview)
+        try
         {
-            isAccessible = true;
-        }
-        else
-        {
-            // Check 2: Is student enrolled?
-            var enrollment = await _unitOfWork.EnrollmentRepository
-                .GetByStudentAndCourseAsync(studentId, courseId);
+            await _unitOfWork.BeginTransactionAsync();
 
-            if (enrollment == null)
+            // B??C 1: Set t?t c? lessons sang order_number âm t?m th?i (tránh unique constraint conflict)
+            int tempOrderOffset = -1000;
+            foreach (var lessonOrder in request.LessonOrders)
             {
-                accessMessage = "You must enroll in this course to access this lesson";
-            }
-            else
-            {
-                // Check 3: Does student have active subscription?
-                var activeSubscription = await _unitOfWork.Repository<Domain.Entities.UserSubscription>()
-                    .GetAsync(us => us.UserId == studentId && us.Status == SubscriptionStatus.Active);
-
-                if (activeSubscription == null)
+                var lesson = await _unitOfWork.LessonRepository.GetByIdAsync(lessonOrder.LessonId);
+                if (lesson != null)
                 {
-                    accessMessage = "You need an active subscription to access this lesson";
-                }
-                else
-                {
-                    // Check 4: Is lesson locked? (Check previous lessons)
-                    var allLessonsInSection = await _unitOfWork.LessonRepository
-                        .GetBySectionIdAsync(lesson.SectionId);
-                    
-                    var previousLessons = allLessonsInSection
-                        .Where(l => l.OrderNumber < lesson.OrderNumber)
-                        .OrderBy(l => l.OrderNumber)
-                        .ToList();
-
-                    if (previousLessons.Any())
-                    {
-                        // Check if all previous lessons are completed
-                        var lessonProgresses = await _unitOfWork.LessonProgressRepository
-                            .GetByStudentAndCourseAsync(studentId, courseId);
-
-                        var allPreviousCompleted = previousLessons.All(pl =>
-                            lessonProgresses.Any(lp => 
-                                lp.LessonId == pl.LessonId && 
-                                lp.Status == LessonProgressStatus.Completed));
-
-                        if (!allPreviousCompleted)
-                        {
-                            accessMessage = "You must complete previous lessons first";
-                        }
-                        else
-                        {
-                            isAccessible = true;
-                        }
-                    }
-                    else
-                    {
-                        // First lesson in section, always accessible
-                        isAccessible = true;
-                    }
+                    lesson.OrderNumber = tempOrderOffset;
+                    lesson.UpdatedAt = DateTime.UtcNow;
+                    _unitOfWork.LessonRepository.PrepareUpdate(lesson);
+                    tempOrderOffset--;
                 }
             }
-        }
+            await _unitOfWork.SaveChangesAsync();
 
-        // Get exercise progresses
-        var exerciseProgresses = await _unitOfWork.ExerciseProgressRepository
-            .GetByStudentAndLessonAsync(studentId, lessonId);
-
-        // Get lesson progress
-        var lessonProgress = await _unitOfWork.LessonProgressRepository
-            .GetByStudentAndLessonAsync(studentId, lessonId);
-
-        // Update last accessed time if accessible
-        if (isAccessible)
-        {
-            if (lessonProgress == null)
+            // B??C 2: C?p nh?t order_number th?t
+            foreach (var lessonOrder in request.LessonOrders)
             {
-                lessonProgress = new Domain.Entities.LessonProgress
+                var lesson = await _unitOfWork.LessonRepository.GetByIdAsync(lessonOrder.LessonId);
+                if (lesson != null)
                 {
-                    ProgressId = Guid.NewGuid(),
-                    StudentId = studentId,
-                    LessonId = lessonId,
-                    Status = LessonProgressStatus.InProgress,
-                    LastAccessedAt = DateTime.UtcNow,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-                _unitOfWork.LessonProgressRepository.PrepareCreate(lessonProgress);
-            }
-            else
-            {
-                lessonProgress.LastAccessedAt = DateTime.UtcNow;
-                lessonProgress.UpdatedAt = DateTime.UtcNow;
-                if (lessonProgress.Status == LessonProgressStatus.NotStarted)
-                {
-                    lessonProgress.Status = LessonProgressStatus.InProgress;
+                    lesson.OrderNumber = lessonOrder.OrderNumber;
+                    lesson.UpdatedAt = DateTime.UtcNow;
+                    _unitOfWork.LessonRepository.PrepareUpdate(lesson);
                 }
-                _unitOfWork.LessonProgressRepository.PrepareUpdate(lessonProgress);
             }
-
-            // Update ActivatedAt on first lesson access (when student starts learning for the first time)
-            var enrollment = await _unitOfWork.EnrollmentRepository
-                .GetByStudentAndCourseAsync(studentId, courseId);
-            
-            if (enrollment != null && enrollment.ActivatedAt == null)
-            {
-                enrollment.ActivatedAt = DateTime.UtcNow;
-                _unitOfWork.EnrollmentRepository.PrepareUpdate(enrollment);
-            }
+            await _unitOfWork.SaveChangesAsync();
 
             await _unitOfWork.CommitTransactionAsync();
+
+            return ServiceResult.Ok("Lessons reordered successfully");
         }
-
-        var exercises = lesson.Exercises.ToList();
-        var lessonDetailDto = lesson.ToLessonDetailDto(
-            isAccessible, 
-            accessMessage, 
-            exercises, 
-            exerciseProgresses, 
-            lessonProgress);
-
-        return ServiceResult<LessonDetailDto>.Ok(lessonDetailDto);
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            return ServiceResult.Error("REORDER_FAILED", $"Failed to reorder lessons: {ex.Message}", 500);
+        }
     }
 }

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using Learn2Code.Domain.Enums;
 
 namespace Learn2Code.Application.DTOs;
 
@@ -23,109 +24,127 @@ public class ExerciseDto
     [JsonPropertyName("language")]
     public string? Language { get; set; }
 
+    [JsonPropertyName("created_at")]
+    public DateTime CreatedAt { get; set; }
+
+    [JsonPropertyName("updated_at")]
+    public DateTime UpdatedAt { get; set; }
+}
+
+public class ExerciseDetailDto : ExerciseDto
+{
+    [JsonPropertyName("starter_code")]
+    public string? StarterCode { get; set; }
+
+    [JsonPropertyName("solution_code")]
+    public string? SolutionCode { get; set; }
+
     [JsonPropertyName("instruction")]
     public string? Instruction { get; set; }
 
-    [JsonPropertyName("created_at")]
-    public DateTime CreatedAt { get; set; }
+    [JsonPropertyName("hint")]
+    public string? Hint { get; set; }
+
+    [JsonPropertyName("lesson_title")]
+    public string LessonTitle { get; set; } = string.Empty;
+
+    [JsonPropertyName("section_title")]
+    public string SectionTitle { get; set; } = string.Empty;
+
+    [JsonPropertyName("course_title")]
+    public string CourseTitle { get; set; } = string.Empty;
+
+    [JsonPropertyName("test_case_count")]
+    public int TestCaseCount { get; set; }
+
+    [JsonPropertyName("media_count")]
+    public int MediaCount { get; set; }
+
+    [JsonPropertyName("medias")]
+    public List<ExerciseMediaDto>? Medias { get; set; }
 }
 
-public class RunCodeRequest
+public class ExerciseMediaDto
+{
+    [JsonPropertyName("media_id")]
+    public Guid MediaId { get; set; }
+
+    [JsonPropertyName("media_type")]
+    public string MediaType { get; set; } = string.Empty;
+
+    [JsonPropertyName("url")]
+    public string Url { get; set; } = string.Empty;
+
+    [JsonPropertyName("caption")]
+    public string? Caption { get; set; }
+
+    [JsonPropertyName("order_number")]
+    public int OrderNumber { get; set; }
+}
+
+public class CreateExerciseRequest
 {
     [Required]
-    [JsonPropertyName("code")]
-    public string Code { get; set; } = string.Empty;
+    [JsonPropertyName("exercise_type")]
+    [RegularExpression("^(Reading|FreeCode|GradedCode)$", ErrorMessage = "Exercise type must be one of: Reading, FreeCode, GradedCode")]
+    public string ExerciseType { get; set; } = string.Empty;
 
     [Required]
+    [JsonPropertyName("narrative")]
+    public string Narrative { get; set; } = string.Empty;
+
     [JsonPropertyName("language")]
-    public string Language { get; set; } = string.Empty;
+    public string? Language { get; set; }
 
-    [JsonPropertyName("input")]
-    public string? Input { get; set; }
+    [JsonPropertyName("starter_code")]
+    public string? StarterCode { get; set; }
+
+    [JsonPropertyName("solution_code")]
+    public string? SolutionCode { get; set; }
+
+    [JsonPropertyName("instruction")]
+    public string? Instruction { get; set; }
+
+    [JsonPropertyName("hint")]
+    public string? Hint { get; set; }
 }
 
-public class RunCodeResponse
+public class UpdateExerciseRequest
 {
-    [JsonPropertyName("output")]
-    public string? Output { get; set; }
+    [JsonPropertyName("exercise_type")]
+    [RegularExpression("^(Reading|FreeCode|GradedCode)$", ErrorMessage = "Exercise type must be one of: Reading, FreeCode, GradedCode")]
+    public string? ExerciseType { get; set; }
 
-    [JsonPropertyName("runtime_ms")]
-    public int RuntimeMs { get; set; }
+    [JsonPropertyName("narrative")]
+    public string? Narrative { get; set; }
 
-    [JsonPropertyName("error")]
-    public string? Error { get; set; }
-
-    [JsonPropertyName("is_success")]
-    public bool IsSuccess { get; set; }
-}
-
-public class SubmitCodeRequest
-{
-    [Required]
-    [JsonPropertyName("code")]
-    public string Code { get; set; } = string.Empty;
-
-    [Required]
     [JsonPropertyName("language")]
-    public string Language { get; set; } = string.Empty;
-}
+    public string? Language { get; set; }
 
-public class SubmitCodeResponse
-{
-    [JsonPropertyName("is_passed")]
-    public bool IsPassed { get; set; }
+    [JsonPropertyName("starter_code")]
+    public string? StarterCode { get; set; }
 
-    [JsonPropertyName("passed_count")]
-    public int PassedCount { get; set; }
+    [JsonPropertyName("solution_code")]
+    public string? SolutionCode { get; set; }
 
-    [JsonPropertyName("total_count")]
-    public int TotalCount { get; set; }
+    [JsonPropertyName("instruction")]
+    public string? Instruction { get; set; }
 
-    [JsonPropertyName("results")]
-    public List<TestCaseResultDto> Results { get; set; } = new();
+    [JsonPropertyName("hint")]
+    public string? Hint { get; set; }
 
-    [JsonPropertyName("message")]
-    public string? Message { get; set; }
-}
-
-public class TestCaseResultDto
-{
-    [JsonPropertyName("testcase_id")]
-    public Guid TestCaseId { get; set; }
-
-    [JsonPropertyName("is_passed")]
-    public bool IsPassed { get; set; }
-
-    [JsonPropertyName("expected_output")]
-    public string? ExpectedOutput { get; set; }
-
-    [JsonPropertyName("actual_output")]
-    public string? ActualOutput { get; set; }
-
-    [JsonPropertyName("error")]
-    public string? Error { get; set; }
-
-    [JsonPropertyName("runtime_ms")]
-    public int RuntimeMs { get; set; }
-
-    [JsonPropertyName("is_hidden")]
-    public bool IsHidden { get; set; }
-}
-
-public class UpdateProgressRequest
-{
-    [JsonPropertyName("is_completed")]
-    public bool? IsCompleted { get; set; }
-
-    [JsonPropertyName("is_passed")]
-    public bool? IsPassed { get; set; }
-
-    [JsonPropertyName("last_code")]
-    public string? LastCode { get; set; }
+    [JsonPropertyName("order_number")]
+    public int? OrderNumber { get; set; }
 }
 
 public class ExerciseProgressDto
 {
+    [JsonPropertyName("exprogress_id")]
+    public Guid ExProgressId { get; set; }
+
+    [JsonPropertyName("student_id")]
+    public Guid StudentId { get; set; }
+
     [JsonPropertyName("exercise_id")]
     public Guid ExerciseId { get; set; }
 
@@ -135,12 +154,33 @@ public class ExerciseProgressDto
     [JsonPropertyName("is_passed")]
     public bool IsPassed { get; set; }
 
+    [JsonPropertyName("last_code")]
+    public string? LastCode { get; set; }
+
     [JsonPropertyName("completed_at")]
     public DateTime? CompletedAt { get; set; }
 
-    [JsonPropertyName("lesson_completed")]
-    public bool LessonCompleted { get; set; }
+    [JsonPropertyName("updated_at")]
+    public DateTime UpdatedAt { get; set; }
+}
 
-    [JsonPropertyName("message")]
-    public string? Message { get; set; }
+public class RunCodeRequest
+{
+    [Required]
+    [JsonPropertyName("code")]
+    public string Code { get; set; } = string.Empty;
+}
+
+public class SubmitCodeRequest
+{
+    [Required]
+    [JsonPropertyName("code")]
+    public string Code { get; set; } = string.Empty;
+}
+
+public class UpdateExerciseProgressRequest
+{
+    [Required]
+    [JsonPropertyName("is_completed")]
+    public bool IsCompleted { get; set; }
 }
