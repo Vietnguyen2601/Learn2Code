@@ -22,6 +22,7 @@ public class AuthController : ControllerBase
     /// <summary>
     /// Send OTP to email for registration
     /// </summary>
+    [AllowAnonymous]
     [HttpPost("register")]
     [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status400BadRequest)]
@@ -34,6 +35,7 @@ public class AuthController : ControllerBase
     /// <summary>
     /// Verify OTP and create account
     /// </summary>
+    [AllowAnonymous]
     [HttpPost("verify-otp")]
     [ProducesResponseType(typeof(ServiceResult<VerifyOtpResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ServiceResult<VerifyOtpResponse>), StatusCodes.Status400BadRequest)]
@@ -46,6 +48,7 @@ public class AuthController : ControllerBase
     /// <summary>
     /// Login with email/username and password
     /// </summary>
+    [AllowAnonymous]
     [HttpPost("login")]
     [ProducesResponseType(typeof(ServiceResult<LoginResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ServiceResult<LoginResponse>), StatusCodes.Status400BadRequest)]
@@ -70,6 +73,7 @@ public class AuthController : ControllerBase
     /// <summary>
     /// Send OTP for password reset
     /// </summary>
+    [AllowAnonymous]
     [HttpPost("forgot-password")]
     [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status400BadRequest)]
@@ -82,6 +86,7 @@ public class AuthController : ControllerBase
     /// <summary>
     /// Reset password with OTP verification
     /// </summary>
+    [AllowAnonymous]
     [HttpPost("reset-password")]
     [ProducesResponseType(typeof(ServiceResult<ResetPasswordResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ServiceResult<ResetPasswordResponse>), StatusCodes.Status400BadRequest)]
@@ -94,6 +99,7 @@ public class AuthController : ControllerBase
     /// <summary>
     /// Get a new access_token from refresh_token
     /// </summary>
+    [AllowAnonymous]
     [HttpPost("refresh")]
     [ProducesResponseType(typeof(ServiceResult<RefreshTokenResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ServiceResult<RefreshTokenResponse>), StatusCodes.Status400BadRequest)]
