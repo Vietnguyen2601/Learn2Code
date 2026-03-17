@@ -10,4 +10,7 @@ public interface ILessonRepository : IGenericRepository<Lesson>
     Task<bool> CanUserAccessLessonAsync(Guid lessonId, Guid? userId);
     Task<int> GetMaxOrderNumberInSectionAsync(Guid sectionId);
     Task<bool> ExistsInSectionAsync(Guid sectionId, Guid lessonId);
+    Task ShiftOrderNumbersUpAsync(Guid sectionId, int startingOrder);
+    Task ShiftOrderRangeAsync(Guid sectionId, int startOrderInclusive, int endOrderInclusive, int delta);
+    Task MoveLessonToOrderAsync(Guid lessonId, int orderNumber);
 }

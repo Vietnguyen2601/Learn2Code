@@ -46,23 +46,31 @@ public class SectionService : ISectionService
         if (course == null)
             return ServiceResult<SectionDto>.NotFound("Course not found");
 
-        // Validate order number is positive
-        if (request.OrderNumber <= 0)
-            return ServiceResult<SectionDto>.Error("INVALID_ORDER_NUMBER", "Order number must be greater than 0");
+        var sectionsInCourse = await _unitOfWork.SectionRepository.GetByCourseIdAsync(courseId);
+        var maxPosition = sectionsInCourse.Count + 1;
+        var desiredOrder = request.OrderNumber <= 0 ? maxPosition : request.OrderNumber;
+        desiredOrder = Math.Max(1, Math.Min(desiredOrder, maxPosition));
 
-        // Check duplicate order number in the same course
-        var hasDuplicate = await _unitOfWork.SectionRepository
-            .HasDuplicateOrderInCourseAsync(courseId, request.OrderNumber);
-        if (hasDuplicate)
-            return ServiceResult<SectionDto>.Error(
-                "DUPLICATE_ORDER_NUMBER", 
-                $"Order number {request.OrderNumber} already exists in this course");
+        await _unitOfWork.BeginTransactionAsync();
 
-        var section = request.ToEntity(courseId);
-        _unitOfWork.SectionRepository.PrepareCreate(section);
-        await _unitOfWork.SaveChangesAsync();
+        try
+        {
+            await _unitOfWork.SectionRepository.ShiftOrderNumbersUpAsync(courseId, desiredOrder);
 
-        return ServiceResult<SectionDto>.Created(section.ToDto(), "Section created successfully");
+            var section = request.ToEntity(courseId);
+            section.OrderNumber = desiredOrder;
+            _unitOfWork.SectionRepository.PrepareCreate(section);
+
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+
+            return ServiceResult<SectionDto>.Created(section.ToDto(), "Section created successfully");
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            return ServiceResult<SectionDto>.Error("CREATE_SECTION_FAILED", $"Failed to create section: {ex.Message}", 500);
+        }
     }
 
     public async Task<ServiceResult<SectionDto>> UpdateSectionAsync(Guid courseId, Guid sectionId, UpdateSectionRequest request)
@@ -80,28 +88,46 @@ public class SectionService : ISectionService
         if (section.CourseId != courseId)
             return ServiceResult<SectionDto>.Error("SECTION_NOT_IN_COURSE", "Section does not belong to this course");
 
-        // Validate order number if changing
-        if (request.OrderNumber.HasValue)
+        var sectionsInCourse = await _unitOfWork.SectionRepository.GetByCourseIdAsync(courseId);
+        var totalSections = sectionsInCourse.Count;
+        var currentOrder = section.OrderNumber;
+
+        var desiredOrder = request.OrderNumber ?? currentOrder;
+        desiredOrder = Math.Max(1, Math.Min(desiredOrder, totalSections));
+
+        await _unitOfWork.BeginTransactionAsync();
+
+        try
         {
-            if (request.OrderNumber.Value <= 0)
-                return ServiceResult<SectionDto>.Error("INVALID_ORDER_NUMBER", "Order number must be greater than 0");
-
-            if (request.OrderNumber.Value != section.OrderNumber)
+            if (desiredOrder != currentOrder)
             {
-                var hasDuplicate = await _unitOfWork.SectionRepository
-                    .HasDuplicateOrderInCourseAsync(courseId, request.OrderNumber.Value, sectionId);
-                if (hasDuplicate)
-                    return ServiceResult<SectionDto>.Error(
-                        "DUPLICATE_ORDER_NUMBER", 
-                        $"Order number {request.OrderNumber.Value} already exists in this course");
+                const int tempOrder = 2000000000;
+                await _unitOfWork.SectionRepository.MoveSectionToOrderAsync(sectionId, tempOrder);
+
+                if (desiredOrder < currentOrder)
+                {
+                    await _unitOfWork.SectionRepository.ShiftOrderRangeAsync(courseId, desiredOrder, currentOrder - 1, +1);
+                }
+                else
+                {
+                    await _unitOfWork.SectionRepository.ShiftOrderRangeAsync(courseId, currentOrder + 1, desiredOrder, -1);
+                }
             }
+
+            section.UpdateSection(request);
+            section.OrderNumber = desiredOrder;
+            _unitOfWork.SectionRepository.PrepareUpdate(section);
+
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+
+            return ServiceResult<SectionDto>.Ok(section.ToDto(), "Section updated successfully");
         }
-
-        section.UpdateSection(request);
-        _unitOfWork.SectionRepository.PrepareUpdate(section);
-        await _unitOfWork.SaveChangesAsync();
-
-        return ServiceResult<SectionDto>.Ok(section.ToDto(), "Section updated successfully");
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            return ServiceResult<SectionDto>.Error("UPDATE_SECTION_FAILED", $"Failed to update section: {ex.Message}", 500);
+        }
     }
 
     public async Task<ServiceResult> DeleteSectionAsync(Guid courseId, Guid sectionId)

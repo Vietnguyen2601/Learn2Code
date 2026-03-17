@@ -10,4 +10,7 @@ public interface IExerciseRepository : IGenericRepository<Exercise>
     Task<bool> CanUserAccessExerciseAsync(Guid exerciseId, Guid? userId);
     Task<int> GetMaxOrderNumberInLessonAsync(Guid lessonId);
     Task<bool> ExistsInLessonAsync(Guid lessonId, Guid exerciseId);
+    Task ShiftOrderNumbersUpAsync(Guid lessonId, int startingOrder);
+    Task ShiftOrderRangeAsync(Guid lessonId, int startOrderInclusive, int endOrderInclusive, int delta);
+    Task MoveExerciseToOrderAsync(Guid exerciseId, int orderNumber);
 }

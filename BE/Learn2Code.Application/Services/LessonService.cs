@@ -51,15 +51,30 @@ public class LessonService : ILessonService
         if (section == null)
             return ServiceResult<LessonDto>.NotFound("Section not found");
 
-        // L?y order number ti?p theo
-        var maxOrder = await _unitOfWork.LessonRepository.GetMaxOrderNumberInSectionAsync(sectionId);
-        var newOrderNumber = maxOrder + 1;
+        var lessonsInSection = await _unitOfWork.LessonRepository.GetLessonsBySectionIdAsync(sectionId);
+        var maxPosition = lessonsInSection.Count + 1;
+        var desiredOrder = request.OrderNumber ?? maxPosition;
+        desiredOrder = Math.Max(1, Math.Min(desiredOrder, maxPosition));
 
-        var lesson = request.ToEntity(sectionId, newOrderNumber);
-        _unitOfWork.LessonRepository.PrepareCreate(lesson);
-        await _unitOfWork.SaveChangesAsync();
+        await _unitOfWork.BeginTransactionAsync();
 
-        return ServiceResult<LessonDto>.Created(lesson.ToDto(), "Lesson created successfully");
+        try
+        {
+            await _unitOfWork.LessonRepository.ShiftOrderNumbersUpAsync(sectionId, desiredOrder);
+
+            var lesson = request.ToEntity(sectionId, desiredOrder);
+            _unitOfWork.LessonRepository.PrepareCreate(lesson);
+
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+
+            return ServiceResult<LessonDto>.Created(lesson.ToDto(), "Lesson created successfully");
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            return ServiceResult<LessonDto>.Error("CREATE_LESSON_FAILED", $"Failed to create lesson: {ex.Message}", 500);
+        }
     }
 
     public async Task<ServiceResult<LessonDto>> UpdateLessonAsync(Guid lessonId, UpdateLessonRequest request)
@@ -68,11 +83,46 @@ public class LessonService : ILessonService
         if (lesson == null)
             return ServiceResult<LessonDto>.NotFound("Lesson not found");
 
-        lesson.UpdateLesson(request);
-        _unitOfWork.LessonRepository.PrepareUpdate(lesson);
-        await _unitOfWork.SaveChangesAsync();
+        var lessonsInSection = await _unitOfWork.LessonRepository.GetLessonsBySectionIdAsync(lesson.SectionId);
+        var totalLessons = lessonsInSection.Count;
+        var currentOrder = lesson.OrderNumber;
 
-        return ServiceResult<LessonDto>.Ok(lesson.ToDto(), "Lesson updated successfully");
+        var desiredOrder = request.OrderNumber ?? currentOrder;
+        desiredOrder = Math.Max(1, Math.Min(desiredOrder, totalLessons));
+
+        await _unitOfWork.BeginTransactionAsync();
+
+        try
+        {
+            if (desiredOrder != currentOrder)
+            {
+                // Move current lesson out of the way to avoid unique conflicts during range shift
+                const int tempOrder = 2000000000;
+                await _unitOfWork.LessonRepository.MoveLessonToOrderAsync(lessonId, tempOrder);
+
+                if (desiredOrder < currentOrder)
+                {
+                    await _unitOfWork.LessonRepository.ShiftOrderRangeAsync(lesson.SectionId, desiredOrder, currentOrder - 1, +1);
+                }
+                else
+                {
+                    await _unitOfWork.LessonRepository.ShiftOrderRangeAsync(lesson.SectionId, currentOrder + 1, desiredOrder, -1);
+                }
+            }
+
+            lesson.UpdateLesson(request, desiredOrder);
+            _unitOfWork.LessonRepository.PrepareUpdate(lesson);
+
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+
+            return ServiceResult<LessonDto>.Ok(lesson.ToDto(), "Lesson updated successfully");
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            return ServiceResult<LessonDto>.Error("UPDATE_LESSON_FAILED", $"Failed to update lesson: {ex.Message}", 500);
+        }
     }
 
     public async Task<ServiceResult> DeleteLessonAsync(Guid lessonId)

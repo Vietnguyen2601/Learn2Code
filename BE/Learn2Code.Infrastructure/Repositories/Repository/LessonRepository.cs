@@ -3,6 +3,7 @@ using Learn2Code.Infrastructure.Data.Context;
 using Learn2Code.Infrastructure.Repositories.Base;
 using Learn2Code.Infrastructure.Repositories.IRepository;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace Learn2Code.Infrastructure.Repositories.Repository;
 
@@ -16,6 +17,7 @@ public class LessonRepository : GenericRepository<Lesson>, ILessonRepository
     {
         return await _context.Set<Lesson>()
             .Where(l => l.SectionId == sectionId)
+            .AsNoTracking()
             .OrderBy(l => l.OrderNumber)
             .ToListAsync();
     }
@@ -70,5 +72,34 @@ public class LessonRepository : GenericRepository<Lesson>, ILessonRepository
     {
         return await _context.Set<Lesson>()
             .AnyAsync(l => l.SectionId == sectionId && l.LessonId == lessonId);
+    }
+
+    public async Task ShiftOrderNumbersUpAsync(Guid sectionId, int startingOrder)
+    {
+        // Step 1: move affected rows to a safe temporary range to avoid unique collisions
+        var tempSql = "UPDATE lessons SET order_number = order_number + 1000000, updated_at = {0} WHERE section_id = {1} AND order_number >= {2}";
+        await _context.Database.ExecuteSqlRawAsync(tempSql, DateTime.UtcNow, sectionId, startingOrder);
+
+        // Step 2: shift back into final positions (+1)
+        var finalSql = "UPDATE lessons SET order_number = order_number - 999999, updated_at = {0} WHERE section_id = {1} AND order_number >= {2} + 1000000";
+        await _context.Database.ExecuteSqlRawAsync(finalSql, DateTime.UtcNow, sectionId, startingOrder);
+    }
+
+    public async Task ShiftOrderRangeAsync(Guid sectionId, int startOrderInclusive, int endOrderInclusive, int delta)
+    {
+        if (delta == 0)
+            return;
+
+        var tempSql = "UPDATE lessons SET order_number = order_number + 1000000, updated_at = {0} WHERE section_id = {1} AND order_number >= {2} AND order_number <= {3}";
+        await _context.Database.ExecuteSqlRawAsync(tempSql, DateTime.UtcNow, sectionId, startOrderInclusive, endOrderInclusive);
+
+        var finalSql = "UPDATE lessons SET order_number = order_number + {0} - 1000000, updated_at = {1} WHERE section_id = {2} AND order_number >= {3} + 1000000 AND order_number <= {4} + 1000000";
+        await _context.Database.ExecuteSqlRawAsync(finalSql, delta, DateTime.UtcNow, sectionId, startOrderInclusive, endOrderInclusive);
+    }
+
+    public async Task MoveLessonToOrderAsync(Guid lessonId, int orderNumber)
+    {
+        var sql = "UPDATE lessons SET order_number = {0}, updated_at = {1} WHERE lesson_id = {2}";
+        await _context.Database.ExecuteSqlRawAsync(sql, orderNumber, DateTime.UtcNow, lessonId);
     }
 }

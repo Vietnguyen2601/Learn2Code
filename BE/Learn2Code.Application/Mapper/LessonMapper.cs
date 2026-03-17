@@ -53,7 +53,7 @@ public static class LessonMapper
         };
     }
 
-    public static void UpdateLesson(this Lesson lesson, UpdateLessonRequest request)
+    public static void UpdateLesson(this Lesson lesson, UpdateLessonRequest request, int? finalOrderNumber = null)
     {
         if (!string.IsNullOrWhiteSpace(request.Title))
             lesson.Title = request.Title;
@@ -61,8 +61,14 @@ public static class LessonMapper
         if (request.IsFreePreview.HasValue)
             lesson.IsFreePreview = request.IsFreePreview.Value;
 
-        if (request.OrderNumber.HasValue)
+        if (finalOrderNumber.HasValue)
+        {
+            lesson.OrderNumber = finalOrderNumber.Value;
+        }
+        else if (request.OrderNumber.HasValue)
+        {
             lesson.OrderNumber = request.OrderNumber.Value;
+        }
 
         lesson.UpdatedAt = DateTime.UtcNow;
     }

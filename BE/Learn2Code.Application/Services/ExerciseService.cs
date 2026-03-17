@@ -53,18 +53,35 @@ public class ExerciseService : IExerciseService
             return ServiceResult<ExerciseDto>.NotFound("Lesson not found");
 
         // Validate ExerciseType
-        if (!Enum.TryParse<Domain.Enums.ExerciseType>(request.ExerciseType, true, out _))
+        if (!Enum.TryParse<Domain.Enums.ExerciseType>(request.ExerciseType, true, out var exerciseType))
             return ServiceResult<ExerciseDto>.Error("INVALID_EXERCISE_TYPE", "Exercise type must be one of: Reading, FreeCode, GradedCode");
 
-        // L?y order number ti?p theo
-        var maxOrder = await _unitOfWork.ExerciseRepository.GetMaxOrderNumberInLessonAsync(lessonId);
-        var newOrderNumber = maxOrder + 1;
+        var sanitizedRequest = SanitizeCreateRequest(request, exerciseType);
 
-        var exercise = request.ToEntity(lessonId, newOrderNumber);
-        _unitOfWork.ExerciseRepository.PrepareCreate(exercise);
-        await _unitOfWork.SaveChangesAsync();
+        var exercisesInLesson = await _unitOfWork.ExerciseRepository.GetExercisesByLessonIdAsync(lessonId);
+        var maxPosition = exercisesInLesson.Count + 1;
+        var desiredOrder = sanitizedRequest.OrderNumber ?? maxPosition;
+        desiredOrder = Math.Max(1, Math.Min(desiredOrder, maxPosition));
 
-        return ServiceResult<ExerciseDto>.Created(exercise.ToDto(), "Exercise created successfully");
+        await _unitOfWork.BeginTransactionAsync();
+
+        try
+        {
+            await _unitOfWork.ExerciseRepository.ShiftOrderNumbersUpAsync(lessonId, desiredOrder);
+
+            var exercise = sanitizedRequest.ToEntity(lessonId, desiredOrder);
+            _unitOfWork.ExerciseRepository.PrepareCreate(exercise);
+
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+
+            return ServiceResult<ExerciseDto>.Created(exercise.ToDto(), "Exercise created successfully");
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            return ServiceResult<ExerciseDto>.Error("CREATE_EXERCISE_FAILED", $"Failed to create exercise: {ex.Message}", 500);
+        }
     }
 
     public async Task<ServiceResult<ExerciseDto>> UpdateExerciseAsync(Guid exerciseId, UpdateExerciseRequest request)
@@ -80,11 +97,50 @@ public class ExerciseService : IExerciseService
                 return ServiceResult<ExerciseDto>.Error("INVALID_EXERCISE_TYPE", "Exercise type must be one of: Reading, FreeCode, GradedCode");
         }
 
-        exercise.UpdateExercise(request);
-        _unitOfWork.ExerciseRepository.PrepareUpdate(exercise);
-        await _unitOfWork.SaveChangesAsync();
+        var targetTypeString = request.ExerciseType ?? exercise.ExerciseType.ToString();
+        var targetType = Enum.Parse<Domain.Enums.ExerciseType>(targetTypeString, true);
+        var sanitizedRequest = SanitizeUpdateRequest(request, targetType);
+        var clearCodeFields = targetType == Domain.Enums.ExerciseType.Reading;
 
-        return ServiceResult<ExerciseDto>.Ok(exercise.ToDto(), "Exercise updated successfully");
+        var exercisesInLesson = await _unitOfWork.ExerciseRepository.GetExercisesByLessonIdAsync(exercise.LessonId);
+        var totalExercises = exercisesInLesson.Count;
+        var currentOrder = exercise.OrderNumber;
+
+        var desiredOrder = sanitizedRequest.OrderNumber ?? currentOrder;
+        desiredOrder = Math.Max(1, Math.Min(desiredOrder, totalExercises));
+
+        await _unitOfWork.BeginTransactionAsync();
+
+        try
+        {
+            if (desiredOrder != currentOrder)
+            {
+                const int tempOrder = 2000000000;
+                await _unitOfWork.ExerciseRepository.MoveExerciseToOrderAsync(exerciseId, tempOrder);
+
+                if (desiredOrder < currentOrder)
+                {
+                    await _unitOfWork.ExerciseRepository.ShiftOrderRangeAsync(exercise.LessonId, desiredOrder, currentOrder - 1, +1);
+                }
+                else
+                {
+                    await _unitOfWork.ExerciseRepository.ShiftOrderRangeAsync(exercise.LessonId, currentOrder + 1, desiredOrder, -1);
+                }
+            }
+
+            exercise.UpdateExercise(sanitizedRequest, desiredOrder, clearCodeFields);
+            _unitOfWork.ExerciseRepository.PrepareUpdate(exercise);
+
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+
+            return ServiceResult<ExerciseDto>.Ok(exercise.ToDto(), "Exercise updated successfully");
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            return ServiceResult<ExerciseDto>.Error("UPDATE_EXERCISE_FAILED", $"Failed to update exercise: {ex.Message}", 500);
+        }
     }
 
     public async Task<ServiceResult> DeleteExerciseAsync(Guid exerciseId)
@@ -204,5 +260,35 @@ public class ExerciseService : IExerciseService
 
         await _unitOfWork.SaveChangesAsync();
         return existing;
+    }
+
+    private CreateExerciseRequest SanitizeCreateRequest(CreateExerciseRequest request, Domain.Enums.ExerciseType exerciseType)
+    {
+        if (exerciseType == Domain.Enums.ExerciseType.Reading)
+        {
+            return new CreateExerciseRequest
+            {
+                ExerciseType = request.ExerciseType,
+                Narrative = request.Narrative,
+                OrderNumber = request.OrderNumber
+            };
+        }
+
+        return request;
+    }
+
+    private UpdateExerciseRequest SanitizeUpdateRequest(UpdateExerciseRequest request, Domain.Enums.ExerciseType exerciseType)
+    {
+        if (exerciseType == Domain.Enums.ExerciseType.Reading)
+        {
+            return new UpdateExerciseRequest
+            {
+                ExerciseType = request.ExerciseType,
+                Narrative = request.Narrative,
+                OrderNumber = request.OrderNumber
+            };
+        }
+
+        return request;
     }
 }

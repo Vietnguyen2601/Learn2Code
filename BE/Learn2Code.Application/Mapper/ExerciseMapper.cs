@@ -79,7 +79,7 @@ public static class ExerciseMapper
         };
     }
 
-    public static void UpdateExercise(this Exercise exercise, UpdateExerciseRequest request)
+    public static void UpdateExercise(this Exercise exercise, UpdateExerciseRequest request, int? finalOrderNumber = null, bool clearCodeFields = false)
     {
         if (!string.IsNullOrWhiteSpace(request.ExerciseType))
             exercise.ExerciseType = Enum.Parse<ExerciseType>(request.ExerciseType, true);
@@ -102,8 +102,19 @@ public static class ExerciseMapper
         if (request.Hint != null)
             exercise.Hint = request.Hint;
 
-        if (request.OrderNumber.HasValue)
+        if (finalOrderNumber.HasValue)
+            exercise.OrderNumber = finalOrderNumber.Value;
+        else if (request.OrderNumber.HasValue)
             exercise.OrderNumber = request.OrderNumber.Value;
+
+        if (clearCodeFields)
+        {
+            exercise.Language = null;
+            exercise.StarterCode = null;
+            exercise.SolutionCode = null;
+            exercise.Instruction = null;
+            exercise.Hint = null;
+        }
 
         exercise.UpdatedAt = DateTime.UtcNow;
     }

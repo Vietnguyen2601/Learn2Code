@@ -16,6 +16,7 @@ public class ExerciseRepository : GenericRepository<Exercise>, IExerciseReposito
     {
         return await _context.Set<Exercise>()
             .Where(e => e.LessonId == lessonId)
+            .AsNoTracking()
             .OrderBy(e => e.OrderNumber)
             .ToListAsync();
     }
@@ -72,5 +73,32 @@ public class ExerciseRepository : GenericRepository<Exercise>, IExerciseReposito
     {
         return await _context.Set<Exercise>()
             .AnyAsync(e => e.LessonId == lessonId && e.ExerciseId == exerciseId);
+    }
+
+    public async Task ShiftOrderNumbersUpAsync(Guid lessonId, int startingOrder)
+    {
+        var tempSql = "UPDATE exercises SET order_number = order_number + 1000000, updated_at = {0} WHERE lesson_id = {1} AND order_number >= {2}";
+        await _context.Database.ExecuteSqlRawAsync(tempSql, DateTime.UtcNow, lessonId, startingOrder);
+
+        var finalSql = "UPDATE exercises SET order_number = order_number - 999999, updated_at = {0} WHERE lesson_id = {1} AND order_number >= {2} + 1000000";
+        await _context.Database.ExecuteSqlRawAsync(finalSql, DateTime.UtcNow, lessonId, startingOrder);
+    }
+
+    public async Task ShiftOrderRangeAsync(Guid lessonId, int startOrderInclusive, int endOrderInclusive, int delta)
+    {
+        if (delta == 0)
+            return;
+
+        var tempSql = "UPDATE exercises SET order_number = order_number + 1000000, updated_at = {0} WHERE lesson_id = {1} AND order_number >= {2} AND order_number <= {3}";
+        await _context.Database.ExecuteSqlRawAsync(tempSql, DateTime.UtcNow, lessonId, startOrderInclusive, endOrderInclusive);
+
+        var finalSql = "UPDATE exercises SET order_number = order_number + {0} - 1000000, updated_at = {1} WHERE lesson_id = {2} AND order_number >= {3} + 1000000 AND order_number <= {4} + 1000000";
+        await _context.Database.ExecuteSqlRawAsync(finalSql, delta, DateTime.UtcNow, lessonId, startOrderInclusive, endOrderInclusive);
+    }
+
+    public async Task MoveExerciseToOrderAsync(Guid exerciseId, int orderNumber)
+    {
+        var sql = "UPDATE exercises SET order_number = {0}, updated_at = {1} WHERE exercise_id = {2}";
+        await _context.Database.ExecuteSqlRawAsync(sql, orderNumber, DateTime.UtcNow, exerciseId);
     }
 }

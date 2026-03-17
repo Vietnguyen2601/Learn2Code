@@ -11,4 +11,8 @@ public class CreateLessonRequest
 
     [JsonPropertyName("is_free_preview")]
     public bool IsFreePreview { get; set; } = false;
+
+    [JsonPropertyName("order_number")]
+    [Range(1, int.MaxValue)]
+    public int? OrderNumber { get; set; }
 }
