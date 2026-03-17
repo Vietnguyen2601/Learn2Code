@@ -223,16 +223,11 @@ public class Learn2CodeDbContext : DbContext
             .HasPrecision(5, 2);
 
         modelBuilder.Entity<CourseCompletionRule>()
-            .Property(c => c.MinLessonCompletionPct)
+            .Property(c => c.MinWeightScore)
             .HasPrecision(5, 2);
 
         modelBuilder.Entity<CourseCompletionRule>()
-            .Property(c => c.MinExercisePassPct)
-            .HasPrecision(5, 2);
-
-        modelBuilder.Entity<CourseCompletionRule>()
-            .Property(c => c.MinSectionQuizScore)
-            .HasPrecision(5, 2);
+            .HasIndex(c => c.CourseId).IsUnique();
 
         modelBuilder.Entity<Leaderboard>()
             .Property(l => l.TotalScore)

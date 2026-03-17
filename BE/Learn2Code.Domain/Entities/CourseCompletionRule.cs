@@ -13,14 +13,8 @@ public class CourseCompletionRule
     [Column("course_id")]
     public Guid CourseId { get; set; }
 
-    [Column("min_lesson_completion_pct")]
-    public decimal MinLessonCompletionPct { get; set; } = 100;
-
-    [Column("min_exercise_pass_pct")]
-    public decimal MinExercisePassPct { get; set; } = 0;
-
-    [Column("min_section_quiz_score")]
-    public decimal MinSectionQuizScore { get; set; } = 0;
+    [Column("min_weight_score")]
+    public decimal MinWeightScore { get; set; } = 0;
 
     [Column("require_all_section_quiz")]
     public bool RequireAllSectionQuiz { get; set; } = true;

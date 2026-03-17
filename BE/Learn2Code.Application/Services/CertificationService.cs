@@ -177,9 +177,7 @@ public class CertificationService : ICertificationService
         var progress = new CertificationProgressDto();
 
         // Default requirements if no rule exists
-        var minLessonPct = rule?.MinLessonCompletionPct ?? 100;
-        var minExercisePct = rule?.MinExercisePassPct ?? 0;
-        var minQuizScore = rule?.MinSectionQuizScore ?? 0;
+        var minWeightScore = rule?.MinWeightScore ?? 0;
         var requireAllQuiz = rule?.RequireAllSectionQuiz ?? false;
 
         // Get all sections of the course
@@ -191,54 +189,6 @@ public class CertificationService : ICertificationService
         var allLessonIds = sections.SelectMany(s => s.Lessons.Select(l => l.LessonId)).ToList();
         var sectionIds = sections.Select(s => s.SectionId).ToList();
 
-        // 1. Calculate Lesson Completion Percentage
-        if (allLessonIds.Count > 0)
-        {
-            var completedLessons = await _unitOfWork.Repository<LessonProgress>().GetAllQueryable()
-                .Where(lp => lp.StudentId == studentId && 
-                             allLessonIds.Contains(lp.LessonId) && 
-                             lp.Status == LessonProgressStatus.Completed)
-                .CountAsync();
-
-            progress.LessonCompletionPct = Math.Round((decimal)completedLessons / allLessonIds.Count * 100, 2);
-        }
-        else
-        {
-            progress.LessonCompletionPct = 100; // No lessons = 100% complete
-        }
-
-        if (progress.LessonCompletionPct < minLessonPct)
-        {
-            missing.Add($"Lesson completion: {progress.LessonCompletionPct}% (required: {minLessonPct}%)");
-        }
-
-        // 2. Calculate Exercise Pass Percentage
-        var allExerciseIds = await _unitOfWork.ExerciseRepository.GetAllQueryable()
-            .Where(e => allLessonIds.Contains(e.LessonId))
-            .Select(e => e.ExerciseId)
-            .ToListAsync();
-
-        if (allExerciseIds.Count > 0)
-        {
-            var passedExercises = await _unitOfWork.Repository<ExerciseProgress>().GetAllQueryable()
-                .Where(ep => ep.StudentId == studentId && 
-                             allExerciseIds.Contains(ep.ExerciseId) && 
-                             ep.IsPassed)
-                .CountAsync();
-
-            progress.ExercisePassPct = Math.Round((decimal)passedExercises / allExerciseIds.Count * 100, 2);
-        }
-        else
-        {
-            progress.ExercisePassPct = 100; // No exercises = 100% pass
-        }
-
-        if (progress.ExercisePassPct < minExercisePct)
-        {
-            missing.Add($"Exercise pass rate: {progress.ExercisePassPct}% (required: {minExercisePct}%)");
-        }
-
-        // 3. Calculate Section Quiz Score (average of best attempts per section)
         // Get sections that have quizzes (sections where student has at least one quiz to attempt)
         var sectionsWithQuizzes = await _unitOfWork.Repository<Quiz>().GetAllQueryable()
             .Where(q => sections.SelectMany(s => s.Lessons.Select(l => l.LessonId)).Contains(q.LessonId))
@@ -267,10 +217,10 @@ public class CertificationService : ICertificationService
                 progress.SectionQuizAvgScore = Math.Round(sectionsAttempted.Average(s => s.BestScore), 2);
             }
 
-            // Check min quiz score
-            if (progress.SectionQuizAvgScore < minQuizScore)
+            // Check min weight score
+            if (progress.SectionQuizAvgScore < minWeightScore)
             {
-                missing.Add($"Section quiz average score: {progress.SectionQuizAvgScore}% (required: {minQuizScore}%)");
+                missing.Add($"Section quiz average score: {progress.SectionQuizAvgScore}% (required: {minWeightScore}%)");
             }
 
             // Check if all sections with quizzes are attempted

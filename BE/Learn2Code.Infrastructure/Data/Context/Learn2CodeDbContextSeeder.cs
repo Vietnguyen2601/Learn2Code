@@ -537,9 +537,7 @@ public static class Learn2CodeDbContextSeeder
             {
                 RuleId                  = Guid.NewGuid(),
                 CourseId                = course.CourseId,
-                MinLessonCompletionPct  = 80m,
-                MinExercisePassPct      = 70m,
-                MinSectionQuizScore     = 60m,
+                MinWeightScore          = 60m,
                 RequireAllSectionQuiz   = true,
                 CreatedAt               = DateTime.UtcNow,
                 UpdatedAt               = DateTime.UtcNow
