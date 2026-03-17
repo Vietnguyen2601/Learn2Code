@@ -19,12 +19,6 @@ public class CourseDto
     [JsonPropertyName("is_active")]
     public bool IsActive { get; set; }
 
-    [JsonPropertyName("instructor_id")]
-    public Guid InstructorId { get; set; }
-
-    [JsonPropertyName("instructor_name")]
-    public string? InstructorName { get; set; }
-
     [JsonPropertyName("category_id")]
     public Guid? CategoryId { get; set; }
 

@@ -45,7 +45,6 @@ public class Account
 
     // Navigation properties
     public virtual ICollection<AccountRole> AccountRoles { get; set; } = new List<AccountRole>();
-    public virtual ICollection<Course> CreatedCourses { get; set; } = new List<Course>();
     public virtual ICollection<UserSubscription> UserSubscriptions { get; set; } = new List<UserSubscription>();
     public virtual ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
     public virtual ICollection<LessonProgress> LessonProgresses { get; set; } = new List<LessonProgress>();

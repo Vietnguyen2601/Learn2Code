@@ -24,9 +24,6 @@ public class Course
     [Column("is_active")]
     public bool IsActive { get; set; } = true;
 
-    [Column("instructor_id")]
-    public Guid InstructorId { get; set; }
-
     [Column("category_id")]
     public Guid? CategoryId { get; set; }
 
@@ -37,9 +34,6 @@ public class Course
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
-    [ForeignKey("InstructorId")]
-    public virtual Account? Instructor { get; set; }
-
     [ForeignKey("CategoryId")]
     public virtual CourseCategory? Category { get; set; }
 

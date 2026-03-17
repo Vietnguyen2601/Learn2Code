@@ -96,11 +96,6 @@ public class CourseService : ICourseService
             }
         }
 
-        // Validate instructor exists
-        var instructor = await _unitOfWork.AccountRepository.GetByIdAsync(request.InstructorId);
-        if (instructor == null)
-            return ServiceResult<CourseDto>.Error("INSTRUCTOR_NOT_FOUND", "Instructor not found");
-
         // Validate category exists if provided
         if (request.CategoryId.HasValue)
         {
