@@ -1,14 +1,13 @@
-using Learn2Code.Application.Base;
+    using Learn2Code.Application.Base;
 using Learn2Code.Application.DTOs.AccountDTOs.AccountRequests;
 using Learn2Code.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Learn2Code.API.Controllers;
-
 [ApiController]
 [Route("api/accounts")]
-// [Authorize(Roles = "Admin")] // Uncomment when roles are fully setup
+[Authorize]
 public class AccountController : ControllerBase
 {
     private readonly IAccountService _accountService;

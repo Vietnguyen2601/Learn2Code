@@ -17,8 +17,4 @@ public class CreateCourseRequest
 
     [JsonPropertyName("category_id")]
     public Guid? CategoryId { get; set; }
-
-    [Required]
-    [JsonPropertyName("instructor_id")]
-    public Guid InstructorId { get; set; }
 }
