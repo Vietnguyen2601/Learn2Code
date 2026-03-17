@@ -1,6 +1,0 @@
-@Learn2Code.API_HostAddress = http://localhost:5049
-
-GET {{Learn2Code.API_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

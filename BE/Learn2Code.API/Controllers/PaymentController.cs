@@ -69,9 +69,9 @@ public class PaymentController : ControllerBase
         var result = await _paymentService.VerifyAndUpdatePaymentAsync(orderCode, status, code, cancel);
 
         if (result.Success)
-            return Redirect($"https://localhost:5173/payment/success?orderCode={orderCode}");
+            return Redirect($"http://localhost:5173/payment/success?orderCode={orderCode}");
         else
-            return Redirect($"https://localhost:5173/payment/failure?orderCode={orderCode}&status={status}");
+            return Redirect($"http://localhost:5173/payment/failure?orderCode={orderCode}&status={status}");
     }
 
     // ─── Admin endpoints ─────────────────────────────────────────────────────
