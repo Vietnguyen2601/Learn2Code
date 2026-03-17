@@ -111,11 +111,11 @@ builder.Services.AddSwaggerGen(c =>
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Enter 'Bearer {token}'. Ex: 'Bearer abc123xyz'"
+        Description = "Chỉ cần paste token vào đây, Swagger sẽ tự thêm 'Bearer ' phía trước."
     });
 
     // Filter để chỉ show lock icon cho [Authorize] endpoints
