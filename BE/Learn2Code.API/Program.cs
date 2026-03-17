@@ -6,9 +6,11 @@ using Learn2Code.Application.Services;
 using Learn2Code.Infrastructure.Options;
 using Learn2Code.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.SwaggerGen;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -109,12 +111,15 @@ builder.Services.AddSwaggerGen(c =>
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Enter JWT token"
+        Description = "Enter 'Bearer {token}'. Ex: 'Bearer abc123xyz'"
     });
+
+    // Filter để chỉ show lock icon cho [Authorize] endpoints
+    c.OperationFilter<AuthorizeOperationFilter>();
 });
 
 var app = builder.Build();
@@ -143,8 +148,37 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Redirect root URL to Swagger
 app.MapGet("/", () => Results.Redirect("/swagger"))
     .ExcludeFromDescription();
 
 app.Run();
+
+public class AuthorizeOperationFilter : IOperationFilter
+{
+        public void Apply(OpenApiOperation operation, OperationFilterContext context)
+        {
+            var hasAuthorize = context.MethodInfo.GetCustomAttributes(typeof(AuthorizeAttribute), false).Any()
+                || context.MethodInfo.DeclaringType?.GetCustomAttributes(typeof(AuthorizeAttribute), false).Any() == true;
+
+            if (hasAuthorize)
+            {
+                operation.Security = new List<OpenApiSecurityRequirement>
+                {
+                    new OpenApiSecurityRequirement
+                    {
+                        {
+                            new OpenApiSecurityScheme
+                            {
+                                Reference = new OpenApiReference
+                                {
+                                    Type = ReferenceType.SecurityScheme,
+                                    Id = "Bearer"
+                                }
+                            },
+                        new List<string>()
+                    }
+                }
+            };
+        }
+    }
+}
