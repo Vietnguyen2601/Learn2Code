@@ -1,5 +1,7 @@
 using Learn2Code.Application.Base;
 using Learn2Code.Application.DTOs;
+using Learn2Code.Application.DTOs.LessonDTOs.LessonRequests;
+using Learn2Code.Application.DTOs.LessonDTOs.LessonResponses;
 
 namespace Learn2Code.Application.Interfaces;
 

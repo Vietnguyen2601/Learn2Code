@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Learn2Code.Application.Base;
 using Learn2Code.Application.DTOs;
+using Learn2Code.Application.DTOs.TestCaseDTOs.TestCaseRequests;
+using Learn2Code.Application.DTOs.TestCaseDTOs.TestCaseResponses;
 using Learn2Code.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

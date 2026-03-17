@@ -1,5 +1,7 @@
 using Learn2Code.Application.Base;
 using Learn2Code.Application.DTOs;
+using Learn2Code.Application.DTOs.TestCaseDTOs.TestCaseRequests;
+using Learn2Code.Application.DTOs.TestCaseDTOs.TestCaseResponses;
 
 namespace Learn2Code.Application.Interfaces;
 

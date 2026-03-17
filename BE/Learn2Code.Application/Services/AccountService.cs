@@ -1,5 +1,6 @@
 using Learn2Code.Application.Base;
-using Learn2Code.Application.DTOs;
+using Learn2Code.Application.DTOs.AccountDTOs.AccountRequests;
+using Learn2Code.Application.DTOs.AccountDTOs.AccountResponses;
 using Learn2Code.Application.Interfaces;
 using Learn2Code.Application.Mapper;
 using Learn2Code.Domain.Entities;

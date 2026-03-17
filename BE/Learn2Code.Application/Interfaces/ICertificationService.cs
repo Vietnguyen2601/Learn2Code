@@ -1,5 +1,5 @@
 using Learn2Code.Application.Base;
-using Learn2Code.Application.DTOs;
+using Learn2Code.Application.DTOs.CertificationDTOs.CertificationResponses;
 
 namespace Learn2Code.Application.Interfaces;
 

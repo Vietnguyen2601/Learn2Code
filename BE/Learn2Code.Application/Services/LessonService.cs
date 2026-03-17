@@ -1,5 +1,7 @@
 using Learn2Code.Application.Base;
 using Learn2Code.Application.DTOs;
+using Learn2Code.Application.DTOs.LessonDTOs.LessonRequests;
+using Learn2Code.Application.DTOs.LessonDTOs.LessonResponses;
 using Learn2Code.Application.Interfaces;
 using Learn2Code.Application.Mapper;
 using Learn2Code.Infrastructure.Persistence.UnitOfWork;
@@ -17,7 +19,7 @@ public class LessonService : ILessonService
 
     public async Task<ServiceResult<List<LessonDto>>> GetLessonsBySectionIdAsync(Guid sectionId)
     {
-        // Ki?m tra section có t?n t?i không
+        // Ki?m tra section cï¿½ t?n t?i khï¿½ng
         var section = await _unitOfWork.SectionRepository.GetByIdAsync(sectionId);
         if (section == null)
             return ServiceResult<List<LessonDto>>.NotFound("Section not found");
@@ -44,7 +46,7 @@ public class LessonService : ILessonService
 
     public async Task<ServiceResult<LessonDto>> CreateLessonAsync(Guid sectionId, CreateLessonRequest request)
     {
-        // Ki?m tra section có t?n t?i không
+        // Ki?m tra section cï¿½ t?n t?i khï¿½ng
         var section = await _unitOfWork.SectionRepository.GetByIdAsync(sectionId);
         if (section == null)
             return ServiceResult<LessonDto>.NotFound("Section not found");
@@ -87,12 +89,12 @@ public class LessonService : ILessonService
 
     public async Task<ServiceResult> ReorderLessonsAsync(Guid sectionId, ReorderLessonsRequest request)
     {
-        // Ki?m tra section có t?n t?i không
+        // Ki?m tra section cï¿½ t?n t?i khï¿½ng
         var section = await _unitOfWork.SectionRepository.GetByIdAsync(sectionId);
         if (section == null)
             return ServiceResult.NotFound("Section not found");
 
-        // Ki?m tra t?t c? lessons có thu?c section này không
+        // Ki?m tra t?t c? lessons cï¿½ thu?c section nï¿½y khï¿½ng
         foreach (var lessonOrder in request.LessonOrders)
         {
             var exists = await _unitOfWork.LessonRepository.ExistsInSectionAsync(sectionId, lessonOrder.LessonId);
@@ -104,7 +106,7 @@ public class LessonService : ILessonService
         {
             await _unitOfWork.BeginTransactionAsync();
 
-            // B??C 1: Set t?t c? lessons sang order_number âm t?m th?i (tránh unique constraint conflict)
+            // B??C 1: Set t?t c? lessons sang order_number ï¿½m t?m th?i (trï¿½nh unique constraint conflict)
             int tempOrderOffset = -1000;
             foreach (var lessonOrder in request.LessonOrders)
             {

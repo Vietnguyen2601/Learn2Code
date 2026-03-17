@@ -1,4 +1,5 @@
-using Learn2Code.Application.DTOs;
+using Learn2Code.Application.DTOs.AccountDTOs.AccountRequests;
+using Learn2Code.Application.DTOs.AccountDTOs.AccountResponses;
 using Learn2Code.Application.Base;
 
 namespace Learn2Code.Application.Interfaces;

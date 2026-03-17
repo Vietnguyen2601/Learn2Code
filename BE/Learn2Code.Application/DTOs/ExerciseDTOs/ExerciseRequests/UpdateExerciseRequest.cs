@@ -1,0 +1,32 @@
+using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
+
+namespace Learn2Code.Application.DTOs.ExerciseDTOs.ExerciseRequests;
+
+public class UpdateExerciseRequest
+{
+    [JsonPropertyName("exercise_type")]
+    [RegularExpression("^(Reading|FreeCode|GradedCode)$", ErrorMessage = "Exercise type must be one of: Reading, FreeCode, GradedCode")]
+    public string? ExerciseType { get; set; }
+
+    [JsonPropertyName("narrative")]
+    public string? Narrative { get; set; }
+
+    [JsonPropertyName("language")]
+    public string? Language { get; set; }
+
+    [JsonPropertyName("starter_code")]
+    public string? StarterCode { get; set; }
+
+    [JsonPropertyName("solution_code")]
+    public string? SolutionCode { get; set; }
+
+    [JsonPropertyName("instruction")]
+    public string? Instruction { get; set; }
+
+    [JsonPropertyName("hint")]
+    public string? Hint { get; set; }
+
+    [JsonPropertyName("order_number")]
+    public int? OrderNumber { get; set; }
+}

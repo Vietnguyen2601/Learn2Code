@@ -1,4 +1,5 @@
-using Learn2Code.Application.DTOs;
+using Learn2Code.Application.DTOs.QuizDTOs.QuizRequests;
+using Learn2Code.Application.DTOs.QuizDTOs.QuizResponses;
 using Learn2Code.Domain.Entities;
 
 namespace Learn2Code.Application.Mapper;
