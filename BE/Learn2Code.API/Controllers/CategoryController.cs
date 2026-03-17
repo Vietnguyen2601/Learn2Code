@@ -1,5 +1,6 @@
 using Learn2Code.Application.Base;
-using Learn2Code.Application.DTOs;
+using Learn2Code.Application.DTOs.CategoryDTOs.CategoryRequests;
+using Learn2Code.Application.DTOs.CategoryDTOs.CategoryResponses;
 using Learn2Code.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

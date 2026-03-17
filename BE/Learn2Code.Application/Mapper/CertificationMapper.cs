@@ -1,4 +1,4 @@
-using Learn2Code.Application.DTOs;
+using Learn2Code.Application.DTOs.CertificationDTOs.CertificationResponses;
 using Learn2Code.Domain.Entities;
 
 namespace Learn2Code.Application.Mapper;

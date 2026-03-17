@@ -1,4 +1,6 @@
 using Learn2Code.Application.DTOs;
+using Learn2Code.Application.DTOs.TestCaseDTOs.TestCaseRequests;
+using Learn2Code.Application.DTOs.TestCaseDTOs.TestCaseResponses;
 using Learn2Code.Domain.Entities;
 
 namespace Learn2Code.Application.Mapper;

@@ -1,5 +1,6 @@
 using Learn2Code.Application.Base;
-using Learn2Code.Application.DTOs;
+using Learn2Code.Application.DTOs.EnrollmentDTOs.EnrollmentRequests;
+using Learn2Code.Application.DTOs.EnrollmentDTOs.EnrollmentResponses;
 
 namespace Learn2Code.Application.Interfaces;
 

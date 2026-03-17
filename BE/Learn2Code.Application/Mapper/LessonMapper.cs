@@ -1,4 +1,6 @@
 using Learn2Code.Application.DTOs;
+using Learn2Code.Application.DTOs.LessonDTOs.LessonRequests;
+using Learn2Code.Application.DTOs.LessonDTOs.LessonResponses;
 using Learn2Code.Domain.Entities;
 
 namespace Learn2Code.Application.Mapper;

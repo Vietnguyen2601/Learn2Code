@@ -1,5 +1,6 @@
 using Learn2Code.Application.Base;
-using Learn2Code.Application.DTOs;
+using Learn2Code.Application.DTOs.SectionQuizDTOs.SectionQuizRequests;
+using Learn2Code.Application.DTOs.SectionQuizDTOs.SectionQuizResponses;
 
 namespace Learn2Code.Application.Interfaces;
 

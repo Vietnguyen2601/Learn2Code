@@ -1,5 +1,7 @@
 using Learn2Code.Application.Base;
 using Learn2Code.Application.DTOs;
+using Learn2Code.Application.DTOs.CourseDTOs.CourseRequests;
+using Learn2Code.Application.DTOs.CourseDTOs.CourseResponses;
 using Learn2Code.Domain.Enums;
 
 namespace Learn2Code.Application.Interfaces;

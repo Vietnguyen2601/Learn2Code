@@ -1,4 +1,7 @@
 using Learn2Code.Application.DTOs;
+using Learn2Code.Application.DTOs.CourseDTOs.CourseRequests;
+using Learn2Code.Application.DTOs.CourseDTOs.CourseResponses;
+using Learn2Code.Application.DTOs.SectionDTOs.SectionResponses;
 using Learn2Code.Domain.Entities;
 using Learn2Code.Domain.Enums;
 
