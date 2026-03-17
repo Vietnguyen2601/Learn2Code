@@ -351,16 +351,9 @@ public static class Learn2CodeDbContextSeeder
     {
         if (await context.Courses.AnyAsync()) return;
 
-        var instructor = await context.Accounts.FirstOrDefaultAsync(a => a.Username == "instructor_dev");
         var webCat     = await context.CourseCategories.FirstOrDefaultAsync(c => c.Name == "Web Development");
         var progCat    = await context.CourseCategories.FirstOrDefaultAsync(c => c.Name == "Programming Languages");
         var dsCat      = await context.CourseCategories.FirstOrDefaultAsync(c => c.Name == "Data Science");
-
-        if (instructor == null)
-        {
-            logger.LogWarning("instructor_dev not found  skipping course seed");
-            return;
-        }
 
         var courses = new[]
         {
@@ -371,7 +364,6 @@ public static class Learn2CodeDbContextSeeder
                 Description  = "Master ASP.NET Core, Entity Framework, and React to build modern full-stack apps.",
                 Difficulty   = CourseDifficulty.Intermediate,
                 IsActive     = true,
-                InstructorId = instructor.AccountId,
                 CategoryId   = webCat?.CategoryId,
                 CreatedAt    = DateTime.UtcNow,
                 UpdatedAt    = DateTime.UtcNow
@@ -383,7 +375,6 @@ public static class Learn2CodeDbContextSeeder
                 Description  = "Learn Python, Pandas, Numpy, Scikit-learn and build real ML models.",
                 Difficulty   = CourseDifficulty.Beginner,
                 IsActive     = true,
-                InstructorId = instructor.AccountId,
                 CategoryId   = dsCat?.CategoryId,
                 CreatedAt    = DateTime.UtcNow,
                 UpdatedAt    = DateTime.UtcNow
@@ -395,7 +386,6 @@ public static class Learn2CodeDbContextSeeder
                 Description  = "From zero to hero  variables, functions, async/await, TypeScript types and more.",
                 Difficulty   = CourseDifficulty.Beginner,
                 IsActive     = true,
-                InstructorId = instructor.AccountId,
                 CategoryId   = progCat?.CategoryId,
                 CreatedAt    = DateTime.UtcNow,
                 UpdatedAt    = DateTime.UtcNow

@@ -20,7 +20,6 @@ public class CourseRepository : GenericRepository<Course>, ICourseRepository
     {
         var query = _context.Set<Course>()
             .Include(c => c.Category)
-            .Include(c => c.Instructor)
             .Where(c => c.IsActive);
 
         // Filter by category
@@ -58,7 +57,6 @@ public class CourseRepository : GenericRepository<Course>, ICourseRepository
     {
         var query = _context.Set<Course>()
             .Include(c => c.Category)
-            .Include(c => c.Instructor)
             .Where(c => c.IsActive == isActive);
 
         // Filter by category
@@ -92,7 +90,6 @@ public class CourseRepository : GenericRepository<Course>, ICourseRepository
     {
         return await _context.Set<Course>()
             .Include(c => c.Category)
-            .Include(c => c.Instructor)
             .Include(c => c.Sections.Where(s => s.IsActive).OrderBy(s => s.OrderNumber))
             .FirstOrDefaultAsync(c => c.CourseId == id);
     }
