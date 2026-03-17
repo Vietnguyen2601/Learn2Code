@@ -1,4 +1,7 @@
-using Learn2Code.Application.DTOs;
+using Learn2Code.Application.DTOs.AccountDTOs.AccountRequests;
+using Learn2Code.Application.DTOs.AccountDTOs.AccountResponses;
+using Learn2Code.Application.DTOs.AuthDTOs.AuthRequests;
+using Learn2Code.Application.DTOs.AuthDTOs.AuthResponses;
 using Learn2Code.Domain.Entities;
 
 namespace Learn2Code.Application.Mapper;

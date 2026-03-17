@@ -1,5 +1,6 @@
 using Learn2Code.Application.Base;
-using Learn2Code.Application.DTOs;
+using Learn2Code.Application.DTOs.PaymentDTOs.PaymentRequests;
+using Learn2Code.Application.DTOs.PaymentDTOs.PaymentResponses;
 
 namespace Learn2Code.Application.Interfaces;
 

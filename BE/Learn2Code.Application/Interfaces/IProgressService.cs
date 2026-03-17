@@ -1,5 +1,6 @@
 using Learn2Code.Application.Base;
-using Learn2Code.Application.DTOs;
+using Learn2Code.Application.DTOs.ProgressDTOs.ProgressRequests;
+using Learn2Code.Application.DTOs.ProgressDTOs.ProgressResponses;
 
 namespace Learn2Code.Application.Interfaces;
 

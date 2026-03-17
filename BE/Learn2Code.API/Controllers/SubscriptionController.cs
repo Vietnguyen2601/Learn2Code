@@ -1,5 +1,6 @@
 using Learn2Code.Application.Base;
-using Learn2Code.Application.DTOs;
+using Learn2Code.Application.DTOs.SubscriptionDTOs.SubscriptionRequests;
+using Learn2Code.Application.DTOs.SubscriptionDTOs.SubscriptionResponses;
 using Learn2Code.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

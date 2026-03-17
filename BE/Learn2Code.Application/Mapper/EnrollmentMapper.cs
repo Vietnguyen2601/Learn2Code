@@ -1,4 +1,5 @@
-using Learn2Code.Application.DTOs;
+using Learn2Code.Application.DTOs.EnrollmentDTOs.EnrollmentRequests;
+using Learn2Code.Application.DTOs.EnrollmentDTOs.EnrollmentResponses;
 using Learn2Code.Domain.Entities;
 
 namespace Learn2Code.Application.Mapper;

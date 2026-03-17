@@ -1,5 +1,6 @@
 using Learn2Code.Application.Base;
-using Learn2Code.Application.DTOs;
+using Learn2Code.Application.DTOs.CategoryDTOs.CategoryRequests;
+using Learn2Code.Application.DTOs.CategoryDTOs.CategoryResponses;
 
 namespace Learn2Code.Application.Interfaces;
 

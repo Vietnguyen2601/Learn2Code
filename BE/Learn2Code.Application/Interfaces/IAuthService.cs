@@ -1,5 +1,6 @@
 using Learn2Code.Application.Base;
-using Learn2Code.Application.DTOs;
+using Learn2Code.Application.DTOs.AuthDTOs.AuthRequests;
+using Learn2Code.Application.DTOs.AuthDTOs.AuthResponses;
 
 namespace Learn2Code.Application.Interfaces;
 
