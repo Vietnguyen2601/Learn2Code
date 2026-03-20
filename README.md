@@ -136,6 +136,51 @@ docker-compose logs -f api
 docker-compose down
 ```
 
+### Piston Docker Compose (Windows/Mac/Linux)
+
+Project có sẵn file [BE/docker-compose.piston.yml](BE/docker-compose.piston.yml) để chạy Piston và tự cài sẵn 3 runtime:
+
+- python
+- csharp.net
+- java
+
+Chạy:
+
+```bash
+cd BE
+docker compose -f docker-compose.piston.yml up -d
+docker compose -f docker-compose.piston.yml logs -f piston-init
+```
+
+Kiểm tra:
+
+```bash
+curl http://localhost:2000/api/v2/runtimes
+```
+
+Dừng:
+
+```bash
+docker compose -f docker-compose.piston.yml down
+```
+
+Ghi chú cho Windows:
+
+- Docker Desktop cần bật Linux containers.
+- PowerShell đặt platform override (nếu cần):
+
+```powershell
+$env:PISTON_PLATFORM = "linux/amd64"
+docker compose -f docker-compose.piston.yml up -d
+```
+
+- CMD đặt platform override (nếu cần):
+
+```cmd
+set PISTON_PLATFORM=linux/amd64
+docker compose -f docker-compose.piston.yml up -d
+```
+
 ## 📡 API Endpoints
 
 > _Đang trong quá trình phát triển. Các endpoints sẽ được cập nhật khi hoàn thành._

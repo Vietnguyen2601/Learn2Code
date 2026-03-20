@@ -8,4 +8,7 @@ public class SubmitCodeRequest
     [Required]
     [JsonPropertyName("code")]
     public string Code { get; set; } = string.Empty;
+
+    [JsonPropertyName("language")]
+    public string? Language { get; set; }
 }

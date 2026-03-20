@@ -27,4 +27,34 @@ public class ExerciseProgressDto
 
     [JsonPropertyName("updated_at")]
     public DateTime UpdatedAt { get; set; }
+
+    [JsonPropertyName("language")]
+    public string? Language { get; set; }
+
+    [JsonPropertyName("stdout")]
+    public string? Stdout { get; set; }
+
+    [JsonPropertyName("stderr")]
+    public string? Stderr { get; set; }
+
+    [JsonPropertyName("output")]
+    public string? Output { get; set; }
+
+    [JsonPropertyName("exit_code")]
+    public int? ExitCode { get; set; }
+
+    [JsonPropertyName("runtime_ms")]
+    public int? RuntimeMs { get; set; }
+
+    [JsonPropertyName("compile_stdout")]
+    public string? CompileStdout { get; set; }
+
+    [JsonPropertyName("compile_stderr")]
+    public string? CompileStderr { get; set; }
+
+    [JsonPropertyName("compile_output")]
+    public string? CompileOutput { get; set; }
+
+    [JsonPropertyName("testcase_results")]
+    public List<ExerciseTestCaseResultDto>? TestCaseResults { get; set; }
 }

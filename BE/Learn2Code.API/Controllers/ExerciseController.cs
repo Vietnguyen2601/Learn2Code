@@ -120,7 +120,7 @@ public class ExerciseController : ControllerBase
         var result = await _exerciseService.RunCodeAsync(exerciseId, userId, request);
 
         if (!result.Success)
-            return result.Status == 403 ? StatusCode(403, result) : NotFound(result);
+            return StatusCode(result.Status, result);
 
         return Ok(result);
     }
@@ -140,7 +140,7 @@ public class ExerciseController : ControllerBase
         var result = await _exerciseService.SubmitCodeAsync(exerciseId, userId, request);
 
         if (!result.Success)
-            return result.Status == 403 ? StatusCode(403, result) : NotFound(result);
+            return StatusCode(result.Status, result);
 
         return Ok(result);
     }
@@ -160,7 +160,7 @@ public class ExerciseController : ControllerBase
         var result = await _exerciseService.UpdateExerciseProgressAsync(exerciseId, userId, request);
 
         if (!result.Success)
-            return result.Status == 403 ? StatusCode(403, result) : NotFound(result);
+            return StatusCode(result.Status, result);
 
         return Ok(result);
     }

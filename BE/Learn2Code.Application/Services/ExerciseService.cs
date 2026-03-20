@@ -5,17 +5,26 @@ using Learn2Code.Application.DTOs.ExerciseDTOs.ExerciseResponses;
 using Learn2Code.Application.Interfaces;
 using Learn2Code.Application.Mapper;
 using Learn2Code.Domain.Entities;
+using Learn2Code.Domain.Enums;
+using Learn2Code.Infrastructure.DTOs;
+using Learn2Code.Infrastructure.Options;
 using Learn2Code.Infrastructure.Persistence.UnitOfWork;
+using Learn2Code.Infrastructure.Services;
+using Microsoft.Extensions.Options;
 
 namespace Learn2Code.Application.Services;
 
 public class ExerciseService : IExerciseService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IPistonService _pistonService;
+    private readonly PistonOptions _pistonOptions;
 
-    public ExerciseService(IUnitOfWork unitOfWork)
+    public ExerciseService(IUnitOfWork unitOfWork, IPistonService pistonService, IOptions<PistonOptions> pistonOptions)
     {
         _unitOfWork = unitOfWork;
+        _pistonService = pistonService;
+        _pistonOptions = pistonOptions.Value;
     }
 
     public async Task<ServiceResult<List<ExerciseDto>>> GetExercisesByLessonIdAsync(Guid lessonId)
@@ -163,16 +172,30 @@ public class ExerciseService : IExerciseService
         if (exercise == null)
             return ServiceResult<ExerciseProgressDto>.NotFound("Exercise not found");
 
+        if (exercise.ExerciseType == ExerciseType.Reading)
+            return ServiceResult<ExerciseProgressDto>.Error("INVALID_EXERCISE_TYPE", "Reading exercises do not support code execution");
+
         var canAccess = await _unitOfWork.ExerciseRepository.CanUserAccessExerciseAsync(exerciseId, studentId);
         if (!canAccess)
             return ServiceResult<ExerciseProgressDto>.Error("ACCESS_DENIED", "You don't have permission to access this exercise", 403);
+
+        var language = ResolveLanguage(request.Language, exercise.Language);
+        if (string.IsNullOrWhiteSpace(language))
+            return ServiceResult<ExerciseProgressDto>.BadRequest("Language is required. Provide request.language or configure exercise.language");
+
+        var execution = await ExecuteCodeAsync(language, request.Code);
+        if (execution.Response == null)
+            return ServiceResult<ExerciseProgressDto>.Error("CODE_ENGINE_UNAVAILABLE", "Unable to run code at the moment", 503);
 
         var progress = await UpsertProgressAsync(studentId, exerciseId, p =>
         {
             p.LastCode = request.Code;
         });
 
-        return ServiceResult<ExerciseProgressDto>.Ok(progress.ToProgressDto(), "Code saved successfully");
+        var response = progress.ToProgressDto();
+        ApplyExecutionResult(response, execution.Response, language, execution.RuntimeMs);
+
+        return ServiceResult<ExerciseProgressDto>.Ok(response, "Code executed successfully");
     }
 
     public async Task<ServiceResult<ExerciseProgressDto>> SubmitCodeAsync(Guid exerciseId, Guid studentId, SubmitCodeRequest request)
@@ -181,20 +204,66 @@ public class ExerciseService : IExerciseService
         if (exercise == null)
             return ServiceResult<ExerciseProgressDto>.NotFound("Exercise not found");
 
+        if (exercise.ExerciseType == ExerciseType.Reading)
+            return ServiceResult<ExerciseProgressDto>.Error("INVALID_EXERCISE_TYPE", "Reading exercises do not support code submission");
+
         var canAccess = await _unitOfWork.ExerciseRepository.CanUserAccessExerciseAsync(exerciseId, studentId);
         if (!canAccess)
             return ServiceResult<ExerciseProgressDto>.Error("ACCESS_DENIED", "You don't have permission to access this exercise", 403);
 
+        var language = ResolveLanguage(request.Language, exercise.Language);
+        if (string.IsNullOrWhiteSpace(language))
+            return ServiceResult<ExerciseProgressDto>.BadRequest("Language is required. Provide request.language or configure exercise.language");
+
+        var execution = await ExecuteCodeAsync(language, request.Code);
+        if (execution.Response == null)
+            return ServiceResult<ExerciseProgressDto>.Error("CODE_ENGINE_UNAVAILABLE", "Unable to submit code at the moment", 503);
+
+        var runResult = execution.Response.Run;
+        var runSucceeded = runResult?.Code == 0;
         var now = DateTime.UtcNow;
+        var testCaseResults = new List<ExerciseTestCaseResultDto>();
+        var finalPassed = runSucceeded;
+
+        if (exercise.ExerciseType == ExerciseType.GradedCode)
+        {
+            var testCases = await _unitOfWork.TestCaseRepository.GetTestCasesByExerciseIdAsync(exerciseId);
+            if (testCases.Count == 0)
+                return ServiceResult<ExerciseProgressDto>.Error("TEST_CASES_NOT_FOUND", "No test cases found for this graded exercise", 422);
+
+            var actualOutput = runResult?.Stdout ?? runResult?.Output ?? string.Empty;
+            var normalizedActualOutput = NormalizeOutput(actualOutput);
+
+            foreach (var testCase in testCases)
+            {
+                var normalizedExpectedOutput = NormalizeOutput(testCase.ExpectedOutput);
+                var isPassed = runSucceeded && normalizedExpectedOutput == normalizedActualOutput;
+
+                testCaseResults.Add(new ExerciseTestCaseResultDto
+                {
+                    TestCaseId = testCase.TestCaseId,
+                    IsPassed = isPassed,
+                    ActualOutput = testCase.IsHidden ? null : actualOutput
+                });
+            }
+
+            finalPassed = testCaseResults.All(x => x.IsPassed);
+        }
+
         var progress = await UpsertProgressAsync(studentId, exerciseId, p =>
         {
             p.LastCode = request.Code;
-            p.IsCompleted = true;
-            p.IsPassed = true;
-            p.CompletedAt ??= now;
+            p.IsPassed = finalPassed;
+            p.IsCompleted = finalPassed;
+            p.CompletedAt = finalPassed ? (p.CompletedAt ?? now) : null;
         });
 
-        return ServiceResult<ExerciseProgressDto>.Ok(progress.ToProgressDto(), "Submitted successfully");
+        var response = progress.ToProgressDto();
+        response.TestCaseResults = testCaseResults;
+        ApplyExecutionResult(response, execution.Response, language, execution.RuntimeMs);
+
+        var message = finalPassed ? "Submitted successfully" : "Submission failed. Please review your code and try again";
+        return ServiceResult<ExerciseProgressDto>.Ok(response, message);
     }
 
     public async Task<ServiceResult<ExerciseProgressDto>> UpdateExerciseProgressAsync(Guid exerciseId, Guid studentId, UpdateExerciseProgressRequest request)
@@ -290,5 +359,87 @@ public class ExerciseService : IExerciseService
         }
 
         return request;
+    }
+
+    private async Task<(PistonExecuteResponse? Response, int RuntimeMs)> ExecuteCodeAsync(string language, string code)
+    {
+        var startedAt = DateTime.UtcNow;
+        var response = await _pistonService.ExecuteAsync(new PistonExecuteRequest
+        {
+            Language = language,
+            Version = _pistonOptions.Version,
+            Files = new List<PistonFileDto>
+            {
+                new()
+                {
+                    Name = GetSourceFileName(language),
+                    Content = code
+                }
+            },
+            CompileTimeout = _pistonOptions.CompileTimeout,
+            RunTimeout = _pistonOptions.RunTimeout
+        });
+
+        var runtimeMs = (int)Math.Max(1, (DateTime.UtcNow - startedAt).TotalMilliseconds);
+        return (response, runtimeMs);
+    }
+
+    private static string? ResolveLanguage(string? requestedLanguage, string? exerciseLanguage)
+    {
+        if (!string.IsNullOrWhiteSpace(requestedLanguage))
+            return requestedLanguage.Trim();
+
+        if (!string.IsNullOrWhiteSpace(exerciseLanguage))
+            return exerciseLanguage.Trim();
+
+        return null;
+    }
+
+    private static string NormalizeOutput(string? output)
+    {
+        if (string.IsNullOrWhiteSpace(output))
+            return string.Empty;
+
+        var lines = output
+            .Replace("\r\n", "\n")
+            .Split('\n', StringSplitOptions.None)
+            .Select(line => line.TrimEnd());
+
+        return string.Join("\n", lines).Trim();
+    }
+
+    private static string GetSourceFileName(string language)
+    {
+        var normalized = language.Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "c" => "main.c",
+            "c++" or "cpp" => "main.cpp",
+            "c#" or "csharp" or "cs" => "main.cs",
+            "go" or "golang" => "main.go",
+            "java" => "Main.java",
+            "javascript" or "js" => "main.js",
+            "typescript" or "ts" => "main.ts",
+            "kotlin" or "kt" => "main.kt",
+            "php" => "main.php",
+            "python" or "py" => "main.py",
+            "ruby" or "rb" => "main.rb",
+            "rust" or "rs" => "main.rs",
+            "swift" => "main.swift",
+            _ => "main.txt"
+        };
+    }
+
+    private static void ApplyExecutionResult(ExerciseProgressDto response, PistonExecuteResponse execution, string language, int runtimeMs)
+    {
+        response.Language = execution.Language is { Length: > 0 } ? execution.Language : language;
+        response.Stdout = execution.Run?.Stdout;
+        response.Stderr = execution.Run?.Stderr;
+        response.Output = execution.Run?.Output;
+        response.ExitCode = execution.Run?.Code;
+        response.RuntimeMs = runtimeMs;
+        response.CompileStdout = execution.Compile?.Stdout;
+        response.CompileStderr = execution.Compile?.Stderr;
+        response.CompileOutput = execution.Compile?.Output;
     }
 }
