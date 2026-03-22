@@ -1,0 +1,39 @@
+services:
+  piston:
+    image: ghcr.io/engineer-man/piston:latest
+    container_name: piston_api
+    platform: ${PISTON_PLATFORM:-linux/amd64}
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "2000:2000"
+    volumes:
+      - piston_data:/piston
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:2000/api/v2/runtimes"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+
+  piston-init:
+    image: curlimages/curl:8.7.1
+    container_name: piston_init
+    depends_on:
+      piston:
+        condition: service_healthy
+    restart: "no"
+    command:
+      - sh
+      - -lc
+      - |
+        set -eu
+        echo "Installing runtimes: python, csharp.net, java"
+        curl -fsS -X POST http://piston:2000/api/v2/packages -H "Content-Type: application/json" -d '{"language":"python","version":"*"}'
+        curl -fsS -X POST http://piston:2000/api/v2/packages -H "Content-Type: application/json" -d '{"language":"csharp.net","version":"*"}'
+        curl -fsS -X POST http://piston:2000/api/v2/packages -H "Content-Type: application/json" -d '{"language":"java","version":"*"}'
+        echo "Runtime installation completed"
+
+volumes:
+  piston_data:
+    name: learn2code_piston_data

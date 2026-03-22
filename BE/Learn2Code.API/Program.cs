@@ -29,6 +29,13 @@ builder.Services.AddDbContext<Learn2CodeDbContext>(options =>
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddMemoryCache();
 
+// Piston Configuration
+builder.Services.Configure<PistonOptions>(builder.Configuration.GetSection("Piston"));
+builder.Services.AddHttpClient<IPistonService, PistonService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
 // PayOS Configuration (IOptions pattern)
 builder.Services.Configure<PayOsOptions>(options =>
 {
