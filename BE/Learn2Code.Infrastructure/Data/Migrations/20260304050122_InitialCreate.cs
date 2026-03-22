@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -585,6 +585,7 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                     testcase_id = table.Column<Guid>(type: "uuid", nullable: false),
                     exercise_id = table.Column<Guid>(type: "uuid", nullable: false),
                     expected_output = table.Column<string>(type: "text", nullable: false),
+                    text_input = table.Column<string>(type: "text", nullable: true),
                     is_hidden = table.Column<bool>(type: "boolean", nullable: false),
                     weight = table.Column<decimal>(type: "numeric(5,2)", precision: 5, scale: 2, nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
