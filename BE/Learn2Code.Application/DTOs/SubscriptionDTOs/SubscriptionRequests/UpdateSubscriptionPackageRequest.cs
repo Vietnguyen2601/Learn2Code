@@ -12,13 +12,9 @@ public class UpdateSubscriptionPackageRequest
     [JsonPropertyName("duration_months")]
     public int? DurationMonths { get; set; }
 
-    [Range(0, double.MaxValue)]
+    [Range(1000, double.MaxValue)]
     [JsonPropertyName("price")]
     public decimal? Price { get; set; }
-
-    [Range(0, 100)]
-    [JsonPropertyName("discount_percent")]
-    public decimal? DiscountPercent { get; set; }
 
     [JsonPropertyName("description")]
     public string? Description { get; set; }

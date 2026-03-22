@@ -231,13 +231,24 @@ public class ExerciseService : IExerciseService
             if (testCases.Count == 0)
                 return ServiceResult<ExerciseProgressDto>.Error("TEST_CASES_NOT_FOUND", "No test cases found for this graded exercise", 422);
 
-            var actualOutput = runResult?.Stdout ?? runResult?.Output ?? string.Empty;
-            var normalizedActualOutput = NormalizeOutput(actualOutput);
+            int accumulatedRuntimeMs = 0;
+            (PistonExecuteResponse? Response, int RuntimeMs) lastExecution = (null, 0);
 
             foreach (var testCase in testCases)
             {
+                var testExecution = await ExecuteCodeAsync(language, request.Code, testCase.TextInput);
+                if (testExecution.Response == null)
+                    return ServiceResult<ExerciseProgressDto>.Error("CODE_ENGINE_UNAVAILABLE", "Unable to submit code at the moment", 503);
+
+                accumulatedRuntimeMs += testExecution.RuntimeMs;
+                lastExecution = testExecution;
+
+                var testRunResult = testExecution.Response.Run;
+                var testRunSucceeded = testRunResult?.Code == 0;
+                var actualOutput = testRunResult?.Stdout ?? testRunResult?.Output ?? string.Empty;
+                var normalizedActualOutput = NormalizeOutput(actualOutput);
                 var normalizedExpectedOutput = NormalizeOutput(testCase.ExpectedOutput);
-                var isPassed = runSucceeded && normalizedExpectedOutput == normalizedActualOutput;
+                var isPassed = testRunSucceeded && normalizedExpectedOutput == normalizedActualOutput;
 
                 testCaseResults.Add(new ExerciseTestCaseResultDto
                 {
@@ -248,6 +259,11 @@ public class ExerciseService : IExerciseService
             }
 
             finalPassed = testCaseResults.All(x => x.IsPassed);
+
+            if (lastExecution.Response != null)
+            {
+                execution = (lastExecution.Response, Math.Max(1, accumulatedRuntimeMs));
+            }
         }
 
         var progress = await UpsertProgressAsync(studentId, exerciseId, p =>
@@ -361,13 +377,14 @@ public class ExerciseService : IExerciseService
         return request;
     }
 
-    private async Task<(PistonExecuteResponse? Response, int RuntimeMs)> ExecuteCodeAsync(string language, string code)
+    private async Task<(PistonExecuteResponse? Response, int RuntimeMs)> ExecuteCodeAsync(string language, string code, string? stdin = null)
     {
         var startedAt = DateTime.UtcNow;
         var response = await _pistonService.ExecuteAsync(new PistonExecuteRequest
         {
             Language = language,
             Version = _pistonOptions.Version,
+            Stdin = stdin ?? string.Empty,
             Files = new List<PistonFileDto>
             {
                 new()

@@ -17,6 +17,9 @@ public class TestCase
     [Column("expected_output")]
     public string ExpectedOutput { get; set; } = string.Empty;
 
+    [Column("text_input")]
+    public string? TextInput { get; set; }
+
     [Column("is_hidden")]
     public bool IsHidden { get; set; } = false;
 

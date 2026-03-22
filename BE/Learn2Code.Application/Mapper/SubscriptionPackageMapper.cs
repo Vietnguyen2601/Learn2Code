@@ -8,7 +8,7 @@ public static class SubscriptionPackageMapper
 {
     // ─── Entity factories ────────────────────────────────────────────────────
 
-    public static SubscriptionPackage ToNewPackage(this CreateSubscriptionPackageRequest request)
+    public static SubscriptionPackage ToNewPackage(this CreateSubscriptionPackageRequest request, decimal discountPercent)
     {
         var now = DateTime.UtcNow;
         return new SubscriptionPackage
@@ -17,7 +17,7 @@ public static class SubscriptionPackageMapper
             Name            = request.Name,
             DurationMonths  = request.DurationMonths,
             Price           = request.Price,
-            DiscountPercent = request.DiscountPercent,
+            DiscountPercent = discountPercent,
             Description     = request.Description,
             IsActive        = true,
             CreatedAt       = now,
@@ -29,7 +29,6 @@ public static class SubscriptionPackageMapper
     {
         if (request.DurationMonths.HasValue)  package.DurationMonths  = request.DurationMonths.Value;
         if (request.Price.HasValue)           package.Price           = request.Price.Value;
-        if (request.DiscountPercent.HasValue) package.DiscountPercent = request.DiscountPercent.Value;
         if (request.Description != null)      package.Description     = request.Description;
         if (request.IsActive.HasValue)        package.IsActive        = request.IsActive.Value;
         package.UpdatedAt = DateTime.UtcNow;

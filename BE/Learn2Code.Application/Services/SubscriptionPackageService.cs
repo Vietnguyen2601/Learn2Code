@@ -9,6 +9,8 @@ namespace Learn2Code.Application.Services;
 
 public class SubscriptionPackageService : ISubscriptionPackageService
 {
+    private const decimal MinPackagePrice = 1000m;
+
     private readonly IUnitOfWork _unitOfWork;
 
     public SubscriptionPackageService(IUnitOfWork unitOfWork)
@@ -38,7 +40,11 @@ public class SubscriptionPackageService : ISubscriptionPackageService
         if (nameExists)
             return ServiceResult<SubscriptionPackageDto>.Error("NAME_EXISTS", "A package with this name already exists");
 
-        var package = request.ToNewPackage();
+        if (request.Price < MinPackagePrice)
+            return ServiceResult<SubscriptionPackageDto>.BadRequest($"Price must be at least {MinPackagePrice:0} VND");
+
+        var discountPercent = CalculateDiscountPercent(request.DurationMonths);
+        var package = request.ToNewPackage(discountPercent);
 
         _unitOfWork.SubscriptionPackageRepository.PrepareCreate(package);
         await _unitOfWork.CommitTransactionAsync();
@@ -63,7 +69,11 @@ public class SubscriptionPackageService : ISubscriptionPackageService
             package.Name = request.Name;
         }
 
+        if (request.Price.HasValue && request.Price.Value < MinPackagePrice)
+            return ServiceResult<SubscriptionPackageDto>.BadRequest($"Price must be at least {MinPackagePrice:0} VND");
+
         package.ApplyUpdate(request);
+        package.DiscountPercent = CalculateDiscountPercent(package.DurationMonths);
 
         _unitOfWork.SubscriptionPackageRepository.PrepareUpdate(package);
         await _unitOfWork.CommitTransactionAsync();
@@ -84,5 +94,15 @@ public class SubscriptionPackageService : ISubscriptionPackageService
         await _unitOfWork.CommitTransactionAsync();
 
         return ServiceResult.Ok("Subscription package has been disabled");
+    }
+
+    private static decimal CalculateDiscountPercent(int durationMonths)
+    {
+        if (durationMonths <= 1)
+            return 0m;
+
+        // 1 month = 0%, each +2 months increases 5%, max 20%.
+        var discount = (durationMonths / 2) * 5m;
+        return Math.Min(20m, discount);
     }
 }

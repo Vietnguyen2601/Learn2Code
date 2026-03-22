@@ -5,6 +5,9 @@ namespace Learn2Code.Application.DTOs.TestCaseDTOs.TestCaseRequests;
 
 public class UpdateTestCaseRequest
 {
+    [JsonPropertyName("text_input")]
+    public string? TextInput { get; set; }
+
     [JsonPropertyName("expected_output")]
     public string? ExpectedOutput { get; set; }
 

@@ -13,6 +13,9 @@ public class TestCaseDto
     [JsonPropertyName("expected_output")]
     public string ExpectedOutput { get; set; } = string.Empty;
 
+    [JsonPropertyName("text_input")]
+    public string? TextInput { get; set; }
+
     [JsonPropertyName("is_hidden")]
     public bool IsHidden { get; set; }
 
