@@ -14,6 +14,7 @@ public static class TestCaseMapper
             TestCaseId = testCase.TestCaseId,
             ExerciseId = testCase.ExerciseId,
             ExpectedOutput = testCase.ExpectedOutput,
+            TextInput = testCase.TextInput,
             IsHidden = testCase.IsHidden,
             Weight = testCase.Weight,
             CreatedAt = testCase.CreatedAt,
@@ -28,6 +29,7 @@ public static class TestCaseMapper
             TestCaseId = Guid.NewGuid(),
             ExerciseId = exerciseId,
             ExpectedOutput = request.ExpectedOutput,
+            TextInput = request.TextInput,
             IsHidden = request.IsHidden,
             Weight = request.Weight,
             CreatedAt = DateTime.UtcNow,
@@ -37,6 +39,9 @@ public static class TestCaseMapper
 
     public static void UpdateTestCase(this TestCase testCase, UpdateTestCaseRequest request)
     {
+        if (request.TextInput != null)
+            testCase.TextInput = request.TextInput;
+
         if (!string.IsNullOrWhiteSpace(request.ExpectedOutput))
             testCase.ExpectedOutput = request.ExpectedOutput;
 

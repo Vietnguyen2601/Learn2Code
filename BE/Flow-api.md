@@ -79,17 +79,14 @@ POST
 
 /subscription-packages
 [A]
-Tạo gói mới ( 
-1) trường discount_percent phải được tự động tính dựa trên gói 1 tháng, chứ không được nhập, chỉ được nhập price và hệ thống sẽ dựa vào price hiện tại so với gói 1 tháng và coi thử nó giảm bao nhiêu,
- 2) với trường hợp ngừ ta cố tình nhập nhỏ hơn giá mặc định thì sẽ ra output hiện tại discount_percent đang âm so với giá trước bạn hãy cân nhắc để đúng nghiệp vụ kinh doanh ( dữ liệu vẫn được cập nhật ) nhưng hiện thêm message cho ngừ ta biết 
-3)  price =0 vẫn được tạo gói là sai 
+Tạo gói mới (discount_percent tự tính theo duration_months; không cho nhập discount_percent; price >= 1000)
 
 
 
 PATCH
 /subscription-packages/:id
 [A]
-Cập nhật gói  (price =0 vẫn đc cập nhật) 
+Cập nhật gói (price nếu truyền vào phải >= 1000; discount_percent tự tính lại theo duration_months)
 DELETE
 /subscription-packages/:id
 [A]
@@ -286,6 +283,17 @@ DELETE
 /exercises/:exerciseId/testcases/:testcaseId
 [A]
 Xóa testcase (DONE)
+
+Ghi chú testcase:
+- Có thêm trường text_input để lưu stdin cho từng testcase.
+- submit GradedCode sẽ chạy code theo từng testcase với stdin = text_input tương ứng.
+
+Quy tắc discount subscription:
+- 1 tháng: 0%
+- 2 tháng: 5%
+- 4 tháng: 10%
+- 6 tháng: 15%
+- Tăng dần theo mốc 2 tháng, tối đa 20%
 
 
 Method

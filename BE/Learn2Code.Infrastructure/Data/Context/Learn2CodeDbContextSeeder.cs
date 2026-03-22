@@ -473,11 +473,11 @@ public static class Learn2CodeDbContextSeeder
             context.Exercises.Add(exercise);
             await context.SaveChangesAsync();
 
-            // TestCase has no Input field  only ExpectedOutput
+            // Seed test cases with input/output pairs.
             context.TestCases.AddRange(
-                new TestCase { TestCaseId = Guid.NewGuid(), ExerciseId = exercise.ExerciseId, ExpectedOutput = "3",  IsHidden = false, Weight = 0.5m, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-                new TestCase { TestCaseId = Guid.NewGuid(), ExerciseId = exercise.ExerciseId, ExpectedOutput = "30", IsHidden = false, Weight = 0.5m, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-                new TestCase { TestCaseId = Guid.NewGuid(), ExerciseId = exercise.ExerciseId, ExpectedOutput = "0",  IsHidden = true,  Weight = 1.0m, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
+                new TestCase { TestCaseId = Guid.NewGuid(), ExerciseId = exercise.ExerciseId, TextInput = "1\n2\n",  ExpectedOutput = "3",  IsHidden = false, Weight = 0.5m, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                new TestCase { TestCaseId = Guid.NewGuid(), ExerciseId = exercise.ExerciseId, TextInput = "10\n20\n", ExpectedOutput = "30", IsHidden = false, Weight = 0.5m, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                new TestCase { TestCaseId = Guid.NewGuid(), ExerciseId = exercise.ExerciseId, TextInput = "-5\n5\n",  ExpectedOutput = "0",  IsHidden = true,  Weight = 1.0m, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
             );
             await context.SaveChangesAsync();
         }

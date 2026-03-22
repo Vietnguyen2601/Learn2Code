@@ -1026,6 +1026,10 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_hidden");
 
+                    b.Property<string>("TextInput")
+                        .HasColumnType("text")
+                        .HasColumnName("text_input");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
