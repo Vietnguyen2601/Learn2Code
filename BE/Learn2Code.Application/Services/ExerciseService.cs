@@ -19,12 +19,15 @@ public class ExerciseService : IExerciseService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPistonService _pistonService;
     private readonly PistonOptions _pistonOptions;
+    private readonly IGamificationService _gamificationService;
 
-    public ExerciseService(IUnitOfWork unitOfWork, IPistonService pistonService, IOptions<PistonOptions> pistonOptions)
+    public ExerciseService(IUnitOfWork unitOfWork, IPistonService pistonService,
+        IOptions<PistonOptions> pistonOptions, IGamificationService gamificationService)
     {
         _unitOfWork = unitOfWork;
         _pistonService = pistonService;
         _pistonOptions = pistonOptions.Value;
+        _gamificationService = gamificationService;
     }
 
     public async Task<ServiceResult<List<ExerciseDto>>> GetExercisesByLessonIdAsync(Guid lessonId)
@@ -277,6 +280,11 @@ public class ExerciseService : IExerciseService
         var response = progress.ToProgressDto();
         response.TestCaseResults = testCaseResults;
         ApplyExecutionResult(response, execution.Response, language, execution.RuntimeMs);
+
+        if (finalPassed)
+        {
+            await _gamificationService.ProcessEventAsync(studentId, XPEventType.ExercisePassed);
+        }
 
         var message = finalPassed ? "Submitted successfully" : "Submission failed. Please review your code and try again";
         return ServiceResult<ExerciseProgressDto>.Ok(response, message);
