@@ -15,14 +15,13 @@ public static class Learn2CodeDbContextSeeder
     public static async Task SeedAsync(IServiceProvider serviceProvider)
     {
         using var scope = serviceProvider.CreateScope();
-        var context    = scope.ServiceProvider.GetRequiredService<Learn2CodeDbContext>();
-        var logger     = scope.ServiceProvider.GetRequiredService<ILogger<Learn2CodeDbContext>>();
+        var context = scope.ServiceProvider.GetRequiredService<Learn2CodeDbContext>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Learn2CodeDbContext>>();
 
         try
         {
-            await ResetSchemaIfNeededAsync(context, logger);
+            // await ResetSchemaIfNeededAsync(context, logger);
             await context.Database.MigrateAsync();
-
             await SeedRolesAsync(context, logger);
             await SeedAdminAccountAsync(context, logger);
             await SeedCourseCategoriesAsync(context, logger);
@@ -105,12 +104,12 @@ public static class Learn2CodeDbContextSeeder
             {
                 context.Roles.Add(new Role
                 {
-                    RoleId      = Guid.NewGuid(),
-                    RoleName    = r.Name,
+                    RoleId = Guid.NewGuid(),
+                    RoleName = r.Name,
                     Description = r.Description,
-                    IsActive    = true,
-                    CreatedAt   = DateTime.UtcNow,
-                    UpdatedAt   = DateTime.UtcNow
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
                 });
                 logger.LogInformation("Seeded role: {Role}", r.Name);
             }
@@ -124,7 +123,7 @@ public static class Learn2CodeDbContextSeeder
     // 
     private static async Task SeedAdminAccountAsync(Learn2CodeDbContext context, ILogger logger)
     {
-        const string username       = "admin";
+        const string username = "admin";
         const string hashedPassword = "$2a$11$K.W4dRdBcELaXXQrD4z.xOCBPjHxJLZfvFZEVBYfkb7JcbYYXLdGC";
 
         if (await context.Accounts.AnyAsync(a => a.Username == username))
@@ -140,11 +139,11 @@ public static class Learn2CodeDbContextSeeder
         var admin = new Account
         {
             AccountId = Guid.NewGuid(),
-            Username  = username,
-            Email     = "admin@learn2code.com",
-            Password  = hashedPassword,
-            Name      = "System Admin",
-            IsActive  = true,
+            Username = username,
+            Email = "admin@learn2code.com",
+            Password = hashedPassword,
+            Name = "System Admin",
+            IsActive = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -154,8 +153,8 @@ public static class Learn2CodeDbContextSeeder
 
         context.AccountRoles.Add(new AccountRole
         {
-            AccountId  = admin.AccountId,
-            RoleId     = adminRole.RoleId,
+            AccountId = admin.AccountId,
+            RoleId = adminRole.RoleId,
             AssignedAt = DateTime.UtcNow
         });
         await context.SaveChangesAsync();
@@ -188,11 +187,11 @@ public static class Learn2CodeDbContextSeeder
             var account = new Account
             {
                 AccountId = Guid.NewGuid(),
-                Username  = s.Username,
-                Email     = s.Email,
-                Password  = hash,
-                Name      = s.Name,
-                IsActive  = true,
+                Username = s.Username,
+                Email = s.Email,
+                Password = hash,
+                Name = s.Name,
+                IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -201,8 +200,8 @@ public static class Learn2CodeDbContextSeeder
 
             context.AccountRoles.Add(new AccountRole
             {
-                AccountId  = account.AccountId,
-                RoleId     = studentRole.RoleId,
+                AccountId = account.AccountId,
+                RoleId = studentRole.RoleId,
                 AssignedAt = DateTime.UtcNow
             });
             await context.SaveChangesAsync();
@@ -283,12 +282,12 @@ public static class Learn2CodeDbContextSeeder
         {
             context.CourseCategories.Add(new CourseCategory
             {
-                CategoryId  = Guid.NewGuid(),
-                Name        = c.Name,
+                CategoryId = Guid.NewGuid(),
+                Name = c.Name,
                 Description = c.Description,
-                IsActive    = true,
-                CreatedAt   = DateTime.UtcNow,
-                UpdatedAt   = DateTime.UtcNow
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             });
             logger.LogInformation("Seeded category: {Category}", c.Name);
         }
@@ -320,11 +319,11 @@ public static class Learn2CodeDbContextSeeder
             var account = new Account
             {
                 AccountId = Guid.NewGuid(),
-                Username  = dev.Username,
-                Email     = dev.Email,
-                Password  = hash,
-                Name      = dev.Name,
-                IsActive  = true,
+                Username = dev.Username,
+                Email = dev.Email,
+                Password = hash,
+                Name = dev.Name,
+                IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -334,8 +333,8 @@ public static class Learn2CodeDbContextSeeder
 
             context.AccountRoles.Add(new AccountRole
             {
-                AccountId  = account.AccountId,
-                RoleId     = role.RoleId,
+                AccountId = account.AccountId,
+                RoleId = role.RoleId,
                 AssignedAt = DateTime.UtcNow
             });
             await context.SaveChangesAsync();
@@ -351,9 +350,9 @@ public static class Learn2CodeDbContextSeeder
     {
         if (await context.Courses.AnyAsync()) return;
 
-        var webCat     = await context.CourseCategories.FirstOrDefaultAsync(c => c.Name == "Web Development");
-        var progCat    = await context.CourseCategories.FirstOrDefaultAsync(c => c.Name == "Programming Languages");
-        var dsCat      = await context.CourseCategories.FirstOrDefaultAsync(c => c.Name == "Data Science");
+        var webCat = await context.CourseCategories.FirstOrDefaultAsync(c => c.Name == "Web Development");
+        var progCat = await context.CourseCategories.FirstOrDefaultAsync(c => c.Name == "Programming Languages");
+        var dsCat = await context.CourseCategories.FirstOrDefaultAsync(c => c.Name == "Data Science");
 
         var courses = new[]
         {
@@ -411,7 +410,7 @@ public static class Learn2CodeDbContextSeeder
         {
             context.Sections.AddRange(
                 new Section { SectionId = Guid.NewGuid(), CourseId = course.CourseId, Title = "Getting Started", OrderNumber = 1, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-                new Section { SectionId = Guid.NewGuid(), CourseId = course.CourseId, Title = "Core Concepts",   OrderNumber = 2, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                new Section { SectionId = Guid.NewGuid(), CourseId = course.CourseId, Title = "Core Concepts", OrderNumber = 2, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
                 new Section { SectionId = Guid.NewGuid(), CourseId = course.CourseId, Title = "Advanced Topics", OrderNumber = 3, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
             );
         }
@@ -434,7 +433,7 @@ public static class Learn2CodeDbContextSeeder
         {
             context.Lessons.AddRange(
                 new Lesson { LessonId = Guid.NewGuid(), SectionId = section.SectionId, Title = $"{section.Title} - Lesson 1", OrderNumber = 1, IsFreePreview = section.OrderNumber == 1, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-                new Lesson { LessonId = Guid.NewGuid(), SectionId = section.SectionId, Title = $"{section.Title} - Lesson 2", OrderNumber = 2, IsFreePreview = false,                     CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
+                new Lesson { LessonId = Guid.NewGuid(), SectionId = section.SectionId, Title = $"{section.Title} - Lesson 2", OrderNumber = 2, IsFreePreview = false, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
             );
         }
 
@@ -456,18 +455,18 @@ public static class Learn2CodeDbContextSeeder
         {
             var exercise = new Exercise
             {
-                ExerciseId   = Guid.NewGuid(),
-                LessonId     = lesson.LessonId,
-                OrderNumber  = 1,
+                ExerciseId = Guid.NewGuid(),
+                LessonId = lesson.LessonId,
+                OrderNumber = 1,
                 ExerciseType = ExerciseType.GradedCode,
-                Narrative    = $"Practice exercise for: {lesson.Title}. Write a function that returns the sum of two numbers.",
-                Language     = "csharp",
-                StarterCode  = "public int Add(int a, int b)\n{\n    // TODO: implement\n    return 0;\n}",
+                Narrative = $"Practice exercise for: {lesson.Title}. Write a function that returns the sum of two numbers.",
+                Language = "csharp",
+                StarterCode = "public int Add(int a, int b)\n{\n    // TODO: implement\n    return 0;\n}",
                 SolutionCode = "public int Add(int a, int b)\n{\n    return a + b;\n}",
-                Instruction  = "Implement the Add method to return the sum of a and b.",
-                Hint         = "Use the + operator.",
-                CreatedAt    = DateTime.UtcNow,
-                UpdatedAt    = DateTime.UtcNow
+                Instruction = "Implement the Add method to return the sum of a and b.",
+                Hint = "Use the + operator.",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
             context.Exercises.Add(exercise);
@@ -475,9 +474,9 @@ public static class Learn2CodeDbContextSeeder
 
             // Seed test cases with input/output pairs.
             context.TestCases.AddRange(
-                new TestCase { TestCaseId = Guid.NewGuid(), ExerciseId = exercise.ExerciseId, TextInput = "1\n2\n",  ExpectedOutput = "3",  IsHidden = false, Weight = 0.5m, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                new TestCase { TestCaseId = Guid.NewGuid(), ExerciseId = exercise.ExerciseId, TextInput = "1\n2\n", ExpectedOutput = "3", IsHidden = false, Weight = 0.5m, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
                 new TestCase { TestCaseId = Guid.NewGuid(), ExerciseId = exercise.ExerciseId, TextInput = "10\n20\n", ExpectedOutput = "30", IsHidden = false, Weight = 0.5m, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-                new TestCase { TestCaseId = Guid.NewGuid(), ExerciseId = exercise.ExerciseId, TextInput = "-5\n5\n",  ExpectedOutput = "0",  IsHidden = true,  Weight = 1.0m, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
+                new TestCase { TestCaseId = Guid.NewGuid(), ExerciseId = exercise.ExerciseId, TextInput = "-5\n5\n", ExpectedOutput = "0", IsHidden = true, Weight = 1.0m, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
             );
             await context.SaveChangesAsync();
         }
@@ -499,23 +498,23 @@ public static class Learn2CodeDbContextSeeder
         {
             var quiz = new Quiz
             {
-                QuizId      = Guid.NewGuid(),
-                LessonId    = lesson.LessonId,
+                QuizId = Guid.NewGuid(),
+                LessonId = lesson.LessonId,
                 OrderNumber = 1,
-                Question    = $"What is the main purpose of {lesson.Title}?",
+                Question = $"What is the main purpose of {lesson.Title}?",
                 Explanation = "This question tests your understanding of the lesson's core objective.",
-                CreatedAt   = DateTime.UtcNow,
-                UpdatedAt   = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
             context.Quizzes.Add(quiz);
             await context.SaveChangesAsync();
 
             context.QuizOptions.AddRange(
-                new QuizOption { OptionId = Guid.NewGuid(), QuizId = quiz.QuizId, Content = "To learn fundamentals",       IsCorrect = true,  CreatedAt = DateTime.UtcNow },
+                new QuizOption { OptionId = Guid.NewGuid(), QuizId = quiz.QuizId, Content = "To learn fundamentals", IsCorrect = true, CreatedAt = DateTime.UtcNow },
                 new QuizOption { OptionId = Guid.NewGuid(), QuizId = quiz.QuizId, Content = "To practice advanced topics", IsCorrect = false, CreatedAt = DateTime.UtcNow },
                 new QuizOption { OptionId = Guid.NewGuid(), QuizId = quiz.QuizId, Content = "To review previous material", IsCorrect = false, CreatedAt = DateTime.UtcNow },
-                new QuizOption { OptionId = Guid.NewGuid(), QuizId = quiz.QuizId, Content = "None of the above",           IsCorrect = false, CreatedAt = DateTime.UtcNow }
+                new QuizOption { OptionId = Guid.NewGuid(), QuizId = quiz.QuizId, Content = "None of the above", IsCorrect = false, CreatedAt = DateTime.UtcNow }
             );
             await context.SaveChangesAsync();
         }
@@ -535,12 +534,12 @@ public static class Learn2CodeDbContextSeeder
         {
             context.CourseCompletionRules.Add(new CourseCompletionRule
             {
-                RuleId                  = Guid.NewGuid(),
-                CourseId                = course.CourseId,
-                MinWeightScore          = 60m,
-                RequireAllSectionQuiz   = true,
-                CreatedAt               = DateTime.UtcNow,
-                UpdatedAt               = DateTime.UtcNow
+                RuleId = Guid.NewGuid(),
+                CourseId = course.CourseId,
+                MinWeightScore = 60m,
+                RequireAllSectionQuiz = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             });
         }
 
@@ -560,13 +559,13 @@ public static class Learn2CodeDbContextSeeder
         {
             context.CertificateTemplates.Add(new CertificateTemplate
             {
-                TemplateId    = Guid.NewGuid(),
-                CourseId      = course.CourseId,
-                Title         = $"Certificate of Completion - {course.Title}",
-                Description   = "This certificate is awarded upon successful completion of the course.",
+                TemplateId = Guid.NewGuid(),
+                CourseId = course.CourseId,
+                Title = $"Certificate of Completion - {course.Title}",
+                Description = "This certificate is awarded upon successful completion of the course.",
                 SignatureName = "Learn2Code Team",
-                CreatedAt     = DateTime.UtcNow,
-                UpdatedAt     = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             });
         }
 

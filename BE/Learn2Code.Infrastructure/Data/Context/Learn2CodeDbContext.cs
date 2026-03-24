@@ -80,6 +80,12 @@ public class Learn2CodeDbContext : DbContext
     public DbSet<Feedback> Feedbacks { get; set; } = null!;
     public DbSet<Leaderboard> Leaderboards { get; set; } = null!;
 
+    // ── Gamification ────────────────────────────────────────────────────────
+    public DbSet<UserXP> UserXPs { get; set; } = null!;
+    public DbSet<Achievement> Achievements { get; set; } = null!;
+    public DbSet<UserAchievement> UserAchievements { get; set; } = null!;
+    public DbSet<DailyStreak> DailyStreaks { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -232,5 +238,27 @@ public class Learn2CodeDbContext : DbContext
         modelBuilder.Entity<Leaderboard>()
             .Property(l => l.TotalScore)
             .HasPrecision(10, 2);
+
+        // ── Gamification: Unique constraints ────────────────────────────────────
+
+        // Mỗi user chỉ có đúng 1 record XP
+        modelBuilder.Entity<UserXP>()
+            .HasIndex(x => x.UserId)
+            .IsUnique();
+
+        // Tên achievement phải unique toàn hệ thống
+        modelBuilder.Entity<Achievement>()
+            .HasIndex(a => a.Name)
+            .IsUnique();
+
+        // Mỗi user chỉ unlock 1 achievement 1 lần
+        modelBuilder.Entity<UserAchievement>()
+            .HasIndex(ua => new { ua.UserId, ua.AchievementId })
+            .IsUnique();
+
+        // Mỗi user chỉ có 1 record streak mỗi ngày
+        modelBuilder.Entity<DailyStreak>()
+            .HasIndex(ds => new { ds.UserId, ds.StreakDate })
+            .IsUnique();
     }
 }

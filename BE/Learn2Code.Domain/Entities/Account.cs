@@ -53,4 +53,9 @@ public class Account
     public virtual ICollection<Certification> Certifications { get; set; } = new List<Certification>();
     public virtual ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
     public virtual ICollection<Leaderboard> Leaderboards { get; set; } = new List<Leaderboard>();
+
+    // Gamification navigation properties
+    public virtual UserXP? UserXP { get; set; }
+    public virtual ICollection<UserAchievement> UserAchievements { get; set; } = new List<UserAchievement>();
+    public virtual ICollection<DailyStreak> DailyStreaks { get; set; } = new List<DailyStreak>();
 }
