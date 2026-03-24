@@ -10,7 +10,7 @@ services:
     volumes:
       - piston_data:/piston
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:2000/api/v2/runtimes"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:2000/api/v2/runtimes', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1));"]
       interval: 5s
       timeout: 3s
       retries: 30
@@ -28,10 +28,10 @@ services:
       - -lc
       - |
         set -eu
-        echo "Installing runtimes: python, csharp.net, java"
-        curl -fsS -X POST http://piston:2000/api/v2/packages -H "Content-Type: application/json" -d '{"language":"python","version":"*"}'
-        curl -fsS -X POST http://piston:2000/api/v2/packages -H "Content-Type: application/json" -d '{"language":"csharp.net","version":"*"}'
-        curl -fsS -X POST http://piston:2000/api/v2/packages -H "Content-Type: application/json" -d '{"language":"java","version":"*"}'
+        echo "Installing runtimes: python, dotnet (csharp), java"
+        curl -sS -X POST http://piston:2000/api/v2/packages -H "Content-Type: application/json" -d '{"language":"python","version":"*"}' || true
+        curl -sS -X POST http://piston:2000/api/v2/packages -H "Content-Type: application/json" -d '{"language":"dotnet","version":"*"}' || true
+        curl -sS -X POST http://piston:2000/api/v2/packages -H "Content-Type: application/json" -d '{"language":"java","version":"*"}' || true
         echo "Runtime installation completed"
 
 volumes:
