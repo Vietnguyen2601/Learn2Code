@@ -141,7 +141,7 @@ docker-compose down
 Project có sẵn file [BE/docker-compose.piston.yml](BE/docker-compose.piston.yml) để chạy Piston và tự cài sẵn 3 runtime:
 
 - python
-- csharp.net
+- dotnet (chạy C#)
 - java
 
 Chạy:
