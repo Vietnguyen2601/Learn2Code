@@ -53,3 +53,27 @@ public enum LessonProgressStatus
     InProgress,
     Completed
 }
+
+/// <summary>
+/// Loại sự kiện học tập kích hoạt việc tính XP trong hệ thống Gamification.
+/// </summary>
+public enum XPEventType
+{
+    /// <summary>Hoàn thành một bài học</summary>
+    LessonCompleted,
+
+    /// <summary>Vượt qua bài tập code (is_passed = true)</summary>
+    ExercisePassed,
+
+    /// <summary>Trả lời đúng 100% câu hỏi quiz trong một section</summary>
+    QuizPerfect,
+
+    /// <summary>Hoàn thành toàn bộ khoá học</summary>
+    CourseCompleted,
+
+    /// <summary>Duy trì streak học liên tiếp mỗi ngày</summary>
+    DailyStreak,
+
+    /// <summary>Đăng nhập lần đầu tiên</summary>
+    FirstLogin
+}
