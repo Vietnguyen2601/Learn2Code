@@ -13,10 +13,12 @@ namespace Learn2Code.Application.Services;
 public class ProgressService : IProgressService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IGamificationService _gamificationService;
 
-    public ProgressService(IUnitOfWork unitOfWork)
+    public ProgressService(IUnitOfWork unitOfWork, IGamificationService gamificationService)
     {
         _unitOfWork = unitOfWork;
+        _gamificationService = gamificationService;
     }
 
     public async Task<ServiceResult<CourseProgressDto>> GetCourseProgressAsync(Guid courseId, Guid studentId)
@@ -89,8 +91,8 @@ public class ProgressService : IProgressService
             });
         }
 
-        var progressPct = totalLessons > 0 
-            ? Math.Round((decimal)totalCompletedLessons / totalLessons * 100, 2) 
+        var progressPct = totalLessons > 0
+            ? Math.Round((decimal)totalCompletedLessons / totalLessons * 100, 2)
             : 0;
 
         var courseProgressDto = new CourseProgressDto
@@ -212,6 +214,11 @@ public class ProgressService : IProgressService
         }
 
         await _unitOfWork.SaveChangesAsync();
+
+        if (newStatus == LessonProgressStatus.Completed)
+        {
+            await _gamificationService.ProcessEventAsync(studentId, XPEventType.LessonCompleted);
+        }
 
         var dto = lessonProgress.ToDto();
         return ServiceResult<LessonProgressDto>.Ok(dto, "Lesson progress updated successfully");

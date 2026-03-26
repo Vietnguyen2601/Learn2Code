@@ -16,10 +16,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Suppress EF Core SQL/migration noise in logs (keep app-level info logs)
 builder.Logging
-    .AddFilter("Microsoft.EntityFrameworkCore.Database.Command",     LogLevel.Warning)
+    .AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning)
     .AddFilter("Microsoft.EntityFrameworkCore.Database.Transaction", LogLevel.Warning)
-    .AddFilter("Microsoft.EntityFrameworkCore.Migrations",           LogLevel.Warning)
-    .AddFilter("Microsoft.EntityFrameworkCore.Infrastructure",       LogLevel.Warning);
+    .AddFilter("Microsoft.EntityFrameworkCore.Migrations", LogLevel.Warning)
+    .AddFilter("Microsoft.EntityFrameworkCore.Infrastructure", LogLevel.Warning);
 
 // Database
 builder.Services.AddDbContext<Learn2CodeDbContext>(options =>
@@ -39,16 +39,16 @@ builder.Services.AddHttpClient<IPistonService, PistonService>(client =>
 // PayOS Configuration (IOptions pattern)
 builder.Services.Configure<PayOsOptions>(options =>
 {
-    options.ClientId = builder.Configuration["PAYOS_CLIENT_ID"] 
-        ?? builder.Configuration["PayOS:ClientId"] 
+    options.ClientId = builder.Configuration["PAYOS_CLIENT_ID"]
+        ?? builder.Configuration["PayOS:ClientId"]
         ?? throw new InvalidOperationException("PayOS ClientId not configured");
-    
-    options.ApiKey = builder.Configuration["PAYOS_API_KEY"] 
-        ?? builder.Configuration["PayOS:ApiKey"] 
+
+    options.ApiKey = builder.Configuration["PAYOS_API_KEY"]
+        ?? builder.Configuration["PayOS:ApiKey"]
         ?? throw new InvalidOperationException("PayOS ApiKey not configured");
-    
-    options.ChecksumKey = builder.Configuration["PAYOS_CHECKSUM_KEY"] 
-        ?? builder.Configuration["PayOS:ChecksumKey"] 
+
+    options.ChecksumKey = builder.Configuration["PAYOS_CHECKSUM_KEY"]
+        ?? builder.Configuration["PayOS:ChecksumKey"]
         ?? throw new InvalidOperationException("PayOS ChecksumKey not configured");
 });
 
@@ -81,6 +81,9 @@ builder.Services.AddScoped<ICertificationService, CertificationService>();
 builder.Services.AddScoped<IFeedbackService, FeedbackService>();
 builder.Services.AddScoped<ILeaderboardService, LeaderboardService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<IGamificationService, GamificationService>();
+builder.Services.AddScoped<IUserXPService, UserXPService>();
+builder.Services.AddScoped<IAchievementService, AchievementService>();
 
 
 // JWT Authentication
@@ -108,6 +111,19 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+
+// CORS Configuration
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:5173", "http://localhost:3000") // Add FE URLs
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
+    });
+});
 
 // Swagger with JWT support
 builder.Services.AddSwaggerGen(c =>
@@ -154,6 +170,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// Enable CORS
+app.UseCors("AllowFrontend");
+
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -166,14 +185,14 @@ app.Run();
 
 public class AuthorizeOperationFilter : IOperationFilter
 {
-        public void Apply(OpenApiOperation operation, OperationFilterContext context)
-        {
-            var hasAuthorize = context.MethodInfo.GetCustomAttributes(typeof(AuthorizeAttribute), false).Any()
-                || context.MethodInfo.DeclaringType?.GetCustomAttributes(typeof(AuthorizeAttribute), false).Any() == true;
+    public void Apply(OpenApiOperation operation, OperationFilterContext context)
+    {
+        var hasAuthorize = context.MethodInfo.GetCustomAttributes(typeof(AuthorizeAttribute), false).Any()
+            || context.MethodInfo.DeclaringType?.GetCustomAttributes(typeof(AuthorizeAttribute), false).Any() == true;
 
-            if (hasAuthorize)
-            {
-                operation.Security = new List<OpenApiSecurityRequirement>
+        if (hasAuthorize)
+        {
+            operation.Security = new List<OpenApiSecurityRequirement>
                 {
                     new OpenApiSecurityRequirement
                     {

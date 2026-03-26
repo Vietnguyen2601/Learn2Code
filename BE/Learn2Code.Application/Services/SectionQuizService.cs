@@ -14,11 +14,14 @@ public class SectionQuizService : ISectionQuizService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICertificationService _certificationService;
+    private readonly IGamificationService _gamificationService;
 
-    public SectionQuizService(IUnitOfWork unitOfWork, ICertificationService certificationService)
+    public SectionQuizService(IUnitOfWork unitOfWork, ICertificationService certificationService,
+        IGamificationService gamificationService)
     {
         _unitOfWork = unitOfWork;
         _certificationService = certificationService;
+        _gamificationService = gamificationService;
     }
 
     public async Task<ServiceResult<SectionQuizDto>> GetSectionQuizAsync(Guid sectionId, Guid studentId)
@@ -153,6 +156,13 @@ public class SectionQuizService : ISectionQuizService
 
         var resultDto = savedAttempt.ToResultDto();
 
+        // ── GAMIFICATION TRIGGER ──────────────────────────────────────────────
+        if (score == 100)
+        {
+            await _gamificationService.ProcessEventAsync(studentId, XPEventType.QuizPerfect);
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         // ========== TRIGGER: Auto-issue certification after quiz attempt ==========
         // Get courseId from section
         var sectionWithCourse = await _unitOfWork.SectionRepository.GetAllQueryable()
@@ -165,17 +175,17 @@ public class SectionQuizService : ISectionQuizService
             // Check if this is potentially the "final" quiz attempt
             // by verifying if student has attempted all sections with quizzes
             var shouldTriggerCertification = await ShouldTriggerCertificationCheckAsync(
-                studentId, 
-                sectionWithCourse.CourseId, 
+                studentId,
+                sectionWithCourse.CourseId,
                 sectionId);
 
             if (shouldTriggerCertification)
             {
                 // Try to issue certification (will check eligibility internally)
                 var certResult = await _certificationService.TryIssueCertificateAsync(
-                    studentId, 
+                    studentId,
                     sectionWithCourse.CourseId);
-                
+
                 // Always include certification result in response (whether certified or not)
                 resultDto.CertificationResult = certResult.Data;
             }
@@ -190,8 +200,8 @@ public class SectionQuizService : ISectionQuizService
     /// Returns true if student has now attempted quizzes in all sections that have quizzes.
     /// </summary>
     private async Task<bool> ShouldTriggerCertificationCheckAsync(
-        Guid studentId, 
-        Guid courseId, 
+        Guid studentId,
+        Guid courseId,
         Guid currentSectionId)
     {
         // Get all active sections of the course
