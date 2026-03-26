@@ -52,9 +52,10 @@ public static class GamificationConstants
     }
 
     // Achievement condition types
-    public const string AchievementConditionLessons = "lessons_completed";
+    public const string AchievementConditionLessons   = "lessons_completed";
     public const string AchievementConditionExercises = "exercises_passed";
-    public const string AchievementConditionStreak = "streak_days";
-    public const string AchievementConditionXP = "total_xp";
-    public const string AchievementConditionLevel = "level_reached";
+    public const string AchievementConditionStreak    = "streak_days";
+    public const string AchievementConditionXP        = "total_xp";
+    public const string AchievementConditionLevel     = "level_reached";
+    public const string AchievementConditionCourses   = "course_completed";
 }

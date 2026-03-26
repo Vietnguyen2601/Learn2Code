@@ -83,6 +83,7 @@ builder.Services.AddScoped<ILeaderboardService, LeaderboardService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IGamificationService, GamificationService>();
 builder.Services.AddScoped<IUserXPService, UserXPService>();
+builder.Services.AddScoped<IAchievementService, AchievementService>();
 
 
 // JWT Authentication
@@ -110,6 +111,19 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+
+// CORS Configuration
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:5173", "http://localhost:3000") // Add FE URLs
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
+    });
+});
 
 // Swagger with JWT support
 builder.Services.AddSwaggerGen(c =>
@@ -155,6 +169,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Enable CORS
+app.UseCors("AllowFrontend");
 
 app.UseAuthentication();
 app.UseAuthorization();

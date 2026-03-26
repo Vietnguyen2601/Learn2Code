@@ -35,6 +35,7 @@ public static class Learn2CodeDbContextSeeder
             await SeedQuizzesAsync(context, logger);
             await SeedCourseCompletionRulesAsync(context, logger);
             await SeedCertificateTemplatesAsync(context, logger);
+            await SeedAchievementsAsync(context, logger);
         }
         catch (Exception ex)
         {
@@ -545,6 +546,47 @@ public static class Learn2CodeDbContextSeeder
 
         await context.SaveChangesAsync();
         logger.LogInformation("Seeded course completion rules");
+    }
+
+    // 
+    // Achievements
+    // 
+    private static async Task SeedAchievementsAsync(Learn2CodeDbContext context, ILogger logger)
+    {
+        if (await context.Achievements.AnyAsync()) return;
+
+        var now = DateTime.UtcNow;
+
+        var achievements = new Achievement[]
+        {
+            // ── Lesson milestones ──────────────────────────────────────────────
+            new() { AchievementId = Guid.NewGuid(), Name = "First Steps",        Description = "Hoàn thành bài học đầu tiên",          IconUrl = "/badges/first-steps.png",   XPReward = 50,  ConditionType = "lessons_completed",  ConditionValue = 1,   IsHidden = false, CreatedAt = now, UpdatedAt = now },
+            new() { AchievementId = Guid.NewGuid(), Name = "Lesson Enthusiast",  Description = "Hoàn thành 10 bài học",                IconUrl = "/badges/enthusiast.png",    XPReward = 100, ConditionType = "lessons_completed",  ConditionValue = 10,  IsHidden = false, CreatedAt = now, UpdatedAt = now },
+            new() { AchievementId = Guid.NewGuid(), Name = "Lesson Master",      Description = "Hoàn thành 50 bài học",                IconUrl = "/badges/lesson-master.png", XPReward = 300, ConditionType = "lessons_completed",  ConditionValue = 50,  IsHidden = false, CreatedAt = now, UpdatedAt = now },
+
+            // ── Exercise milestones ────────────────────────────────────────────
+            new() { AchievementId = Guid.NewGuid(), Name = "Code Curious",       Description = "Vượt qua bài tập lập trình đầu tiên", IconUrl = "/badges/code-curious.png",  XPReward = 80,  ConditionType = "exercises_passed",   ConditionValue = 1,   IsHidden = false, CreatedAt = now, UpdatedAt = now },
+            new() { AchievementId = Guid.NewGuid(), Name = "Code Warrior",       Description = "Vượt qua 10 bài tập lập trình",       IconUrl = "/badges/code-warrior.png",  XPReward = 200, ConditionType = "exercises_passed",   ConditionValue = 10,  IsHidden = false, CreatedAt = now, UpdatedAt = now },
+            new() { AchievementId = Guid.NewGuid(), Name = "Code Legend",        Description = "Vượt qua 50 bài tập lập trình",       IconUrl = "/badges/code-legend.png",   XPReward = 500, ConditionType = "exercises_passed",   ConditionValue = 50,  IsHidden = true,  CreatedAt = now, UpdatedAt = now },
+
+            // ── Streak milestones ──────────────────────────────────────────────
+            new() { AchievementId = Guid.NewGuid(), Name = "Week Streak",        Description = "Học liên tục 7 ngày",                  IconUrl = "/badges/week-streak.png",   XPReward = 150, ConditionType = "streak_days",        ConditionValue = 7,   IsHidden = false, CreatedAt = now, UpdatedAt = now },
+            new() { AchievementId = Guid.NewGuid(), Name = "Month Streak",       Description = "Học liên tục 30 ngày",                 IconUrl = "/badges/month-streak.png",  XPReward = 500, ConditionType = "streak_days",        ConditionValue = 30,  IsHidden = true,  CreatedAt = now, UpdatedAt = now },
+
+            // ── XP / Level milestones ──────────────────────────────────────────
+            new() { AchievementId = Guid.NewGuid(), Name = "100 XP Club",        Description = "Kiếm được 100 XP đầu tiên",            IconUrl = "/badges/100xp.png",         XPReward = 0,   ConditionType = "total_xp",           ConditionValue = 100,  IsHidden = false, CreatedAt = now, UpdatedAt = now },
+            new() { AchievementId = Guid.NewGuid(), Name = "1000 XP Club",       Description = "Kiếm được 1000 XP",                    IconUrl = "/badges/1000xp.png",        XPReward = 50,  ConditionType = "total_xp",           ConditionValue = 1000, IsHidden = false, CreatedAt = now, UpdatedAt = now },
+            new() { AchievementId = Guid.NewGuid(), Name = "Level 5",            Description = "Đạt cấp độ 5",                         IconUrl = "/badges/level5.png",        XPReward = 100, ConditionType = "level_reached",      ConditionValue = 5,   IsHidden = false, CreatedAt = now, UpdatedAt = now },
+            new() { AchievementId = Guid.NewGuid(), Name = "Level 10",           Description = "Đạt cấp độ 10",                        IconUrl = "/badges/level10.png",       XPReward = 200, ConditionType = "level_reached",      ConditionValue = 10,  IsHidden = false, CreatedAt = now, UpdatedAt = now },
+
+            // ── Course completion ──────────────────────────────────────────────
+            new() { AchievementId = Guid.NewGuid(), Name = "Course Graduate",    Description = "Hoàn thành khoá học đầu tiên",         IconUrl = "/badges/graduate.png",      XPReward = 500, ConditionType = "course_completed",   ConditionValue = 1,   IsHidden = false, CreatedAt = now, UpdatedAt = now },
+            new() { AchievementId = Guid.NewGuid(), Name = "Multi-Disciplined",  Description = "Hoàn thành 3 khoá học khác nhau",      IconUrl = "/badges/multi.png",         XPReward = 800, ConditionType = "course_completed",   ConditionValue = 3,   IsHidden = false, CreatedAt = now, UpdatedAt = now },
+        };
+
+        context.Achievements.AddRange(achievements);
+        await context.SaveChangesAsync();
+        logger.LogInformation("Seeded {Count} achievements", achievements.Length);
     }
 
     // 
