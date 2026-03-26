@@ -15,13 +15,15 @@ public class SectionQuizService : ISectionQuizService
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICertificationService _certificationService;
     private readonly IGamificationService _gamificationService;
+    private readonly IDailyStreakService _streakService;
 
     public SectionQuizService(IUnitOfWork unitOfWork, ICertificationService certificationService,
-        IGamificationService gamificationService)
+        IGamificationService gamificationService, IDailyStreakService streakService)
     {
         _unitOfWork = unitOfWork;
         _certificationService = certificationService;
         _gamificationService = gamificationService;
+        _streakService = streakService;
     }
 
     public async Task<ServiceResult<SectionQuizDto>> GetSectionQuizAsync(Guid sectionId, Guid studentId)
@@ -160,6 +162,13 @@ public class SectionQuizService : ISectionQuizService
         if (score == 100)
         {
             await _gamificationService.ProcessEventAsync(studentId, XPEventType.QuizPerfect);
+        }
+
+        // ── DAILY STREAK CHECK-IN ─────────────────────────────────────────────
+        if (isPassed)
+        {
+            // Quiz passed (score >= 70) → trigger daily streak check-in
+            _ = _streakService.CheckInAsync(studentId);
         }
         // ─────────────────────────────────────────────────────────────────────
 

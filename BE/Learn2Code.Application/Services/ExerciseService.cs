@@ -20,14 +20,17 @@ public class ExerciseService : IExerciseService
     private readonly IPistonService _pistonService;
     private readonly PistonOptions _pistonOptions;
     private readonly IGamificationService _gamificationService;
+    private readonly IDailyStreakService _streakService;
 
     public ExerciseService(IUnitOfWork unitOfWork, IPistonService pistonService,
-        IOptions<PistonOptions> pistonOptions, IGamificationService gamificationService)
+        IOptions<PistonOptions> pistonOptions, IGamificationService gamificationService,
+        IDailyStreakService streakService)
     {
         _unitOfWork = unitOfWork;
         _pistonService = pistonService;
         _pistonOptions = pistonOptions.Value;
         _gamificationService = gamificationService;
+        _streakService = streakService;
     }
 
     public async Task<ServiceResult<List<ExerciseDto>>> GetExercisesByLessonIdAsync(Guid lessonId)
@@ -284,6 +287,8 @@ public class ExerciseService : IExerciseService
         if (finalPassed)
         {
             await _gamificationService.ProcessEventAsync(studentId, XPEventType.ExercisePassed);
+            // Trigger daily streak check-in (fire-and-forget)
+            _ = _streakService.CheckInAsync(studentId);
         }
 
         var message = finalPassed ? "Submitted successfully" : "Submission failed. Please review your code and try again";
