@@ -1,4 +1,4 @@
-using Learn2Code.Domain.Entities;
+﻿using Learn2Code.Domain.Entities;
 using Learn2Code.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,6 +36,17 @@ public static class Learn2CodeDbContextSeeder
             await SeedCourseCompletionRulesAsync(context, logger);
             await SeedCertificateTemplatesAsync(context, logger);
             await SeedAchievementsAsync(context, logger);
+            await SeedUserXPAsync(context, logger);
+            await SeedUserSubscriptionsAsync(context, logger);
+            await SeedPaymentsAsync(context, logger);
+            await SeedEnrollmentsAsync(context, logger);
+            await SeedFeedbacksAsync(context, logger);
+            await SeedLessonProgressAsync(context, logger);
+            await SeedExerciseProgressAsync(context, logger);
+            await SeedDailyStreakAsync(context, logger);
+            await SeedUserAchievementsAsync(context, logger);
+            await SeedCertificationsAsync(context, logger);
+            await SeedSectionQuizAttemptsAsync(context, logger);
         }
         catch (Exception ex)
         {
@@ -454,9 +465,10 @@ public static class Learn2CodeDbContextSeeder
 
         foreach (var lesson in lessons)
         {
+            var exerciseId = Guid.NewGuid();
             var exercise = new Exercise
             {
-                ExerciseId   = Guid.NewGuid(),
+                ExerciseId   = exerciseId,
                 LessonId     = lesson.LessonId,
                 OrderNumber  = 1,
                 ExerciseType = ExerciseType.GradedCode,
@@ -475,15 +487,11 @@ public static class Learn2CodeDbContextSeeder
                     "        return a + b;\n" +
                     "    }\n" +
                     "}",
-                // Validator là Main.java — Piston sẽ compile cả 2 file và chạy Main
-                // Output format: mỗi dòng là "PASS" hoặc "FAIL:message"
+                // Validator template - sẽ được replace bởi ValidatorMain từng test case
                 SolutionValidator =
                     "public class Main {\n" +
                     "    public static void main(String[] args) {\n" +
-                    "        check(Solution.add(1, 2),   3,  \"add(1,2)=3\");\n" +
-                    "        check(Solution.add(10, 20), 30, \"add(10,20)=30\");\n" +
-                    "        check(Solution.add(-5, 5),  0,  \"add(-5,5)=0\");\n" +
-                    "        check(Solution.add(0, 0),   0,  \"add(0,0)=0\");\n" +
+                    "        // Will be replaced by ValidatorMain from TestCase\n" +
                     "    }\n" +
                     "    static void check(int actual, int expected, String label) {\n" +
                     "        if (actual == expected) {\n" +
@@ -500,10 +508,114 @@ public static class Learn2CodeDbContextSeeder
             };
 
             context.Exercises.Add(exercise);
+            await context.SaveChangesAsync();
+
+            // Create TestCases with ValidatorMain for each test case
+            var testCases = new TestCase[]
+            {
+                new()
+                {
+                    TestCaseId = Guid.NewGuid(),
+                    ExerciseId = exerciseId,
+                    ExpectedOutput = "PASS:add(1,2)=3",
+                    TextInput = null,
+                    ValidatorMain = 
+                        "public class Main {\n" +
+                        "    public static void main(String[] args) {\n" +
+                        "        check(Solution.add(1, 2), 3, \"add(1,2)=3\");\n" +
+                        "    }\n" +
+                        "    static void check(int actual, int expected, String label) {\n" +
+                        "        if (actual == expected) {\n" +
+                        "            System.out.println(\"PASS:\" + label);\n" +
+                        "        } else {\n" +
+                        "            System.out.println(\"FAIL:\" + label + \" expected=\" + expected + \" got=\" + actual);\n" +
+                        "        }\n" +
+                        "    }\n" +
+                        "}",
+                    IsHidden = false,
+                    Weight = 1,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                },
+                new()
+                {
+                    TestCaseId = Guid.NewGuid(),
+                    ExerciseId = exerciseId,
+                    ExpectedOutput = "PASS:add(10,20)=30",
+                    TextInput = null,
+                    ValidatorMain = 
+                        "public class Main {\n" +
+                        "    public static void main(String[] args) {\n" +
+                        "        check(Solution.add(10, 20), 30, \"add(10,20)=30\");\n" +
+                        "    }\n" +
+                        "    static void check(int actual, int expected, String label) {\n" +
+                        "        if (actual == expected) {\n" +
+                        "            System.out.println(\"PASS:\" + label);\n" +
+                        "        } else {\n" +
+                        "            System.out.println(\"FAIL:\" + label + \" expected=\" + expected + \" got=\" + actual);\n" +
+                        "        }\n" +
+                        "    }\n" +
+                        "}",
+                    IsHidden = false,
+                    Weight = 1,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                },
+                new()
+                {
+                    TestCaseId = Guid.NewGuid(),
+                    ExerciseId = exerciseId,
+                    ExpectedOutput = "PASS:add(-5,5)=0",
+                    TextInput = null,
+                    ValidatorMain = 
+                        "public class Main {\n" +
+                        "    public static void main(String[] args) {\n" +
+                        "        check(Solution.add(-5, 5), 0, \"add(-5,5)=0\");\n" +
+                        "    }\n" +
+                        "    static void check(int actual, int expected, String label) {\n" +
+                        "        if (actual == expected) {\n" +
+                        "            System.out.println(\"PASS:\" + label);\n" +
+                        "        } else {\n" +
+                        "            System.out.println(\"FAIL:\" + label + \" expected=\" + expected + \" got=\" + actual);\n" +
+                        "        }\n" +
+                        "    }\n" +
+                        "}",
+                    IsHidden = false,
+                    Weight = 1,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                },
+                new()
+                {
+                    TestCaseId = Guid.NewGuid(),
+                    ExerciseId = exerciseId,
+                    ExpectedOutput = "PASS:add(0,0)=0",
+                    TextInput = null,
+                    ValidatorMain = 
+                        "public class Main {\n" +
+                        "    public static void main(String[] args) {\n" +
+                        "        check(Solution.add(0, 0), 0, \"add(0,0)=0\");\n" +
+                        "    }\n" +
+                        "    static void check(int actual, int expected, String label) {\n" +
+                        "        if (actual == expected) {\n" +
+                        "            System.out.println(\"PASS:\" + label);\n" +
+                        "        } else {\n" +
+                        "            System.out.println(\"FAIL:\" + label + \" expected=\" + expected + \" got=\" + actual);\n" +
+                        "        }\n" +
+                        "    }\n" +
+                        "}",
+                    IsHidden = false,
+                    Weight = 1,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                }
+            };
+
+            context.TestCases.AddRange(testCases);
         }
 
         await context.SaveChangesAsync();
-        logger.LogInformation("Seeded exercises with solution_validator");
+        logger.LogInformation("Seeded exercises with test cases containing ValidatorMain");
     }
 
 
@@ -635,5 +747,535 @@ public static class Learn2CodeDbContextSeeder
 
         await context.SaveChangesAsync();
         logger.LogInformation("Seeded certificate templates");
+    }
+
+    // 
+    // User XP (1 per student)
+    // 
+    private static async Task SeedUserXPAsync(Learn2CodeDbContext context, ILogger logger)
+    {
+        if (await context.UserXPs.AnyAsync()) return;
+
+        var studentRole = await context.Roles.FirstOrDefaultAsync(r => r.RoleName == "Student");
+        if (studentRole == null) return;
+
+        var students = await context.Accounts
+            .Where(a => a.AccountRoles.Any(ar => ar.RoleId == studentRole.RoleId))
+            .ToListAsync();
+
+        foreach (var student in students)
+        {
+            context.UserXPs.Add(new UserXP
+            {
+                UserXPId = Guid.NewGuid(),
+                UserId = student.AccountId,
+                TotalXP = 0,
+                CurrentLevel = 1,
+                XPToNext = 100,
+                CurrentStreak = 0,
+                LongestStreak = 0,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
+
+        await context.SaveChangesAsync();
+        logger.LogInformation("Seeded UserXP records for {Count} students", students.Count);
+    }
+
+    // 
+    // User Subscriptions (sample subscriptions for students)
+    // 
+    private static async Task SeedUserSubscriptionsAsync(Learn2CodeDbContext context, ILogger logger)
+    {
+        if (await context.UserSubscriptions.AnyAsync()) return;
+
+        var studentRole = await context.Roles.FirstOrDefaultAsync(r => r.RoleName == "Student");
+        if (studentRole == null) return;
+
+        var students = await context.Accounts
+            .Where(a => a.AccountRoles.Any(ar => ar.RoleId == studentRole.RoleId))
+            .ToListAsync();
+
+        var packages = await context.SubscriptionPackages.ToListAsync();
+        if (!packages.Any()) return;
+
+        var now = DateTime.UtcNow;
+        var subscriptionCount = 0;
+
+        // Assign subscriptions: 1st student -> Basic, 2nd -> Standard, 3rd -> Pro, then cycle
+        for (int i = 0; i < students.Count; i++)
+        {
+            var package = packages[i % packages.Count];
+            var startDate = now.AddDays(-Random.Shared.Next(1, 30)); // Started 1-30 days ago
+            var endDate = startDate.AddMonths((int)package.DurationMonths);
+
+            context.UserSubscriptions.Add(new UserSubscription
+            {
+                SubscriptionId = Guid.NewGuid(),
+                UserId = students[i].AccountId,
+                PackageId = package.PackageId,
+                StartDate = startDate,
+                EndDate = endDate,
+                Status = endDate > now ? SubscriptionStatus.Active : SubscriptionStatus.Expired,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+            subscriptionCount++;
+        }
+
+        await context.SaveChangesAsync();
+        logger.LogInformation("Seeded {Count} user subscriptions", subscriptionCount);
+    }
+
+    // 
+    // Payments (1 per subscription)
+    // 
+    private static async Task SeedPaymentsAsync(Learn2CodeDbContext context, ILogger logger)
+    {
+        if (await context.Payments.AnyAsync()) return;
+
+        var subscriptions = await context.UserSubscriptions.ToListAsync();
+        if (!subscriptions.Any()) return;
+
+        var now = DateTime.UtcNow;
+
+        foreach (var subscription in subscriptions)
+        {
+            var package = await context.SubscriptionPackages.FirstOrDefaultAsync(p => p.PackageId == subscription.PackageId);
+            if (package == null) continue;
+
+            context.Payments.Add(new Payment
+            {
+                PaymentId = Guid.NewGuid(),
+                SubscriptionId = subscription.SubscriptionId,
+                Amount = package.Price,
+                PaymentMethod = PaymentMethod.PayOS,
+                TransactionId = $"TXN-{Guid.NewGuid().ToString().Substring(0, 8).ToUpper()}",
+                Status = subscription.Status == SubscriptionStatus.Active ? PaymentStatus.Success : PaymentStatus.Pending,
+                PaidAt = subscription.Status == SubscriptionStatus.Active ? subscription.StartDate : null,
+                CreatedAt = now
+            });
+        }
+
+        await context.SaveChangesAsync();
+        logger.LogInformation("Seeded {Count} payments", subscriptions.Count);
+    }
+
+    // 
+    // Enrollments (students in courses, linked to subscriptions)
+    // 
+    private static async Task SeedEnrollmentsAsync(Learn2CodeDbContext context, ILogger logger)
+    {
+        if (await context.Enrollments.AnyAsync()) return;
+
+        var studentRole = await context.Roles.FirstOrDefaultAsync(r => r.RoleName == "Student");
+        if (studentRole == null) return;
+
+        var students = await context.Accounts
+            .Include(a => a.AccountRoles)
+            .Where(a => a.AccountRoles.Any(ar => ar.RoleId == studentRole.RoleId))
+            .ToListAsync();
+
+        var courses = await context.Courses.ToListAsync();
+        var subscriptions = await context.UserSubscriptions.ToListAsync();
+        var now = DateTime.UtcNow;
+
+        if (!courses.Any()) return;
+
+        var enrollmentCount = 0;
+
+        // Enroll each student in courses (max 2 per student)
+        foreach (var student in students)
+        {
+            var studentSubs = subscriptions.Where(s => s.UserId == student.AccountId).ToList();
+            if (!studentSubs.Any()) continue;
+
+            var subscription = studentSubs.First();
+
+            // Enroll in 1-2 random courses
+            var coursesToEnroll = courses
+                .OrderBy(x => Random.Shared.Next())
+                .Take(Random.Shared.Next(1, Math.Min(3, courses.Count + 1)))
+                .ToList();
+
+            foreach (var course in coursesToEnroll)
+            {
+                var enrolledDaysAgo = Random.Shared.Next(1, 30);
+                context.Enrollments.Add(new Enrollment
+                {
+                    EnrollmentId = Guid.NewGuid(),
+                    StudentId = student.AccountId,
+                    CourseId = course.CourseId,
+                    Status = EnrollmentStatus.Enrolled,
+                    ProgressPct = Random.Shared.Next(0, 101),
+                    EnrolledAt = now.AddDays(-enrolledDaysAgo),
+                    ActivatedAt = now.AddDays(-enrolledDaysAgo),
+                    CompletedAt = Random.Shared.Next(1, 100) > 80 ? now.AddDays(-Random.Shared.Next(1, enrolledDaysAgo)) : null,
+                    SubscriptionId = subscription.SubscriptionId
+                });
+                enrollmentCount++;
+            }
+        }
+
+        await context.SaveChangesAsync();
+        logger.LogInformation("Seeded {Count} enrollments", enrollmentCount);
+    }
+
+    // 
+    // Feedbacks (1-2 per course from enrolled students)
+    // 
+    private static async Task SeedFeedbacksAsync(Learn2CodeDbContext context, ILogger logger)
+    {
+        if (await context.Feedbacks.AnyAsync()) return;
+
+        var courses = await context.Courses.ToListAsync();
+        var enrollments = await context.Enrollments.ToListAsync();
+        var now = DateTime.UtcNow;
+
+        var feedbackCount = 0;
+
+        foreach (var course in courses.Take(2))  // Add feedback to first 2 courses only
+        {
+            // Get students enrolled in this course
+            var enrolledStudents = enrollments
+                .Where(e => e.CourseId == course.CourseId)
+                .Take(2)  // Max 2 feedbacks per course
+                .ToList();
+
+            foreach (var enrollment in enrolledStudents)
+            {
+                var ratings = new[] { 4, 5, 5, 4, 3 };
+                var comments = new[] {
+                    "Rất tốt! Giáo viên giải thích rất rõ ràng.",
+                    "Khoá học hay và có nhiều bài tập thực hành.",
+                    "Nội dung chi tiết, giúp tôi hiểu rõ hơn về chủ đề.",
+                    "Tốt nhưng cần thêm ví dụ thực tế.",
+                    "Cải thiện được rất nhiều sau khoá học này."
+                };
+
+                context.Feedbacks.Add(new Feedback
+                {
+                    FeedbackId = Guid.NewGuid(),
+                    CourseId = course.CourseId,
+                    StudentId = enrollment.StudentId,
+                    Rating = ratings[Random.Shared.Next(ratings.Length)],
+                    Comment = comments[Random.Shared.Next(comments.Length)],
+                    CreatedAt = now.AddDays(-Random.Shared.Next(1, 10)),
+                    UpdatedAt = now
+                });
+                feedbackCount++;
+            }
+        }
+
+        await context.SaveChangesAsync();
+        logger.LogInformation("Seeded {Count} feedbacks", feedbackCount);
+    }
+
+    // 
+    // Lesson Progress (1-2 per student per enrolled course)
+    // 
+    private static async Task SeedLessonProgressAsync(Learn2CodeDbContext context, ILogger logger)
+    {
+        if (await context.LessonProgresses.AnyAsync()) return;
+
+        var enrollments = await context.Enrollments.ToListAsync();
+        var now = DateTime.UtcNow;
+        var lessonProgressCount = 0;
+
+        foreach (var enrollment in enrollments)
+        {
+            var section = await context.Sections
+                .Where(s => s.CourseId == enrollment.CourseId)
+                .FirstOrDefaultAsync();
+            if (section == null) continue;
+
+            var lessons = await context.Lessons
+                .Where(l => l.SectionId == section.SectionId)
+                .ToListAsync();
+
+            foreach (var lesson in lessons.Take(Random.Shared.Next(1, lessons.Count + 1)))
+            {
+                var accessedDaysAgo = Random.Shared.Next(1, 30);
+                var isCompleted = Random.Shared.Next(1, 100) > 40; // 60% completion rate
+
+                context.LessonProgresses.Add(new LessonProgress
+                {
+                    ProgressId = Guid.NewGuid(),
+                    StudentId = enrollment.StudentId,
+                    LessonId = lesson.LessonId,
+                    Status = isCompleted ? LessonProgressStatus.Completed : LessonProgressStatus.InProgress,
+                    LastAccessedAt = now.AddDays(-accessedDaysAgo),
+                    CompletedAt = isCompleted ? now.AddDays(-accessedDaysAgo + Random.Shared.Next(1, accessedDaysAgo)) : null,
+                    CreatedAt = now.AddDays(-accessedDaysAgo),
+                    UpdatedAt = now
+                });
+                lessonProgressCount++;
+            }
+        }
+
+        await context.SaveChangesAsync();
+        logger.LogInformation("Seeded {Count} lesson progress records", lessonProgressCount);
+    }
+
+    // 
+    // Exercise Progress (1-2 per student per lesson)
+    // 
+    private static async Task SeedExerciseProgressAsync(Learn2CodeDbContext context, ILogger logger)
+    {
+        if (await context.ExerciseProgresses.AnyAsync()) return;
+
+        var lessonProgresses = await context.LessonProgresses
+            .Where(lp => lp.Status == LessonProgressStatus.Completed ||
+                         lp.Status == LessonProgressStatus.InProgress)
+            .ToListAsync();
+
+        var now = DateTime.UtcNow;
+        var exProgressCount = 0;
+
+        foreach (var lessonProg in lessonProgresses)
+        {
+            var exercises = await context.Exercises
+                .Where(e => e.LessonId == lessonProg.LessonId)
+                .ToListAsync();
+
+            foreach (var exercise in exercises.Take(Random.Shared.Next(1, exercises.Count + 1)))
+            {
+                var attemptedDaysAgo = Random.Shared.Next(1, 30);
+                var isPassed = Random.Shared.Next(1, 100) > 30; // 70% pass rate
+                var isCompleted = isPassed || Random.Shared.Next(1, 100) > 50;
+
+                context.ExerciseProgresses.Add(new ExerciseProgress
+                {
+                    ExProgressId = Guid.NewGuid(),
+                    StudentId = lessonProg.StudentId,
+                    ExerciseId = exercise.ExerciseId,
+                    IsCompleted = isCompleted,
+                    IsPassed = isPassed,
+                    LastCode = isPassed ? "public class Solution { /* correct solution */ }" : "// incomplete code",
+                    CompletedAt = isCompleted ? now.AddDays(-attemptedDaysAgo) : null,
+                    CreatedAt = now.AddDays(-attemptedDaysAgo),
+                    UpdatedAt = now
+                });
+                exProgressCount++;
+            }
+        }
+
+        await context.SaveChangesAsync();
+        logger.LogInformation("Seeded {Count} exercise progress records", exProgressCount);
+    }
+
+    // 
+    // Daily Streak (3-7 days for each student)
+    // 
+    private static async Task SeedDailyStreakAsync(Learn2CodeDbContext context, ILogger logger)
+    {
+        if (await context.DailyStreaks.AnyAsync()) return;
+
+        var studentRole = await context.Roles.FirstOrDefaultAsync(r => r.RoleName == "Student");
+        if (studentRole == null) return;
+
+        var students = await context.Accounts
+            .Where(a => a.AccountRoles.Any(ar => ar.RoleId == studentRole.RoleId))
+            .ToListAsync();
+
+        var streakCount = 0;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        foreach (var student in students)
+        {
+            var streakDays = Random.Shared.Next(3, 8); // 3-7 days of streak
+            for (int i = 0; i < streakDays; i++)
+            {
+                var streakDate = today.AddDays(-(streakDays - i));
+                context.DailyStreaks.Add(new DailyStreak
+                {
+                    StreakId = Guid.NewGuid(),
+                    UserId = student.AccountId,
+                    StreakDate = streakDate,
+                    XPEarned = Random.Shared.Next(50, 201), // 50-200 XP per day
+                    CreatedAt = DateTime.UtcNow.AddDays(-(streakDays - i))
+                });
+                streakCount++;
+            }
+        }
+
+        await context.SaveChangesAsync();
+        logger.LogInformation("Seeded {Count} daily streak records", streakCount);
+    }
+
+    // 
+    // User Achievements (unlock "First Steps" for all students)
+    // 
+    private static async Task SeedUserAchievementsAsync(Learn2CodeDbContext context, ILogger logger)
+    {
+        if (await context.UserAchievements.AnyAsync()) return;
+
+        var studentRole = await context.Roles.FirstOrDefaultAsync(r => r.RoleName == "Student");
+        if (studentRole == null) return;
+
+        var students = await context.Accounts
+            .Where(a => a.AccountRoles.Any(ar => ar.RoleId == studentRole.RoleId))
+            .ToListAsync();
+
+        var firstStepsAchievement = await context.Achievements
+            .FirstOrDefaultAsync(a => a.Name == "First Steps");
+
+        if (firstStepsAchievement == null) return;
+
+        var achievementCount = 0;
+
+        foreach (var student in students)
+        {
+            if (await context.UserAchievements.AnyAsync(ua => ua.UserId == student.AccountId && ua.AchievementId == firstStepsAchievement.AchievementId))
+                continue;
+
+            context.UserAchievements.Add(new UserAchievement
+            {
+                UserAchievementId = Guid.NewGuid(),
+                UserId = student.AccountId,
+                AchievementId = firstStepsAchievement.AchievementId,
+                UnlockedAt = DateTime.UtcNow.AddDays(-Random.Shared.Next(1, 30))
+            });
+            achievementCount++;
+        }
+
+        await context.SaveChangesAsync();
+        logger.LogInformation("Seeded {Count} user achievements", achievementCount);
+    }
+
+    // 
+    // Certifications (for students who completed courses)
+    // 
+    private static async Task SeedCertificationsAsync(Learn2CodeDbContext context, ILogger logger)
+    {
+        if (await context.Certifications.AnyAsync()) return;
+
+        var enrollments = await context.Enrollments
+            .Where(e => e.Status == EnrollmentStatus.Completed && e.CompletedAt.HasValue)
+            .ToListAsync();
+
+        var certCount = 0;
+
+        foreach (var enrollment in enrollments)
+        {
+            var completedDate = enrollment.CompletedAt ?? DateTime.UtcNow;
+            context.Certifications.Add(new Certification
+            {
+                CertificationId = Guid.NewGuid(),
+                StudentId = enrollment.StudentId,
+                CourseId = enrollment.CourseId,
+                CertificateCode = $"CERT-{Guid.NewGuid().ToString().Substring(0, 8).ToUpper()}",
+                CertificateUrl = $"/certificates/{Guid.NewGuid()}.pdf",
+                IssuedAt = completedDate
+            });
+            certCount++;
+        }
+
+        await context.SaveChangesAsync();
+        logger.LogInformation("Seeded {Count} certifications", certCount);
+    }
+
+    // 
+    // Section Quiz Attempts (2-3 attempts per enrolled course)
+    // 
+    private static async Task SeedSectionQuizAttemptsAsync(Learn2CodeDbContext context, ILogger logger)
+    {
+        if (await context.SectionQuizAttempts.AnyAsync()) return;
+
+        var enrollments = await context.Enrollments.ToListAsync();
+        var attempts = new List<SectionQuizAttempt>();
+        var attemptCount = 0;
+
+        foreach (var enrollment in enrollments)
+        {
+            var sections = await context.Sections
+                .Where(s => s.CourseId == enrollment.CourseId)
+                .ToListAsync();
+
+            foreach (var section in sections.Take(Random.Shared.Next(1, sections.Count + 1)))
+            {
+                var quizzes = await context.Quizzes
+                    .Where(q => q.Lesson.Section.SectionId == section.SectionId)
+                    .ToListAsync();
+
+                if (!quizzes.Any()) continue;
+
+                var quiz = quizzes.First();
+                var correctAnswersCount = Random.Shared.Next(2, 4); // 2-3 out of 4
+                var score = (correctAnswersCount / 4m) * 100;
+                var isPassed = score >= 60;
+
+                var attemptId = Guid.NewGuid();
+                var attempt = new SectionQuizAttempt
+                {
+                    AttemptId = attemptId,
+                    SectionId = section.SectionId,
+                    StudentId = enrollment.StudentId,
+                    Score = score,
+                    IsPassed = isPassed,
+                    AttemptedAt = DateTime.UtcNow.AddDays(-Random.Shared.Next(1, 30))
+                };
+                attempts.Add(attempt);
+                attemptCount++;
+
+                context.SectionQuizAttempts.Add(attempt);
+            }
+        }
+
+        await context.SaveChangesAsync();
+
+        // Add quiz answers for each attempt
+        var options = await context.QuizOptions.ToListAsync();
+        var answerCount = 0;
+
+        foreach (var attempt in attempts)
+        {
+            var quizzes = await context.Quizzes
+                .Where(q => q.Lesson.Section.SectionId == attempt.SectionId)
+                .ToListAsync();
+
+            if (quizzes.Count == 0) continue;
+            var quiz = quizzes.First();
+
+            var quizOptions = await context.QuizOptions
+                .Where(qo => qo.QuizId == quiz.QuizId)
+                .ToListAsync();
+
+            if (quizOptions.Count == 0) continue;
+
+            var correctOption = quizOptions.FirstOrDefault(qo => qo.IsCorrect);
+            var randomWrongOptions = quizOptions.Where(qo => !qo.IsCorrect).OrderBy(x => Random.Shared.Next()).Take(2).ToList();
+
+            // Student answered with some correct and some wrong
+            foreach (var opt in randomWrongOptions.Take(1))
+            {
+                context.SectionQuizAnswers.Add(new SectionQuizAnswer
+                {
+                    AnswerId = Guid.NewGuid(),
+                    AttemptId = attempt.AttemptId,
+                    QuizId = quiz.QuizId,
+                    OptionId = opt.OptionId,
+                    IsCorrect = false
+                });
+                answerCount++;
+            }
+
+            if (correctOption != null)
+            {
+                context.SectionQuizAnswers.Add(new SectionQuizAnswer
+                {
+                    AnswerId = Guid.NewGuid(),
+                    AttemptId = attempt.AttemptId,
+                    QuizId = quiz.QuizId,
+                    OptionId = correctOption.OptionId,
+                    IsCorrect = true
+                });
+                answerCount++;
+            }
+        }
+
+        await context.SaveChangesAsync();
+        logger.LogInformation("Seeded {Count} quiz attempts with {AnswerCount} answers", attemptCount, answerCount);
     }
 }

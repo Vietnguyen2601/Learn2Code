@@ -232,35 +232,54 @@ public class ExerciseService : IExerciseService
             // ── Chế độ Validator (ưu tiên) ──────────────────────────────────
             if (!string.IsNullOrWhiteSpace(exercise.SolutionValidator))
             {
-                execution = await ExecuteWithValidatorAsync(language, request.Code, exercise.SolutionValidator);
-                if (execution.Response == null)
-                    return ServiceResult<ExerciseProgressDto>.Error("CODE_ENGINE_UNAVAILABLE", "Unable to submit code at the moment", 503);
+                var testCases = await _unitOfWork.TestCaseRepository.GetTestCasesByExerciseIdAsync(exerciseId);
+                if (testCases.Count == 0)
+                    return ServiceResult<ExerciseProgressDto>.Error(
+                        "NO_TESTCASES",
+                        "GradedCode exercise with solution_validator requires at least one test case.", 422);
 
-                // Parse từng dòng output: "PASS" | "FAIL" | "FAIL:message"
-                var stdout = execution.Response.Run?.Stdout ?? execution.Response.Run?.Output ?? string.Empty;
-                var lines = stdout
-                    .Replace("\r\n", "\n")
-                    .Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                int accumulatedRuntimeMs = 0;
+                (PistonExecuteResponse? Response, int RuntimeMs) lastExecution = (null, 0);
 
-                testCaseResults = lines.Select((line, idx) =>
+                // Loop qua từng TestCase, thay ValidatorMain vào SolutionValidator
+                foreach (var testCase in testCases)
                 {
-                    var trimmed = line.Trim();
-                    var isPassed = trimmed.StartsWith("PASS", StringComparison.OrdinalIgnoreCase);
-                    var message = trimmed.Contains(':') ? trimmed[(trimmed.IndexOf(':') + 1)..].Trim() : null;
-                    return new ExerciseTestCaseResultDto
+                    string modifiedValidator = exercise.SolutionValidator;
+                    
+                    // Nếu TestCase có ValidatorMain, thay thế hàm main trong validator
+                    if (!string.IsNullOrWhiteSpace(testCase.ValidatorMain))
                     {
-                        // Virtual ID dựa theo thứ tự (không lưu DB)
-                        TestCaseId = Guid.Empty,
+                        modifiedValidator = ReplaceMainFunction(exercise.SolutionValidator, testCase.ValidatorMain, language);
+                    }
+
+                    var execution_i = await ExecuteWithValidatorAsync(language, request.Code, modifiedValidator);
+                    if (execution_i.Response == null)
+                        return ServiceResult<ExerciseProgressDto>.Error("CODE_ENGINE_UNAVAILABLE", "Unable to submit code at the moment", 503);
+
+                    accumulatedRuntimeMs += execution_i.RuntimeMs;
+                    lastExecution = execution_i;
+
+                    // Parse output: "PASS" | "FAIL" | "FAIL:message"
+                    var stdout = execution_i.Response.Run?.Stdout ?? execution_i.Response.Run?.Output ?? string.Empty;
+                    var trimmed = stdout.Trim();
+                    var isPassed = trimmed.StartsWith("PASS", StringComparison.OrdinalIgnoreCase);
+                    var failMessage = trimmed.Contains(':') ? trimmed[(trimmed.IndexOf(':') + 1)..].Trim() : null;
+
+                    testCaseResults.Add(new ExerciseTestCaseResultDto
+                    {
+                        TestCaseId = testCase.TestCaseId,
                         IsPassed = isPassed,
-                        ActualOutput = isPassed ? null : (message ?? trimmed)
-                    };
-                }).ToList();
+                        ActualOutput = testCase.IsHidden ? null : (isPassed ? null : (failMessage ?? trimmed))
+                    });
+                }
 
                 finalPassed = testCaseResults.Any() && testCaseResults.All(r => r.IsPassed);
+                execution = lastExecution.Response != null
+                    ? (lastExecution.Response, Math.Max(1, accumulatedRuntimeMs))
+                    : (null, 0);
 
-                // Nếu Piston báo compile/runtime error thì fail luôn
-                if (execution.Response.Run?.Code != 0 && !testCaseResults.Any())
-                    finalPassed = false;
+                if (execution.Response == null)
+                    return ServiceResult<ExerciseProgressDto>.Error("CODE_ENGINE_UNAVAILABLE", "Unable to submit code at the moment", 503);
             }
             // ── Chế độ DB TestCases (fallback) ───────────────────────────────
             else
@@ -630,6 +649,96 @@ public class ExerciseService : IExerciseService
             "swift" => "main.swift",
             _ => "main.txt"
         };
+    }
+
+    /// <summary>
+    /// Thay thế hàm main trong solution validator bằng hàm main mới từ test case.
+    /// Phương thức này sẽ tìm kiếm và loại bỏ hàm main cũ, rồi thêm hàm main mới.
+    /// </summary>
+    private static string ReplaceMainFunction(string validator, string newMainFunction, string language)
+    {
+        var normalized = language.Trim().ToLowerInvariant();
+        
+        // Các ngôn ngữ khác nhau có cách gọi main khác nhau
+        return normalized switch
+        {
+            // Java: tìm "public static void main" hoặc "public static void main(String[]"
+            "java" => ReplaceJavaMain(validator, newMainFunction),
+            // C#: tìm "static void Main" hoặc "public static void Main"
+            "c#" or "csharp" or "cs" => ReplaceCSharpMain(validator, newMainFunction),
+            // C/C++: tìm "int main" hoặc "void main"
+            "c" or "c++" or "cpp" => ReplaceCCppMain(validator, newMainFunction),
+            // Python: tìm "if __name__" hoặc "def main"
+            "python" or "py" => ReplacePythonMain(validator, newMainFunction),
+            // JavaScript: tìm "function main" hoặc arrow function
+            "javascript" or "js" => ReplaceJavaScriptMain(validator, newMainFunction),
+            // TypeScript: tương tự JavaScript
+            "typescript" or "ts" => ReplaceTypeScriptMain(validator, newMainFunction),
+            // Go: tìm "func main"
+            "go" or "golang" => ReplaceGoMain(validator, newMainFunction),
+            // Fallback: thêm hàm mới vào cuối file
+            _ => validator + "\n" + newMainFunction
+        };
+    }
+
+    private static string ReplaceJavaMain(string validator, string newMainFunction)
+    {
+        // Tìm và xóa hàm main cũ (từ "public static void main" đến dấu "}")
+        var pattern = @"public\s+static\s+void\s+main\s*\(\s*String\s*\[\s*\]\s*args\s*\)\s*\{.*?\n\s*\}";
+        var result = System.Text.RegularExpressions.Regex.Replace(validator, pattern, "", System.Text.RegularExpressions.RegexOptions.Singleline);
+        return result.Trim() + "\n\n" + newMainFunction;
+    }
+
+    private static string ReplaceCSharpMain(string validator, string newMainFunction)
+    {
+        var pattern = @"public\s+static\s+void\s+Main\s*\(.*?\)\s*\{.*?\n\s*\}";
+        var result = System.Text.RegularExpressions.Regex.Replace(validator, pattern, "", System.Text.RegularExpressions.RegexOptions.Singleline);
+        return result.Trim() + "\n\n" + newMainFunction;
+    }
+
+    private static string ReplaceCCppMain(string validator, string newMainFunction)
+    {
+        // Tìm int main hoặc void main
+        var pattern = @"(int|void)\s+main\s*\(.*?\)\s*\{.*?\}";
+        var result = System.Text.RegularExpressions.Regex.Replace(validator, pattern, "", System.Text.RegularExpressions.RegexOptions.Singleline);
+        return result.Trim() + "\n\n" + newMainFunction;
+    }
+
+    private static string ReplacePythonMain(string validator, string newMainFunction)
+    {
+        // Tìm if __name__ == "__main__": block
+        // Pattern: if __name__ == "__main__": ...
+        var pattern = @"if\s+__name__\s*==\s*['\x22]__main__['\x22]\s*:.*";
+        var result = System.Text.RegularExpressions.Regex.Replace(validator, pattern, "", System.Text.RegularExpressions.RegexOptions.Singleline);
+        
+        // Nếu không tìm thấy, tìm def main
+        if (result == validator)
+        {
+            pattern = @"def\s+main\s*\(.*?\)\s*:.*?(?=\ndef|\Z)";
+            result = System.Text.RegularExpressions.Regex.Replace(validator, pattern, "", System.Text.RegularExpressions.RegexOptions.Singleline);
+        }
+        return result.Trim() + "\n\n" + newMainFunction;
+    }
+
+    private static string ReplaceJavaScriptMain(string validator, string newMainFunction)
+    {
+        // Tìm function main hoặc const main =
+        var pattern = @"(function\s+main|const\s+main\s*=|let\s+main\s*=).*?\}";
+        var result = System.Text.RegularExpressions.Regex.Replace(validator, pattern, "", System.Text.RegularExpressions.RegexOptions.Singleline);
+        return result.Trim() + "\n\n" + newMainFunction;
+    }
+
+    private static string ReplaceTypeScriptMain(string validator, string newMainFunction)
+    {
+        return ReplaceJavaScriptMain(validator, newMainFunction);
+    }
+
+    private static string ReplaceGoMain(string validator, string newMainFunction)
+    {
+        // Tìm func main()
+        var pattern = @"func\s+main\s*\(\s*\)\s*\{.*?\}";
+        var result = System.Text.RegularExpressions.Regex.Replace(validator, pattern, "", System.Text.RegularExpressions.RegexOptions.Singleline);
+        return result.Trim() + "\n\n" + newMainFunction;
     }
 
     private static void ApplyExecutionResult(ExerciseProgressDto response, PistonExecuteResponse execution, string language, int runtimeMs)

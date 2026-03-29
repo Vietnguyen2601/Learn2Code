@@ -15,7 +15,8 @@ public class TestCaseDto
 
     [JsonPropertyName("text_input")]
     public string? TextInput { get; set; }
-
+    [JsonPropertyName("validator_main")]
+    public string? ValidatorMain { get; set; }
     [JsonPropertyName("is_hidden")]
     public bool IsHidden { get; set; }
 

@@ -15,6 +15,7 @@ public static class TestCaseMapper
             ExerciseId = testCase.ExerciseId,
             ExpectedOutput = testCase.ExpectedOutput,
             TextInput = testCase.TextInput,
+            ValidatorMain = testCase.ValidatorMain,
             IsHidden = testCase.IsHidden,
             Weight = testCase.Weight,
             CreatedAt = testCase.CreatedAt,
@@ -30,6 +31,7 @@ public static class TestCaseMapper
             ExerciseId = exerciseId,
             ExpectedOutput = request.ExpectedOutput,
             TextInput = request.TextInput,
+            ValidatorMain = request.ValidatorMain,
             IsHidden = request.IsHidden,
             Weight = request.Weight,
             CreatedAt = DateTime.UtcNow,
@@ -44,6 +46,9 @@ public static class TestCaseMapper
 
         if (!string.IsNullOrWhiteSpace(request.ExpectedOutput))
             testCase.ExpectedOutput = request.ExpectedOutput;
+
+        if (request.ValidatorMain != null)
+            testCase.ValidatorMain = request.ValidatorMain;
 
         if (request.IsHidden.HasValue)
             testCase.IsHidden = request.IsHidden.Value;

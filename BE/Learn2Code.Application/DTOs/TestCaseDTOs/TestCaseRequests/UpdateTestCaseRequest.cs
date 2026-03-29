@@ -10,7 +10,11 @@ public class UpdateTestCaseRequest
 
     [JsonPropertyName("expected_output")]
     public string? ExpectedOutput { get; set; }
-
+    /// <summary>
+    /// Hàm main/validator function dành riêng cho test case này.
+    /// </summary>
+    [JsonPropertyName("validator_main")]
+    public string? ValidatorMain { get; set; }
     [JsonPropertyName("is_hidden")]
     public bool? IsHidden { get; set; }
 

@@ -20,6 +20,13 @@ public class TestCase
     [Column("text_input")]
     public string? TextInput { get; set; }
 
+    /// <summary>
+    /// Hàm main/validator function dành riêng cho test case này.
+    /// Khi submit, hàm main này sẽ thay thế hàm main trong SolutionValidator.
+    /// </summary>
+    [Column("validator_main")]
+    public string? ValidatorMain { get; set; }
+
     [Column("is_hidden")]
     public bool IsHidden { get; set; } = false;
 
