@@ -20,7 +20,7 @@ public static class Learn2CodeDbContextSeeder
 
         try
         {
-            // await ResetSchemaIfNeededAsync(context, logger);
+            await ResetSchemaIfNeededAsync(context, logger);
             await context.Database.MigrateAsync();
             await SeedRolesAsync(context, logger);
             await SeedAdminAccountAsync(context, logger);
@@ -47,7 +47,8 @@ public static class Learn2CodeDbContextSeeder
             await SeedDailyStreakAsync(context, logger);
             await SeedUserAchievementsAsync(context, logger);
             await SeedCertificationsAsync(context, logger);
-            await SeedSectionQuizAttemptsAsync(context, logger);
+            // TODO: Fix duplicate key constraint issued with section quiz answers
+            // await SeedSectionQuizAttemptsAsync(context, logger);
         }
         catch (Exception ex)
         {
@@ -1148,6 +1149,7 @@ public static class Learn2CodeDbContextSeeder
     private static async Task SeedSectionQuizAttemptsAsync(Learn2CodeDbContext context, ILogger logger)
     {
         if (await context.SectionQuizAttempts.AnyAsync()) return;
+        if (await context.SectionQuizAnswers.AnyAsync()) return;
 
         var enrollments = await context.Enrollments.ToListAsync();
         var attempts = new List<SectionQuizAttempt>();
