@@ -497,8 +497,16 @@ public class ExerciseService : IExerciseService
 
     private async Task<(PistonExecuteResponse? Response, int RuntimeMs)> ExecuteCodeAsync(string language, string code, string? stdin = null)
     {
+        // Preprocess code if needed (e.g., wrap Java code with main method)
+        var processedCode = PreprocessCodeForExecution(language, code);
+        
+        if (processedCode != code)
+        {
+            _logger.LogInformation("🔧 [CODE PREPROCESS] Code was modified for {Language}", language);
+        }
+        
         _logger.LogInformation("📝 [CODE EXECUTION] Language: {Language}, Stdin presence: {HasStdin}", language, !string.IsNullOrEmpty(stdin));
-        _logger.LogInformation("📝 [CODE TO EXECUTE]\n{Code}", code);
+        _logger.LogInformation("📝 [CODE TO EXECUTE]\n{Code}", processedCode);
         
         var startedAt = DateTime.UtcNow;
         var response = await _pistonService.ExecuteAsync(new PistonExecuteRequest
@@ -511,7 +519,7 @@ public class ExerciseService : IExerciseService
                 new()
                 {
                     Name = GetSourceFileName(language),
-                    Content = code
+                    Content = processedCode
                 }
             },
             CompileTimeout = _pistonOptions.CompileTimeout,
@@ -523,6 +531,69 @@ public class ExerciseService : IExerciseService
             runtimeMs, response?.Run?.Stdout ?? "null", response?.Run?.Stderr ?? "null");
         
         return (response, runtimeMs);
+    }
+
+    private static string PreprocessCodeForExecution(string language, string code)
+    {
+        // For Java: wrap code with main method if it doesn't have one
+        if (language.Equals("java", StringComparison.OrdinalIgnoreCase))
+        {
+            // Check if code already has a main method
+            if (!code.Contains("main(String[])") && !code.Contains("main(String []") && !code.Contains("public static void main"))
+            {
+                return WrapJavaCodeWithMain(code);
+            }
+        }
+
+        return code;
+    }
+
+    private static string WrapJavaCodeWithMain(string code)
+    {
+        // If the code doesn't have a class, wrap it in a Solution class
+        if (!code.Contains("class ") && !code.Contains("public class"))
+        {
+            return $@"public class Solution {{
+    {code}
+
+    public static void main(String[] args) {{
+        // Auto-generated main method for testing
+    }}
+}}";
+        }
+
+        // If code has a class but no main method, add main method to it
+        var codeLines = code.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+        var lastBraceIndex = -1;
+        int braceCount = 0;
+
+        // Find the last closing brace of the class
+        for (int i = codeLines.Length - 1; i >= 0; i--)
+        {
+            var line = codeLines[i];
+            for (int j = line.Length - 1; j >= 0; j--)
+            {
+                if (line[j] == '}') braceCount++;
+                else if (line[j] == '{') braceCount--;
+
+                if (braceCount == 0)
+                {
+                    lastBraceIndex = i;
+                    break;
+                }
+            }
+
+            if (lastBraceIndex != -1) break;
+        }
+
+        if (lastBraceIndex == -1)
+            return code; // Couldn't find proper class structure, return as-is
+
+        // Insert main method before the last closing brace
+        var result = new List<string>(codeLines);
+        result.Insert(lastBraceIndex, "    public static void main(String[] args) {\n        // Auto-generated main method\n    }");
+
+        return string.Join("\n", result);
     }
 
     private static string? ResolveLanguage(string? requestedLanguage, string? exerciseLanguage)
