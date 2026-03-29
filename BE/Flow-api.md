@@ -10,87 +10,86 @@ Roles: Admin | Student (Instructor = Admin trong scope này)
 [A] = Admin only · [S] = Student only · [*] = cả hai · [-] = public
 
 1. AUTH ( đã xong toàn bộ )
-Method
-Endpoint
-Access
-Mô tả
-POST
-/auth/register
-[-]
-Đăng ký tài khoản
-POST
-/auth/login
-[-]
-Đăng nhập → trả về access_token + refresh_token
-POST
-/auth/logout
-[*]
-Đăng xuất (revoke refresh_token)
-POST
-/auth/refresh
-[-]
-Lấy access_token mới từ refresh_token
-POST
-/auth/forgot-password
-[-]
-Gửi email reset password
-POST
-/auth/reset-password
-[-]
-Đặt lại password bằng token từ email
-GET
-/auth/me
-[*]
-Lấy thông tin tài khoản hiện tại
-PATCH
-/auth/me
-[*]
-Cập nhật profile (name, phone)
-PATCH
-/auth/me/password
-[*]
-Đổi password
+   Method
+   Endpoint
+   Access
+   Mô tả
+   POST
+   /auth/register
+   [-]
+   Đăng ký tài khoản
+   POST
+   /auth/login
+   [-]
+   Đăng nhập → trả về access_token + refresh_token
+   POST
+   /auth/logout
+   [*]
+   Đăng xuất (revoke refresh_token)
+   POST
+   /auth/refresh
+   [-]
+   Lấy access_token mới từ refresh_token
+   POST
+   /auth/forgot-password
+   [-]
+   Gửi email reset password
+   POST
+   /auth/reset-password
+   [-]
+   Đặt lại password bằng token từ email
+   GET
+   /auth/me
+   [*]
+   Lấy thông tin tài khoản hiện tại
+   PATCH
+   /auth/me
+   [*]
+   Cập nhật profile (name, phone)
+   PATCH
+   /auth/me/password
+   [*]
+   Đổi password
 
 Flow: Login
 POST /auth/login
-  → validate credentials
-  → trả về { access_token, refresh_token, expires_in }
-  → frontend lưu vào memory (access) + httpOnly cookie (refresh)
+→ validate credentials
+→ trả về { access_token, refresh_token, expires_in }
+→ frontend lưu vào memory (access) + httpOnly cookie (refresh)
 
 POST /auth/refresh (gọi tự động khi access_token hết hạn)
-  → trả về access_token mới
+→ trả về access_token mới
 
 2. SUBSCRIPTION & PAYMENT
-Method
-Endpoint
-Access
-Mô tả
-GET
-/subscription-packages
-[-]
-Danh sách gói (public — hiển thị trang pricing) (
-GET
-/subscription-packages/:id
-[-]
-Chi tiết 1 gói
-POST
-
-
+   Method
+   Endpoint
+   Access
+   Mô tả
+   GET
+   /subscription-packages
+   [-]
+   Danh sách gói (public — hiển thị trang pricing) (
+   GET
+   /subscription-packages/:id
+   [-]
+   Chi tiết 1 gói
+   POST
 
 /subscription-packages
 [A]
-Tạo gói mới (discount_percent tự tính theo duration_months; không cho nhập discount_percent; price >= 1000)
+Tạo gói mới (
 
-
+1. trường discount_percent phải được tự động tính dựa trên gói 1 tháng, chứ không được nhập, chỉ được nhập price và hệ thống sẽ dựa vào price hiện tại so với gói 1 tháng và coi thử nó giảm bao nhiêu,
+2. price =0 vẫn được tạo gói là sai
 
 PATCH
 /subscription-packages/:id
 [A]
-Cập nhật gói (price nếu truyền vào phải >= 1000; discount_percent tự tính lại theo duration_months)
+Cập nhật gói (price =0 vẫn đc cập nhật)
 DELETE
 /subscription-packages/:id
 [A]
-Vô hiệu hóa gói 
+Vô hiệu hóa gói
 GET
 /subscriptions/me
 [S]
@@ -116,13 +115,6 @@ POST
 [-]
 Webhook callback từ VNPay
 
-
-
-
-
-
-
-
 GET
 /payments/me
 [S]
@@ -133,54 +125,55 @@ GET
 Tất cả lịch sử thanh toán
 
 Flow: Đăng ký gói
-1. GET  /subscription-packages          → student chọn gói
-2. POST /subscriptions { package_id }   → tạo UserSubscription (Pending)
-                                        → tạo Payment (Pending)
-                                        → trả về { payment_url }
-3. Student redirect đến payment_url (VNPay)
-4. POST /payments/callback/vnpay        → VNPay gọi callback
-                                        → cập nhật Payment → Success
-                                        → cập nhật UserSubscription → Active
-                                        → mở khóa tất cả khóa học cho student
 
-3. COURSE & CONTENT
-3.1 Courses (DONE)
-Method
-Endpoint
-Access
-Mô tả
-GET
-/courses
-[-]
-Danh sách khóa học (filter: category, difficulty,  search)  (DONE)
-GET
-/courses/:courseId
-[-]
-Chi tiết khóa học + danh sách section (không có content)  (DONE)
-POST
-/courses
-[A]
-Tạo khóa học (DONE)
-PATCH
-/courses/:courseId
-[A]
-Cập nhật khóa học  (DONE)
-DELETE
-/courses/:courseId
-[A]
-Vô hiệu hóa khóa học  (DONE)
-GET
-/categories
-[-]
-Danh sách category (DONE)
-POST
-/categories
-[A]
-Tạo category (DONE)
-PATCH
-/categories/:id
-[A]
-Cập nhật category (DONE)
+1. GET /subscription-packages → student chọn gói
+2. POST /subscriptions { package_id } → tạo UserSubscription (Pending)
+   → tạo Payment (Pending)
+   → trả về { payment_url }
+3. Student redirect đến payment_url (VNPay)
+4. POST /payments/callback/vnpay → VNPay gọi callback
+   → cập nhật Payment → Success
+   → cập nhật UserSubscription → Active
+   → mở khóa tất cả khóa học cho student
+
+5. COURSE & CONTENT
+   3.1 Courses (DONE)
+   Method
+   Endpoint
+   Access
+   Mô tả
+   GET
+   /courses
+   [-]
+   Danh sách khóa học (filter: category, difficulty, search) (DONE)
+   GET
+   /courses/:courseId
+   [-]
+   Chi tiết khóa học + danh sách section (không có content) (DONE)
+   POST
+   /courses
+   [A]
+   Tạo khóa học (DONE)
+   PATCH
+   /courses/:courseId
+   [A]
+   Cập nhật khóa học (DONE)
+   DELETE
+   /courses/:courseId
+   [A]
+   Vô hiệu hóa khóa học (DONE)
+   GET
+   /categories
+   [-]
+   Danh sách category (DONE)
+   POST
+   /categories
+   [A]
+   Tạo category (DONE)
+   PATCH
+   /categories/:id
+   [A]
+   Cập nhật category (DONE)
 
 3.2 Sections
 Method
@@ -216,7 +209,7 @@ Mô tả
 GET
 /sections/:sectionId/lessons
 [*]
-Danh sách lesson trong section (DONE) 
+Danh sách lesson trong section (DONE)
 GET
 /lessons/:lessonId
 [*]
@@ -246,7 +239,7 @@ Mô tả
 GET
 /lessons/:lessonId/exercises
 [*]
-Danh sách exercise trong lesson (DONE)
+Danh sách exercise trong lesson (DONE) a
 GET
 /exercises/:exerciseId
 [*]
@@ -284,18 +277,6 @@ DELETE
 [A]
 Xóa testcase (DONE)
 
-Ghi chú testcase:
-- Có thêm trường text_input để lưu stdin cho từng testcase.
-- submit GradedCode sẽ chạy code theo từng testcase với stdin = text_input tương ứng.
-
-Quy tắc discount subscription:
-- 1 tháng: 0%
-- 2 tháng: 5%
-- 4 tháng: 10%
-- 6 tháng: 15%
-- Tăng dần theo mốc 2 tháng, tối đa 20%
-
-
 Method
 Endpoint
 Access
@@ -303,7 +284,7 @@ Mô tả
 GET
 /lessons/:lessonId/quizzes
 [*]
-Danh sách quiz trong  lesson (DONE)
+Danh sách quiz trong lesson (DONE)
 POST
 /lessons/:lessonId/quizzes
 [A]
@@ -329,8 +310,7 @@ DELETE
 [A]
 Xóa option (DONE)
 
-3.5 Quizzes (trong lesson)
-4. STUDENT LEARNING FLOW
+3.5 Quizzes (trong lesson) 4. STUDENT LEARNING FLOW
 4.1 Enrollment(done)
 Method
 Endpoint
@@ -355,11 +335,11 @@ Tất cả enrollment (admin)
 
 Flow: Truy cập nội dung bài học
 GET /lessons/:lessonId
-  → check Enrollments (student đã enroll chưa?)
-  → check Lesson.is_free_preview (nếu true → cho qua)
-  → check UserSubscriptions (có subscription Active không?)
-  → check LessonProgress (bài này có bị lock không?)
-  → trả về nội dung lesson + danh sách exercises
+→ check Enrollments (student đã enroll chưa?)
+→ check Lesson.is_free_preview (nếu true → cho qua)
+→ check UserSubscriptions (có subscription Active không?)
+→ check LessonProgress (bài này có bị lock không?)
+→ trả về nội dung lesson + danh sách exercises
 4.2 Exercise — Chạy code(done, mock result do chưa gắn code execute service)
 Method
 Endpoint
@@ -368,17 +348,18 @@ Mô tả
 POST
 /exercises/:exerciseId/run
 [S]
-Chạy code (FreeCode/GradedCode — không chấm; Reading trả INVALID_EXERCISE_TYPE)
+Chạy code (FreeCode — không chấm)
 POST
 /exercises/:exerciseId/submit
 [S]
-Nộp code (GradedCode; Reading/FreeCode trả INVALID_EXERCISE_TYPE)
+Nộp code (GradedCode — chấm testcases)
 PATCH
 /exercises/:exerciseId/progress
 [S]
 Auto-save last_code + đánh dấu completed
 
 Flow: FreeCode Exercise
+
 1. Student viết code
 2. POST /exercises/:id/run { code, language }
    → gửi đến code execution service
@@ -389,33 +370,32 @@ Flow: FreeCode Exercise
    → cập nhật ExerciseProgress
    → kiểm tra nếu tất cả exercise trong lesson completed
    → tự động cập nhật LessonProgress = Completed
-Flow: GradedCode Exercise
-1. Student viết code
-2. POST /exercises/:id/submit { code, language }
+   Flow: GradedCode Exercise
+5. Student viết code
+6. POST /exercises/:id/submit { code, language }
    → chạy code qua tất cả TestCases
    → trả về { is_passed, results: [{ testcase_id, is_passed, actual_output (nếu không hidden) }] }
-3. Nếu is_passed = true
+7. Nếu is_passed = true
    → PATCH /exercises/:id/progress { is_completed: true, is_passed: true, last_code }
    → kiểm tra nếu tất cả exercise completed → LessonProgress = Completed
-4. Nếu is_passed = false → student sửa và submit lại
-Flow: Reading Exercise
-1. Student đọc nội dung + xem ảnh/video
-2. Bấm "Next"
-3. PATCH /exercises/:id/progress { is_completed: true }
-   → cập nhật ExerciseProgress
-   → kiểm tra → LessonProgress
-Ghi chú: Reading exercise không hỗ trợ /run hoặc /submit, API trả lỗi 400 với error_code = INVALID_EXERCISE_TYPE.
+8. Nếu is_passed = false → student sửa và submit lại
+   Flow: Reading Exercise
+9. Student đọc nội dung + xem ảnh/video
+10. Bấm "Next"
+11. PATCH /exercises/:id/progress { is_completed: true }
+    → cập nhật ExerciseProgress
+    → kiểm tra → LessonProgress
 
-5. QUIZ & SECTION QUIZ
-5.1 Quiz trong Lesson (hiển thị xen kẽ khi học)(done chưa test)
-Method
-Endpoint
-Access
-Mô tả
-POST
-/quizzes/:quizId/answer
-[S]
-Student trả lời 1 quiz → trả về is_correct + explanation
+12. QUIZ & SECTION QUIZ
+    5.1 Quiz trong Lesson (done chưa test)
+    Method
+    Endpoint
+    Access
+    Mô tả
+    POST
+    /quizzes/:quizId/answer
+    [S]
+    Student trả lời 1 quiz → trả về is_correct + explanation
 
 5.2 Section Quiz (thi tổng kết)(done chưa test)
 Method
@@ -436,6 +416,7 @@ GET
 Lịch sử các lần thi của student
 
 Flow: Section Quiz(done chưa test)
+
 1. GET /sections/:sectionId/section-quiz
    → check tất cả LessonProgress trong section = Completed
    → nếu chưa đủ → 403 { error: "SECTION_NOT_COMPLETED" }
@@ -450,147 +431,145 @@ Flow: Section Quiz(done chưa test)
    → trả về { score, is_passed, answers: [{ quiz_id, is_correct, explanation }] }
    → kiểm tra CourseCompletionRules → nếu đủ điều kiện → trigger cấp Certification
 
-6. PROGRESS & COMPLETION(done chưa test)
-Method
-Endpoint
-Access
-Mô tả
-GET
-/courses/:courseId/progress/me
-[S]
-Tổng quan progress toàn khóa (% từng section, lesson)
-GET
-/lessons/:lessonId/progress/me
-[S]
-Progress chi tiết từng exercise trong lesson
-GET
-/courses/:courseId/progress
-[A]
-Progress của tất cả student trong khóa (admin)
+4. PROGRESS & COMPLETION(done chưa test)
+   Method
+   Endpoint
+   Access
+   Mô tả
+   GET
+   /courses/:courseId/progress/me
+   [S]
+   Tổng quan progress toàn khóa (% từng section, lesson)
+   GET
+   /lessons/:lessonId/progress/me
+   [S]
+   Progress chi tiết từng exercise trong lesson
+   GET
+   /courses/:courseId/progress
+   [A]
+   Progress của tất cả student trong khóa (admin)
 
 Response mẫu GET /courses/:courseId/progress/me
 json
 {
-  "enrollment_status": "InProgress",
-  "progress_pct": 45.5,
-  "sections": [
-    {
-      "section_id": "...",
-      "title": "Chương 1",
-      "lessons_total": 5,
-      "lessons_completed": 5,
-      "section_quiz_unlocked": true,
-      "section_quiz_passed": true,
-      "section_quiz_score": 80
-    },
-    {
-      "section_id": "...",
-      "title": "Chương 2",
-      "lessons_total": 4,
-      "lessons_completed": 2,
-      "section_quiz_unlocked": false,
-      "section_quiz_passed": false
-    }
-  ]
+"enrollment_status": "InProgress",
+"progress_pct": 45.5,
+"sections": [
+{
+"section_id": "...",
+"title": "Chương 1",
+"lessons_total": 5,
+"lessons_completed": 5,
+"section_quiz_unlocked": true,
+"section_quiz_passed": true,
+"section_quiz_score": 80
+},
+{
+"section_id": "...",
+"title": "Chương 2",
+"lessons_total": 4,
+"lessons_completed": 2,
+"section_quiz_unlocked": false,
+"section_quiz_passed": false
+}
+]
 }
 
 7. CERTIFICATION (DONE CHƯA TEST)
-Method
-Endpoint
-Access
-Mô tả
-GET
-/certifications/me
-[S]
-Danh sách chứng chỉ của student
-GET
-/certifications/:code
-[-]
-Xem / verify chứng chỉ bằng certificate_code (public)
-GET
-/certifications
-[A]
-Tất cả chứng chỉ đã cấp
-POST
-/courses/:courseId/certifications/check
-[S]
-Kiểm tra đủ điều kiện nhận chứng chỉ chưa
+   Method
+   Endpoint
+   Access
+   Mô tả
+   GET
+   /certifications/me
+   [S]
+   Danh sách chứng chỉ của student
+   GET
+   /certifications/:code
+   [-]
+   Xem / verify chứng chỉ bằng certificate_code (public)
+   GET
+   /certifications
+   [A]
+   Tất cả chứng chỉ đã cấp
+   POST
+   /courses/:courseId/certifications/check
+   [S]
+   Kiểm tra đủ điều kiện nhận chứng chỉ chưa
 
 Flow: Cấp chứng chỉ
 Trigger tự động sau POST /section-quiz/attempt (lần thi cuối)
-  → kiểm tra CourseCompletionRules:
-      min_lesson_completion_pct → từ LessonProgress
-      min_exercise_pass_pct    → từ ExerciseProgress
-      min_section_quiz_score   → từ SectionQuizAttempts
-      require_all_section_quiz → tất cả section đã thi chưa
-  → nếu đủ điều kiện:
-      → tạo Certifications { certificate_code, certificate_url }
-      → cập nhật Enrollments.status = Completed
-      → trả về { certified: true, certificate_code }
-  → nếu chưa đủ:
-      → trả về { certified: false, missing: [...] }
+→ kiểm tra CourseCompletionRules:
+min_lesson_completion_pct → từ LessonProgress
+min_exercise_pass_pct → từ ExerciseProgress
+min_section_quiz_score → từ SectionQuizAttempts
+require_all_section_quiz → tất cả section đã thi chưa
+→ nếu đủ điều kiện:
+→ tạo Certifications { certificate_code, certificate_url }
+→ cập nhật Enrollments.status = Completed
+→ trả về { certified: true, certificate_code }
+→ nếu chưa đủ:
+→ trả về { certified: false, missing: [...] }
 
 8. LEADERBOARD & FEEDBACK
-Method
-Endpoint
-Access
-Mô tả
-GET
-/courses/:courseId/leaderboard
-[*]
-Bảng xếp hạng của khóa học (top 50)
-GET
-/courses/:courseId/feedbacks
-[-]
-Danh sách đánh giá của khóa học
-POST
-/courses/:courseId/feedbacks
-[S]
-Gửi đánh giá (chỉ student đã enroll)
-PATCH
-/courses/:courseId/feedbacks/me
-[S]
-Sửa đánh giá của mình
-DELETE
-/courses/:courseId/feedbacks/me
-[S]
-Xóa đánh giá của mình
-DELETE
-/courses/:courseId/feedbacks/:feedbackId
-[A]
-Admin xóa đánh giá vi phạm
-
+   Method
+   Endpoint
+   Access
+   Mô tả
+   GET
+   /courses/:courseId/leaderboard
+   [*]
+   Bảng xếp hạng của khóa học (top 50)
+   GET
+   /courses/:courseId/feedbacks
+   [-]
+   Danh sách đánh giá của khóa học
+   POST
+   /courses/:courseId/feedbacks
+   [S]
+   Gửi đánh giá (chỉ student đã enroll)
+   PATCH
+   /courses/:courseId/feedbacks/me
+   [S]
+   Sửa đánh giá của mình
+   DELETE
+   /courses/:courseId/feedbacks/me
+   [S]
+   Xóa đánh giá của mình
+   DELETE
+   /courses/:courseId/feedbacks/:feedbackId
+   [A]
+   Admin xóa đánh giá vi phạm
 
 9. ADMIN
-Method
-Endpoint
-Access
-Mô tả
-GET
-/admin/users
-[A]
-Danh sách users (filter, search, pagination)
-GET
-/admin/users/:id
-[A]
-Chi tiết user
-PATCH
-/admin/users/:id
-[A]
-Cập nhật user (role, is_active)
-GET
-/admin/dashboard
-[A]
-Thống kê tổng: users, enrollments, revenue
-GET
-/admin/dashboard/revenue
-[A]
-Doanh thu theo tháng
-GET
-/admin/dashboard/enrollments
-[A]
-Số lượng enrollment theo khóa học
-
+   Method
+   Endpoint
+   Access
+   Mô tả
+   GET
+   /admin/users
+   [A]
+   Danh sách users (filter, search, pagination)
+   GET
+   /admin/users/:id
+   [A]
+   Chi tiết user
+   PATCH
+   /admin/users/:id
+   [A]
+   Cập nhật user (role, is_active)
+   GET
+   /admin/dashboard
+   [A]
+   Thống kê tổng: users, enrollments, revenue
+   GET
+   /admin/dashboard/revenue
+   [A]
+   Doanh thu theo tháng
+   GET
+   /admin/dashboard/enrollments
+   [A]
+   Số lượng enrollment theo khóa học
 
 Error Codes
 Code
@@ -626,5 +605,3 @@ ALREADY_CERTIFIED
 VALIDATION_ERROR
 422
 Dữ liệu đầu vào không hợp lệ
-
-

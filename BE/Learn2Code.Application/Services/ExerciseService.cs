@@ -10,6 +10,7 @@ using Learn2Code.Infrastructure.DTOs;
 using Learn2Code.Infrastructure.Options;
 using Learn2Code.Infrastructure.Persistence.UnitOfWork;
 using Learn2Code.Infrastructure.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace Learn2Code.Application.Services;
@@ -221,55 +222,99 @@ public class ExerciseService : IExerciseService
         if (string.IsNullOrWhiteSpace(language))
             return ServiceResult<ExerciseProgressDto>.BadRequest("Language is required. Provide request.language or configure exercise.language");
 
-        var execution = await ExecuteCodeAsync(language, request.Code);
-        if (execution.Response == null)
-            return ServiceResult<ExerciseProgressDto>.Error("CODE_ENGINE_UNAVAILABLE", "Unable to submit code at the moment", 503);
-
-        var runResult = execution.Response.Run;
-        var runSucceeded = runResult?.Code == 0;
         var now = DateTime.UtcNow;
         var testCaseResults = new List<ExerciseTestCaseResultDto>();
-        var finalPassed = runSucceeded;
+        bool finalPassed;
+        (PistonExecuteResponse? Response, int RuntimeMs) execution;
 
         if (exercise.ExerciseType == ExerciseType.GradedCode)
         {
-            var testCases = await _unitOfWork.TestCaseRepository.GetTestCasesByExerciseIdAsync(exerciseId);
-            if (testCases.Count == 0)
-                return ServiceResult<ExerciseProgressDto>.Error("TEST_CASES_NOT_FOUND", "No test cases found for this graded exercise", 422);
-
-            int accumulatedRuntimeMs = 0;
-            (PistonExecuteResponse? Response, int RuntimeMs) lastExecution = (null, 0);
-
-            foreach (var testCase in testCases)
+            // ── Chế độ Validator (ưu tiên) ──────────────────────────────────
+            if (!string.IsNullOrWhiteSpace(exercise.SolutionValidator))
             {
-                var testExecution = await ExecuteCodeAsync(language, request.Code, testCase.TextInput);
-                if (testExecution.Response == null)
+                execution = await ExecuteWithValidatorAsync(language, request.Code, exercise.SolutionValidator);
+                if (execution.Response == null)
                     return ServiceResult<ExerciseProgressDto>.Error("CODE_ENGINE_UNAVAILABLE", "Unable to submit code at the moment", 503);
 
-                accumulatedRuntimeMs += testExecution.RuntimeMs;
-                lastExecution = testExecution;
+                // Parse từng dòng output: "PASS" | "FAIL" | "FAIL:message"
+                var stdout = execution.Response.Run?.Stdout ?? execution.Response.Run?.Output ?? string.Empty;
+                var lines = stdout
+                    .Replace("\r\n", "\n")
+                    .Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
-                var testRunResult = testExecution.Response.Run;
-                var testRunSucceeded = testRunResult?.Code == 0;
-                var actualOutput = testRunResult?.Stdout ?? testRunResult?.Output ?? string.Empty;
-                var normalizedActualOutput = NormalizeOutput(actualOutput);
-                var normalizedExpectedOutput = NormalizeOutput(testCase.ExpectedOutput);
-                var isPassed = testRunSucceeded && normalizedExpectedOutput == normalizedActualOutput;
-
-                testCaseResults.Add(new ExerciseTestCaseResultDto
+                testCaseResults = lines.Select((line, idx) =>
                 {
-                    TestCaseId = testCase.TestCaseId,
-                    IsPassed = isPassed,
-                    ActualOutput = testCase.IsHidden ? null : actualOutput
-                });
+                    var trimmed = line.Trim();
+                    var isPassed = trimmed.StartsWith("PASS", StringComparison.OrdinalIgnoreCase);
+                    var message = trimmed.Contains(':') ? trimmed[(trimmed.IndexOf(':') + 1)..].Trim() : null;
+                    return new ExerciseTestCaseResultDto
+                    {
+                        // Virtual ID dựa theo thứ tự (không lưu DB)
+                        TestCaseId = Guid.Empty,
+                        IsPassed = isPassed,
+                        ActualOutput = isPassed ? null : (message ?? trimmed)
+                    };
+                }).ToList();
+
+                finalPassed = testCaseResults.Any() && testCaseResults.All(r => r.IsPassed);
+
+                // Nếu Piston báo compile/runtime error thì fail luôn
+                if (execution.Response.Run?.Code != 0 && !testCaseResults.Any())
+                    finalPassed = false;
             }
-
-            finalPassed = testCaseResults.All(x => x.IsPassed);
-
-            if (lastExecution.Response != null)
+            // ── Chế độ DB TestCases (fallback) ───────────────────────────────
+            else
             {
-                execution = (lastExecution.Response, Math.Max(1, accumulatedRuntimeMs));
+                var testCases = await _unitOfWork.TestCaseRepository.GetTestCasesByExerciseIdAsync(exerciseId);
+                if (testCases.Count == 0)
+                    return ServiceResult<ExerciseProgressDto>.Error(
+                        "NO_VALIDATOR_OR_TESTCASES",
+                        "GradedCode exercise has neither a solution_validator nor test cases. Please configure at least one.", 422);
+
+                int accumulatedRuntimeMs = 0;
+                (PistonExecuteResponse? Response, int RuntimeMs) lastExecution = (null, 0);
+
+                foreach (var testCase in testCases)
+                {
+                    var testExecution = await ExecuteCodeAsync(language, request.Code, testCase.TextInput);
+                    if (testExecution.Response == null)
+                        return ServiceResult<ExerciseProgressDto>.Error("CODE_ENGINE_UNAVAILABLE", "Unable to submit code at the moment", 503);
+
+                    accumulatedRuntimeMs += testExecution.RuntimeMs;
+                    lastExecution = testExecution;
+
+                    var testRunResult = testExecution.Response.Run;
+                    var testRunSucceeded = testRunResult?.Code == 0;
+                    var actualOutput = testRunResult?.Stdout ?? testRunResult?.Output ?? string.Empty;
+                    var normalizedActualOutput = NormalizeOutput(actualOutput);
+                    var normalizedExpectedOutput = NormalizeOutput(testCase.ExpectedOutput);
+                    var isPassed = testRunSucceeded && normalizedExpectedOutput == normalizedActualOutput;
+
+                    testCaseResults.Add(new ExerciseTestCaseResultDto
+                    {
+                        TestCaseId = testCase.TestCaseId,
+                        IsPassed = isPassed,
+                        ActualOutput = testCase.IsHidden ? null : actualOutput
+                    });
+                }
+
+                finalPassed = testCaseResults.All(x => x.IsPassed);
+                execution = lastExecution.Response != null
+                    ? (lastExecution.Response, Math.Max(1, accumulatedRuntimeMs))
+                    : (null, 0);
+
+                if (execution.Response == null)
+                    return ServiceResult<ExerciseProgressDto>.Error("CODE_ENGINE_UNAVAILABLE", "Unable to submit code at the moment", 503);
             }
+        }
+        else
+        {
+            // FreeCode: chỉ chạy, không chấm test case
+            execution = await ExecuteCodeAsync(language, request.Code);
+            if (execution.Response == null)
+                return ServiceResult<ExerciseProgressDto>.Error("CODE_ENGINE_UNAVAILABLE", "Unable to submit code at the moment", 503);
+
+            finalPassed = execution.Response.Run?.Code == 0;
         }
 
         var progress = await UpsertProgressAsync(studentId, exerciseId, p =>
@@ -281,19 +326,22 @@ public class ExerciseService : IExerciseService
         });
 
         var response = progress.ToProgressDto();
-        response.TestCaseResults = testCaseResults;
-        ApplyExecutionResult(response, execution.Response, language, execution.RuntimeMs);
+        response.TestCaseResults = testCaseResults.Any() ? testCaseResults : null;
+        ApplyExecutionResult(response, execution.Response!, language, execution.RuntimeMs);
 
         if (finalPassed)
         {
             await _gamificationService.ProcessEventAsync(studentId, XPEventType.ExercisePassed);
             // Trigger daily streak check-in (fire-and-forget)
             _ = _streakService.CheckInAsync(studentId);
+            // Auto-update LessonProgress nếu tất cả exercise đã completed
+            await CheckAndUpdateLessonProgressAsync(exercise.LessonId, studentId);
         }
 
         var message = finalPassed ? "Submitted successfully" : "Submission failed. Please review your code and try again";
         return ServiceResult<ExerciseProgressDto>.Ok(response, message);
     }
+
 
     public async Task<ServiceResult<ExerciseProgressDto>> UpdateExerciseProgressAsync(Guid exerciseId, Guid studentId, UpdateExerciseProgressRequest request)
     {
@@ -316,6 +364,12 @@ public class ExerciseService : IExerciseService
             }
         });
 
+        if (request.IsCompleted)
+        {
+            // Auto-update LessonProgress nếu tất cả exercise đã completed
+            await CheckAndUpdateLessonProgressAsync(exercise.LessonId, studentId);
+        }
+
         return ServiceResult<ExerciseProgressDto>.Ok(progress.ToProgressDto(), "Progress updated successfully");
     }
 
@@ -328,6 +382,65 @@ public class ExerciseService : IExerciseService
             return ServiceResult<ExerciseProgressDto>.NotFound("No progress found for this exercise");
 
         return ServiceResult<ExerciseProgressDto>.Ok(progress.ToProgressDto());
+    }
+
+    private async Task CheckAndUpdateLessonProgressAsync(Guid lessonId, Guid studentId)
+    {
+        // 1. Lấy tất cả exercise trong lesson
+        var exercises = await _unitOfWork.ExerciseRepository.GetExercisesByLessonIdAsync(lessonId);
+        if (!exercises.Any()) return;
+
+        // 2. Lấy tất cả exercise progress của student trong lesson này
+        var exerciseIds = exercises.Select(e => e.ExerciseId).ToList();
+        var progresses = await _unitOfWork.Repository<ExerciseProgress>()
+            .GetAllQueryable()
+            .Where(ep => ep.StudentId == studentId && exerciseIds.Contains(ep.ExerciseId))
+            .ToListAsync();
+
+        // 3. Kiểm tra tất cả exercise đã completed chưa
+        var allCompleted = exercises.All(e =>
+            progresses.Any(p => p.ExerciseId == e.ExerciseId && p.IsCompleted));
+
+        if (!allCompleted) return;
+
+        // 4. Upsert LessonProgress = Completed
+        var lessonProgress = await _unitOfWork.Repository<LessonProgress>()
+            .GetAsync(lp => lp.LessonId == lessonId && lp.StudentId == studentId);
+
+        var now = DateTime.UtcNow;
+        if (lessonProgress == null)
+        {
+            lessonProgress = new LessonProgress
+            {
+                ProgressId = Guid.NewGuid(),
+                StudentId = studentId,
+                LessonId = lessonId,
+                Status = LessonProgressStatus.Completed,
+                LastAccessedAt = now,
+                CompletedAt = now,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            _unitOfWork.Repository<LessonProgress>().PrepareCreate(lessonProgress);
+        }
+        else if (lessonProgress.Status != LessonProgressStatus.Completed)
+        {
+            lessonProgress.Status = LessonProgressStatus.Completed;
+            lessonProgress.CompletedAt ??= now;
+            lessonProgress.LastAccessedAt = now;
+            lessonProgress.UpdatedAt = now;
+            _unitOfWork.Repository<LessonProgress>().PrepareUpdate(lessonProgress);
+        }
+        else
+        {
+            // Đã Completed rồi, không cần làm gì
+            return;
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+
+        // Trigger XP cho lesson completed
+        await _gamificationService.ProcessEventAsync(studentId, XPEventType.LessonCompleted);
     }
 
     private async Task<ExerciseProgress> UpsertProgressAsync(Guid studentId, Guid exerciseId, Action<ExerciseProgress> applyChanges)
@@ -412,6 +525,65 @@ public class ExerciseService : IExerciseService
 
         var runtimeMs = (int)Math.Max(1, (DateTime.UtcNow - startedAt).TotalMilliseconds);
         return (response, runtimeMs);
+    }
+
+    /// <summary>
+    /// Gửi 2 file lên Piston: student code + solution validator.
+    /// Validator phải chứa entry point (main) để gọi student's functions/class.
+    /// Output format: mỗi dòng là "PASS" hoặc "FAIL[:message]"
+    /// </summary>
+    private async Task<(PistonExecuteResponse? Response, int RuntimeMs)> ExecuteWithValidatorAsync(
+        string language, string studentCode, string validatorCode)
+    {
+        var startedAt = DateTime.UtcNow;
+
+        // Đặt tên file: student code dùng tên class chuẩn, validator dùng entry point
+        var (studentFileName, validatorFileName) = GetValidatorFileNames(language);
+
+        var response = await _pistonService.ExecuteAsync(new PistonExecuteRequest
+        {
+            Language = language,
+            Version = _pistonOptions.Version,
+            Stdin = string.Empty,
+            Files = new List<PistonFileDto>
+            {
+                new() { Name = studentFileName,   Content = studentCode   },
+                new() { Name = validatorFileName, Content = validatorCode }
+            },
+            CompileTimeout = _pistonOptions.CompileTimeout,
+            RunTimeout = _pistonOptions.RunTimeout
+        });
+
+        var runtimeMs = (int)Math.Max(1, (DateTime.UtcNow - startedAt).TotalMilliseconds);
+        return (response, runtimeMs);
+    }
+
+    /// <summary>
+    /// Trả về (studentFileName, validatorFileName) theo từng ngôn ngữ.
+    /// Validator luôn là file chứa entry point (main).
+    /// </summary>
+    private static (string StudentFile, string ValidatorFile) GetValidatorFileNames(string language)
+    {
+        var normalized = language.Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            // Java: Piston compile tất cả .java, chạy class Main → validator phải là Main.java
+            "java"                       => ("Solution.java", "Main.java"),
+            // C#: Piston chạy file đầu tiên là entry, validator chứa Program class
+            "c#" or "csharp" or "cs"     => ("Solution.cs",  "Validator.cs"),
+            // C/C++: compile tất cả, main() trong validator
+            "c"                          => ("solution.c",   "main.c"),
+            "c++" or "cpp"               => ("solution.cpp", "main.cpp"),
+            // Python: import solution từ validator
+            "python" or "py"             => ("solution.py",  "runner.py"),
+            // JavaScript/TypeScript: require/import
+            "javascript" or "js"         => ("solution.js",  "runner.js"),
+            "typescript" or "ts"         => ("solution.ts",  "runner.ts"),
+            // Go: tất cả cùng package main, validator có main()
+            "go" or "golang"             => ("solution.go",  "main.go"),
+            // Fallback: entry point là file thứ 2
+            _                            => ("solution.txt", "runner.txt")
+        };
     }
 
     private static string? ResolveLanguage(string? requestedLanguage, string? exerciseLanguage)

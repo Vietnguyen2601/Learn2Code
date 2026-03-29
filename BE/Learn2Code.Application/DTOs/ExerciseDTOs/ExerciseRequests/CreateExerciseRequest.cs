@@ -29,6 +29,13 @@ public class CreateExerciseRequest
     [JsonPropertyName("hint")]
     public string? Hint { get; set; }
 
+    /// <summary>
+    /// Code test harness do admin viết (chỉ dành cho GradedCode).
+    /// In ra từng dòng "PASS" hoặc "FAIL[:message]" cho mỗi test case.
+    /// </summary>
+    [JsonPropertyName("solution_validator")]
+    public string? SolutionValidator { get; set; }
+
     [JsonPropertyName("order_number")]
     [Range(1, int.MaxValue)]
     public int? OrderNumber { get; set; }

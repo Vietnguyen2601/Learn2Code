@@ -10,6 +10,12 @@ public class ExerciseDetailDto : ExerciseDto
     [JsonPropertyName("solution_code")]
     public string? SolutionCode { get; set; }
 
+    /// <summary>
+    /// Chỉ trả về cho Admin — student không được thấy validator code.
+    /// </summary>
+    [JsonPropertyName("solution_validator")]
+    public string? SolutionValidator { get; set; }
+
     [JsonPropertyName("instruction")]
     public string? Instruction { get; set; }
 

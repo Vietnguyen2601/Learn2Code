@@ -1,4 +1,4 @@
-﻿using Learn2Code.Domain.Entities;
+using Learn2Code.Domain.Entities;
 using Learn2Code.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -456,34 +456,56 @@ public static class Learn2CodeDbContextSeeder
         {
             var exercise = new Exercise
             {
-                ExerciseId = Guid.NewGuid(),
-                LessonId = lesson.LessonId,
-                OrderNumber = 1,
+                ExerciseId   = Guid.NewGuid(),
+                LessonId     = lesson.LessonId,
+                OrderNumber  = 1,
                 ExerciseType = ExerciseType.GradedCode,
-                Narrative = $"Practice exercise for: {lesson.Title}. Write a function that returns the sum of two numbers.",
-                Language = "csharp",
-                StarterCode = "public int Add(int a, int b)\n{\n    // TODO: implement\n    return 0;\n}",
-                SolutionCode = "public int Add(int a, int b)\n{\n    return a + b;\n}",
-                Instruction = "Implement the Add method to return the sum of a and b.",
-                Hint = "Use the + operator.",
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                Narrative    = $"Practice exercise for: {lesson.Title}. Write a function that returns the sum of two numbers.",
+                Language     = "java",
+                StarterCode  =
+                    "public class Solution {\n" +
+                    "    public static int add(int a, int b) {\n" +
+                    "        // TODO: implement\n" +
+                    "        return 0;\n" +
+                    "    }\n" +
+                    "}",
+                SolutionCode =
+                    "public class Solution {\n" +
+                    "    public static int add(int a, int b) {\n" +
+                    "        return a + b;\n" +
+                    "    }\n" +
+                    "}",
+                // Validator là Main.java — Piston sẽ compile cả 2 file và chạy Main
+                // Output format: mỗi dòng là "PASS" hoặc "FAIL:message"
+                SolutionValidator =
+                    "public class Main {\n" +
+                    "    public static void main(String[] args) {\n" +
+                    "        check(Solution.add(1, 2),   3,  \"add(1,2)=3\");\n" +
+                    "        check(Solution.add(10, 20), 30, \"add(10,20)=30\");\n" +
+                    "        check(Solution.add(-5, 5),  0,  \"add(-5,5)=0\");\n" +
+                    "        check(Solution.add(0, 0),   0,  \"add(0,0)=0\");\n" +
+                    "    }\n" +
+                    "    static void check(int actual, int expected, String label) {\n" +
+                    "        if (actual == expected) {\n" +
+                    "            System.out.println(\"PASS:\" + label);\n" +
+                    "        } else {\n" +
+                    "            System.out.println(\"FAIL:\" + label + \" expected=\" + expected + \" got=\" + actual);\n" +
+                    "        }\n" +
+                    "    }\n" +
+                    "}",
+                Instruction = "Implement the add method to return the sum of a and b.",
+                Hint        = "Use the + operator.",
+                CreatedAt   = DateTime.UtcNow,
+                UpdatedAt   = DateTime.UtcNow
             };
 
             context.Exercises.Add(exercise);
-            await context.SaveChangesAsync();
-
-            // Seed test cases with input/output pairs.
-            context.TestCases.AddRange(
-                new TestCase { TestCaseId = Guid.NewGuid(), ExerciseId = exercise.ExerciseId, TextInput = "1\n2\n", ExpectedOutput = "3", IsHidden = false, Weight = 0.5m, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-                new TestCase { TestCaseId = Guid.NewGuid(), ExerciseId = exercise.ExerciseId, TextInput = "10\n20\n", ExpectedOutput = "30", IsHidden = false, Weight = 0.5m, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-                new TestCase { TestCaseId = Guid.NewGuid(), ExerciseId = exercise.ExerciseId, TextInput = "-5\n5\n", ExpectedOutput = "0", IsHidden = true, Weight = 1.0m, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
-            );
-            await context.SaveChangesAsync();
         }
 
-        logger.LogInformation("Seeded exercises & test cases");
+        await context.SaveChangesAsync();
+        logger.LogInformation("Seeded exercises with solution_validator");
     }
+
 
     // 
     // Quizzes & Options  (1 quiz per lesson)
