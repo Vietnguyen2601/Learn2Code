@@ -11,6 +11,7 @@ using Learn2Code.Infrastructure.Options;
 using Learn2Code.Infrastructure.Persistence.UnitOfWork;
 using Learn2Code.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Learn2Code.Application.Services;
@@ -22,16 +23,18 @@ public class ExerciseService : IExerciseService
     private readonly PistonOptions _pistonOptions;
     private readonly IGamificationService _gamificationService;
     private readonly IDailyStreakService _streakService;
+    private readonly ILogger<ExerciseService> _logger;
 
     public ExerciseService(IUnitOfWork unitOfWork, IPistonService pistonService,
         IOptions<PistonOptions> pistonOptions, IGamificationService gamificationService,
-        IDailyStreakService streakService)
+        IDailyStreakService streakService, ILogger<ExerciseService> logger)
     {
         _unitOfWork = unitOfWork;
         _pistonService = pistonService;
         _pistonOptions = pistonOptions.Value;
         _gamificationService = gamificationService;
         _streakService = streakService;
+        _logger = logger;
     }
 
     public async Task<ServiceResult<List<ExerciseDto>>> GetExercisesByLessonIdAsync(Guid lessonId)
@@ -191,6 +194,9 @@ public class ExerciseService : IExerciseService
             return ServiceResult<ExerciseProgressDto>.BadRequest("Language is required. Provide request.language or configure exercise.language");
 
         // Nếu exercise có default_main_code, gắn vào sau student code
+        _logger.LogInformation("🔍 [RUN FLOW] ExerciseId: {ExerciseId}, Has DefaultMainCode: {HasMainCode}", 
+            exerciseId, !string.IsNullOrWhiteSpace(exercise.DefaultMainCode));
+        
         var codeToRecute = string.IsNullOrWhiteSpace(exercise.DefaultMainCode)
             ? request.Code
             : request.Code + "\n\n" + exercise.DefaultMainCode;
@@ -251,6 +257,7 @@ public class ExerciseService : IExerciseService
                 if (!string.IsNullOrWhiteSpace(testCase.MainCode))
                 {
                     // Function-based: gắn main_code vào sau student code, chạy 1 file
+                    _logger.LogInformation("📝 [SUBMIT FLOW] TestCase {Index}: Has MainCode (function-based)", testCases.IndexOf(testCase) + 1);
                     var combined = request.Code + "\n\n" + testCase.MainCode;
                     testExecution = await ExecuteCodeAsync(language, combined);
                     if (testExecution.Response == null)
@@ -264,6 +271,7 @@ public class ExerciseService : IExerciseService
                 else
                 {
                     // Output-based: chạy student code trực tiếp, dùng stdin nếu có
+                    _logger.LogInformation("📝 [SUBMIT FLOW] TestCase {Index}: No MainCode (output-based), Stdin: {Stdin}", testCases.IndexOf(testCase) + 1, testCase.TextInput ?? "null");
                     testExecution = await ExecuteCodeAsync(language, request.Code, testCase.TextInput);
                     if (testExecution.Response == null)
                         return ServiceResult<ExerciseProgressDto>.Error("CODE_ENGINE_UNAVAILABLE", "Unable to submit code at the moment", 503);
@@ -489,6 +497,9 @@ public class ExerciseService : IExerciseService
 
     private async Task<(PistonExecuteResponse? Response, int RuntimeMs)> ExecuteCodeAsync(string language, string code, string? stdin = null)
     {
+        _logger.LogInformation("📝 [CODE EXECUTION] Language: {Language}, Stdin presence: {HasStdin}", language, !string.IsNullOrEmpty(stdin));
+        _logger.LogInformation("📝 [CODE TO EXECUTE]\n{Code}", code);
+        
         var startedAt = DateTime.UtcNow;
         var response = await _pistonService.ExecuteAsync(new PistonExecuteRequest
         {
@@ -508,6 +519,9 @@ public class ExerciseService : IExerciseService
         });
 
         var runtimeMs = (int)Math.Max(1, (DateTime.UtcNow - startedAt).TotalMilliseconds);
+        _logger.LogInformation("✅ [EXECUTION RESULT] Runtime: {RuntimeMs}ms, Output: {Output}, Errors: {Errors}", 
+            runtimeMs, response?.Run?.Stdout ?? "null", response?.Run?.Stderr ?? "null");
+        
         return (response, runtimeMs);
     }
 
