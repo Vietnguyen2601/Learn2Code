@@ -153,6 +153,15 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
+    private IDiscussionRepository? _discussionRepository;
+    public IDiscussionRepository DiscussionRepository
+    {
+        get
+        {
+            return _discussionRepository ??= new DiscussionRepository(_context);
+        }
+    }
+
     public IGenericRepository<T> Repository<T>() where T : class
     {
         var key = typeof(T).Name;

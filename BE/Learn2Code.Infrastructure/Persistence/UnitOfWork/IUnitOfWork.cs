@@ -22,6 +22,7 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
     IPaymentRepository PaymentRepository { get; }
     IEnrollmentRepository EnrollmentRepository { get; }
     ICertificationRepository CertificationRepository { get; }
+    IDiscussionRepository DiscussionRepository { get; }
 
     int SaveChanges();
     Task<int> SaveChangesAsync();
