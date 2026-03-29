@@ -535,10 +535,12 @@ public class ExerciseService : IExerciseService
 
     private static string PreprocessCodeForExecution(string language, string code)
     {
-        // For Java: wrap code with main method if it doesn't have one
+        // For Java: ensure the class with main method comes first
         if (language.Equals("java", StringComparison.OrdinalIgnoreCase))
         {
-            // Check if code already has a main method
+            code = ReorderJavaClassesForExecution(code);
+            
+            // If no main method exists, wrap it
             if (!code.Contains("main(String[])") && !code.Contains("main(String []") && !code.Contains("public static void main"))
             {
                 return WrapJavaCodeWithMain(code);
@@ -548,52 +550,95 @@ public class ExerciseService : IExerciseService
         return code;
     }
 
+    private static string ReorderJavaClassesForExecution(string code)
+    {
+        // Find all class definitions and their positions
+        // Move the class with main() to the front
+        
+        var lines = code.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+        var classBlocks = new List<(int startLine, int endLine, string content, bool hasMain)>();
+        
+        int i = 0;
+        while (i < lines.Length)
+        {
+            var trimmed = lines[i].Trim();
+            if (trimmed.StartsWith("public class ") || trimmed.StartsWith("class "))
+            {
+                int startLine = i;
+                int braceCount = 0;
+                int endLine = i;
+                bool hasMain = false;
+                
+                // Find the matching closing brace for this class
+                for (int j = i; j < lines.Length; j++)
+                {
+                    var line = lines[j];
+                    for (int k = 0; k < line.Length; k++)
+                    {
+                        if (line[k] == '{') braceCount++;
+                        else if (line[k] == '}') 
+                        {
+                            braceCount--;
+                            if (braceCount == 0)
+                            {
+                                endLine = j;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (braceCount == 0) break;
+                    
+                    if (line.Contains("public static void main") || line.Contains("static void main"))
+                        hasMain = true;
+                }
+                
+                var blockContent = string.Join("\n", lines.Skip(startLine).Take(endLine - startLine + 1));
+                classBlocks.Add((startLine, endLine, blockContent, hasMain));
+                
+                i = endLine + 1;
+            }
+            else
+            {
+                i++;
+            }
+        }
+        
+        // Reorder: classes with main() first, others after
+        var mainClasses = classBlocks.Where(b => b.hasMain).ToList();
+        var otherClasses = classBlocks.Where(b => !b.hasMain).ToList();
+        
+        var reordered = mainClasses.Concat(otherClasses).ToList();
+        
+        // If reordering happened, return new code; otherwise return as-is
+        if (reordered.Any() && (reordered[0].startLine != classBlocks[0].startLine || reordered[0].hasMain != classBlocks[0].hasMain))
+        {
+            return string.Join("\n\n", reordered.Select(b => b.content));
+        }
+        
+        return code;
+    }
+
     private static string WrapJavaCodeWithMain(string code)
     {
+        // Piston runs the first class it finds, so we need to put Main class first
+        // Then put the user's Solution class after it
+        
+        var mainClassCode = @"public class Main {
+    public static void main(String[] args) {
+        // Auto-generated main method for testing
+    }
+}";
+
         // If the code doesn't have a class, wrap it in a Solution class
         if (!code.Contains("class ") && !code.Contains("public class"))
         {
-            return $@"public class Solution {{
-    {code}
-
-    public static void main(String[] args) {{
-        // Auto-generated main method for testing
-    }}
-}}";
+            return mainClassCode + "\n\nclass Solution {\n    " + String.Join("\n    ", code.Split('\n')) + "\n}";
         }
 
-        // If code has a class but no main method, add main method to it
-        var codeLines = code.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-        var lastBraceIndex = -1;
-        int braceCount = 0;
-
-        // Find the last closing brace of the class
-        for (int i = codeLines.Length - 1; i >= 0; i--)
-        {
-            var line = codeLines[i];
-            for (int j = line.Length - 1; j >= 0; j--)
-            {
-                if (line[j] == '}') braceCount++;
-                else if (line[j] == '{') braceCount--;
-
-                if (braceCount == 0)
-                {
-                    lastBraceIndex = i;
-                    break;
-                }
-            }
-
-            if (lastBraceIndex != -1) break;
-        }
-
-        if (lastBraceIndex == -1)
-            return code; // Couldn't find proper class structure, return as-is
-
-        // Insert main method before the last closing brace
-        var result = new List<string>(codeLines);
-        result.Insert(lastBraceIndex, "    public static void main(String[] args) {\n        // Auto-generated main method\n    }");
-
-        return string.Join("\n", result);
+        // If code already has a class, put Main first, then the user's code
+        // This ensures Piston runs the Main class (which has the entry point)
+        return mainClassCode + "\n\n" + code;
     }
 
     private static string? ResolveLanguage(string? requestedLanguage, string? exerciseLanguage)
