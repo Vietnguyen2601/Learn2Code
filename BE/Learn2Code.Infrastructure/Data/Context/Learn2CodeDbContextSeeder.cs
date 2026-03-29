@@ -32,6 +32,7 @@ public static class Learn2CodeDbContextSeeder
             await SeedSectionsAsync(context, logger);
             await SeedLessonsAsync(context, logger);
             await SeedExercisesAsync(context, logger);
+            await SeedJavaExercisesForTestingAsync(context, logger);
             await SeedQuizzesAsync(context, logger);
             await SeedCourseCompletionRulesAsync(context, logger);
             await SeedCertificateTemplatesAsync(context, logger);
@@ -1242,5 +1243,91 @@ public static class Learn2CodeDbContextSeeder
 
         await context.SaveChangesAsync();
         logger.LogInformation("Seeded {Count} quiz attempts with {AnswerCount} answers", attemptCount, answerCount);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════════════
+    private static async Task SeedJavaExercisesForTestingAsync(Learn2CodeDbContext context, ILogger logger)
+    {
+        // Skip if already seeded
+        if (await context.Sections.AnyAsync(s => s.Title == "Java Code Testing Section")) return;
+
+        var progCat = await context.CourseCategories
+            .FirstOrDefaultAsync(c => c.Name == "Programming Languages");
+        if (progCat == null) return;
+
+        var javaCourse = new Course
+        {
+            CourseId = Guid.NewGuid(),
+            Title = "Java Fundamentals - Testing",
+            Description = "Java basics for testing submit and run code flows with main function",
+            Difficulty = CourseDifficulty.Beginner,
+            IsActive = true,
+            CategoryId = progCat.CategoryId,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        context.Courses.Add(javaCourse);
+        await context.SaveChangesAsync();
+
+        var javaSection = new Section
+        {
+            SectionId = Guid.NewGuid(),
+            CourseId = javaCourse.CourseId,
+            Title = "Java Code Testing Section",
+            Description = "Section with various Java exercises",
+            OrderNumber = 1,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        context.Sections.Add(javaSection);
+        await context.SaveChangesAsync();
+
+        // Create exercise helper
+        async Task CreateEx(string lTitle, int lOrder, bool free, string exName, string narrative, 
+            string starter, string solution, string? defMain, string instr, string hint)
+        {
+            var l = new Lesson { LessonId = Guid.NewGuid(), SectionId = javaSection.SectionId, 
+                Title = lTitle, OrderNumber = lOrder, IsFreePreview = free, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+             context.Lessons.Add(l);
+            await context.SaveChangesAsync();
+
+            var eId = Guid.NewGuid();
+            var e = new Exercise { ExerciseId = eId, LessonId = l.LessonId, OrderNumber = 1, 
+                ExerciseType = ExerciseType.GradedCode, Narrative = narrative, Language = "java",
+                StarterCode = starter, SolutionCode = solution, DefaultMainCode = defMain,
+                Instruction = instr, Hint = hint, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+            context.Exercises.Add(e);
+            await context.SaveChangesAsync();
+        }
+
+        await CreateEx("Sum Two Numbers", 1, false, "Sum", "Write a method that returns the sum of two numbers",
+            "public class Solution {\n    public static int add(int a, int b) {\n        // TODO: implement\n        return 0;\n    }\n}",
+            "public class Solution {\n    public static int add(int a, int b) {\n        return a + b;\n    }\n}",
+            "public class Main {\n    public static void main(String[] args) {\n        System.out.println(Solution.add(5, 3));\n    }\n}",
+            "Implement the add method.", "Use the + operator.");
+
+        await CreateEx("Hello World", 2, true, "Hello", "Write code that prints 'Hello World'",
+            "// Write your code here",
+            "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Hello World\");\n    }\n}",
+            null, "Print 'Hello World'.", "Use System.out.println().");
+
+        await CreateEx("Multiply Numbers", 3, false, "Multiply", "Write a method that multiplies two numbers",
+            "public class Solution {\n    public static int multiply(int a, int b) {\n        // TODO: implement\n        return 0;\n    }\n}",
+            "public class Solution {\n    public static int multiply(int a, int b) {\n        return a * b;\n    }\n}",
+            "public class Main {\n    public static void main(String[] args) {\n        System.out.println(Solution.multiply(4, 5));\n    }\n}",
+            "Implement multiply method.", "Use the * operator.");
+
+        await CreateEx("Factorial", 4, false, "Fact", "Write a recursive factorial method",
+            "public class Solution {\n    public static long factorial(int n) {\n        // TODO: implement\n        return 0;\n    }\n}",
+            "public class Solution {\n    public static long factorial(int n) {\n        if (n <= 1) return 1;\n        return n * factorial(n - 1);\n    }\n}",
+            "public class Main {\n    public static void main(String[] args) {\n        System.out.println(Solution.factorial(5));\n    }\n}",
+            "Implement factorial.", "Use recursion.");
+
+        await CreateEx("Reverse String", 5, false, "Reverse", "Reverse a string from input",
+            "import java.util.Scanner;\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n    }\n}",
+            "import java.util.Scanner;\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        String input = sc.nextLine();\n        System.out.println(new StringBuilder(input).reverse());\n    }\n}",
+            null, "Read and reverse input.", "Use StringBuilder.reverse().");
+
+        logger.LogInformation("Java test exercises seeded");
     }
 }

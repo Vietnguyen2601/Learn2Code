@@ -1,0 +1,184 @@
+{
+  "swagger_tests": {
+    "description": "Test requests for Sum Two Numbers exercise (Exercise 1)",
+    "base_url": "http://localhost:5049",
+    "exercise_name": "Sum Two Numbers",
+    "language": "java",
+    
+    "step_1_get_exercise_id": {
+      "description": "First, get the Sum exercise ID from API",
+      "method": "GET",
+      "endpoint": "/api/exercises?search=Sum%20Two",
+      "url": "http://localhost:5049/api/exercises?search=Sum%20Two",
+      "note": "Copy the 'exerciseId' value from response"
+    },
+    
+    "step_2_test_run_flow": {
+      "description": "Test Run Flow - with DefaultMainCode appended",
+      "method": "POST",
+      "endpoint": "/api/exercises/{exerciseId}/run",
+      "example_url": "http://localhost:5049/api/exercises/89e27c82-62f0-4e06-b1ab-dfe4dbe81a4a/run",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "request_body": {
+        "code": "public class Solution {\n    public static int add(int a, int b) {\n        return a + b;\n    }\n}",
+        "language": "java"
+      },
+      "expected_response": {
+        "success": true,
+        "data": {
+          "output": "8",
+          "runtimeMs": 150
+        }
+      },
+      "explanation": "Appends DefaultMainCode to student code, runs: Solution.add(5, 3)"
+    },
+    
+    "step_3_test_submit_flow_correct": {
+      "description": "Test Submit Flow - Correct implementation (all tests pass)",
+      "method": "POST",
+      "endpoint": "/api/exercises/{exerciseId}/submit",
+      "example_url": "http://localhost:5049/api/exercises/89e27c82-62f0-4e06-b1ab-dfe4dbe81a4a/submit",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "request_body": {
+        "code": "public class Solution {\n    public static int add(int a, int b) {\n        return a + b;\n    }\n}",
+        "language": "java"
+      },
+      "expected_response": {
+        "success": true,
+        "data": {
+          "isPassed": true,
+          "results": [
+            {
+              "testcaseId": "test-1",
+              "isPassed": true,
+              "actualOutput": "8"
+            },
+            {
+              "testcaseId": "test-2",
+              "isPassed": true,
+              "actualOutput": "0"
+            },
+            {
+              "testcaseId": "test-3",
+              "isPassed": true,
+              "actualOutput": "100"
+            }
+          ]
+        }
+      },
+      "explanation": "Runs 3 test cases: add(5,3)=8, add(-10,10)=0, add(50,50)=100"
+    },
+    
+    "step_4_test_submit_flow_wrong": {
+      "description": "Test Submit Flow - Wrong implementation (tests fail)",
+      "method": "POST",
+      "endpoint": "/api/exercises/{exerciseId}/submit",
+      "example_url": "http://localhost:5049/api/exercises/89e27c82-62f0-4e06-b1ab-dfe4dbe81a4a/submit",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "request_body": {
+        "code": "public class Solution {\n    public static int add(int a, int b) {\n        return a - b;\n    }\n}",
+        "language": "java"
+      },
+      "expected_response": {
+        "success": true,
+        "data": {
+          "isPassed": false,
+          "results": [
+            {
+              "testcaseId": "test-1",
+              "isPassed": false,
+              "actualOutput": "2"
+            },
+            {
+              "testcaseId": "test-2",
+              "isPassed": false,
+              "actualOutput": "-20"
+            },
+            {
+              "testcaseId": "test-3",
+              "isPassed": false,
+              "actualOutput": "0"
+            }
+          ]
+        }
+      },
+      "explanation": "Student implemented subtraction instead of addition - all tests fail"
+    },
+    
+    "step_5_test_submit_flow_partially_correct": {
+      "description": "Test Submit Flow - Partially correct (first test passes, rest fail)",
+      "method": "POST",
+      "endpoint": "/api/exercises/{exerciseId}/submit",
+      "example_url": "http://localhost:5049/api/exercises/89e27c82-62f0-4e06-b1ab-dfe4dbe81a4a/submit",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "request_body": {
+        "code": "public class Solution {\n    public static int add(int a, int b) {\n        return 8;  // hardcoded for first test\n    }\n}",
+        "language": "java"
+      },
+      "expected_response": {
+        "success": true,
+        "data": {
+          "isPassed": false,
+          "results": [
+            {
+              "testcaseId": "test-1",
+              "isPassed": true,
+              "actualOutput": "8"
+            },
+            {
+              "testcaseId": "test-2",
+              "isPassed": false,
+              "actualOutput": "8"
+            },
+            {
+              "testcaseId": "test-3",
+              "isPassed": false,
+              "actualOutput": "8"
+            }
+          ]
+        }
+      },
+      "explanation": "Student hardcoded the answer - only first test passes"
+    }
+  },
+  
+  "test_cases_breakdown": {
+    "test_case_1": {
+      "name": "Basic Addition",
+      "main_code": "System.out.println(Solution.add(5, 3));",
+      "expected_output": "8",
+      "is_hidden": false
+    },
+    "test_case_2": {
+      "name": "Negative Numbers",
+      "main_code": "System.out.println(Solution.add(-10, 10));",
+      "expected_output": "0",
+      "is_hidden": false
+    },
+    "test_case_3": {
+      "name": "Large Numbers (Hidden)",
+      "main_code": "System.out.println(Solution.add(50, 50));",
+      "expected_output": "100",
+      "is_hidden": true
+    }
+  },
+  
+  "swagger_ui_instructions": {
+    "step_1": "Open: http://localhost:5049/swagger/index.html",
+    "step_2": "Find 'ExerciseController' section",
+    "step_3": "Look for 'GetExercises' endpoint (GET /api/exercises)",
+    "step_4": "Click 'Try it out' and search for 'Sum'",
+    "step_5": "Copy the exerciseId from response",
+    "step_6": "Find 'RunExercise' endpoint (POST /api/exercises/{id}/run)",
+    "step_7": "Click 'Try it out', paste exerciseId, then paste correct request body",
+    "step_8": "Click 'Execute' to see results"
+  }
+}
