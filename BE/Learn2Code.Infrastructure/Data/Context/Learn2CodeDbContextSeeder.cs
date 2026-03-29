@@ -1301,8 +1301,8 @@ public static class Learn2CodeDbContextSeeder
         }
 
         await CreateEx("Sum Two Numbers", 1, false, "Sum", "Write a method that returns the sum of two numbers",
-            "public class Solution {\n    public static int add(int a, int b) {\n        // TODO: implement\n        return 0;\n    }\n}",
-            "public class Solution {\n    public static int add(int a, int b) {\n        return a + b;\n    }\n}",
+            "class Solution {\n    public static int add(int a, int b) {\n        // TODO: implement\n        return 0;\n    }\n}",
+            "class Solution {\n    public static int add(int a, int b) {\n        return a + b;\n    }\n}",
             "public class Main {\n    public static void main(String[] args) {\n        System.out.println(Solution.add(5, 3));\n    }\n}",
             "Implement the add method.", "Use the + operator.");
 
@@ -1312,14 +1312,14 @@ public static class Learn2CodeDbContextSeeder
             null, "Print 'Hello World'.", "Use System.out.println().");
 
         await CreateEx("Multiply Numbers", 3, false, "Multiply", "Write a method that multiplies two numbers",
-            "public class Solution {\n    public static int multiply(int a, int b) {\n        // TODO: implement\n        return 0;\n    }\n}",
-            "public class Solution {\n    public static int multiply(int a, int b) {\n        return a * b;\n    }\n}",
+            "class Solution {\n    public static int multiply(int a, int b) {\n        // TODO: implement\n        return 0;\n    }\n}",
+            "class Solution {\n    public static int multiply(int a, int b) {\n        return a * b;\n    }\n}",
             "public class Main {\n    public static void main(String[] args) {\n        System.out.println(Solution.multiply(4, 5));\n    }\n}",
             "Implement multiply method.", "Use the * operator.");
 
         await CreateEx("Factorial", 4, false, "Fact", "Write a recursive factorial method",
-            "public class Solution {\n    public static long factorial(int n) {\n        // TODO: implement\n        return 0;\n    }\n}",
-            "public class Solution {\n    public static long factorial(int n) {\n        if (n <= 1) return 1;\n        return n * factorial(n - 1);\n    }\n}",
+            "class Solution {\n    public static long factorial(int n) {\n        // TODO: implement\n        return 0;\n    }\n}",
+            "class Solution {\n    public static long factorial(int n) {\n        if (n <= 1) return 1;\n        return n * factorial(n - 1);\n    }\n}",
             "public class Main {\n    public static void main(String[] args) {\n        System.out.println(Solution.factorial(5));\n    }\n}",
             "Implement factorial.", "Use recursion.");
 

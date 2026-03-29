@@ -175,7 +175,7 @@ public class ExerciseService : IExerciseService
 
     public async Task<ServiceResult<ExerciseProgressDto>> RunCodeAsync(Guid exerciseId, Guid studentId, RunCodeRequest request)
     {
-        var exercise = await _unitOfWork.ExerciseRepository.GetByIdAsync(exerciseId);
+        var exercise = await _unitOfWork.ExerciseRepository.GetExerciseByIdWithDefaultMainCodeAsync(exerciseId);
         if (exercise == null)
             return ServiceResult<ExerciseProgressDto>.NotFound("Exercise not found");
 
@@ -212,7 +212,7 @@ public class ExerciseService : IExerciseService
 
     public async Task<ServiceResult<ExerciseProgressDto>> SubmitCodeAsync(Guid exerciseId, Guid studentId, SubmitCodeRequest request)
     {
-        var exercise = await _unitOfWork.ExerciseRepository.GetByIdAsync(exerciseId);
+        var exercise = await _unitOfWork.ExerciseRepository.GetExerciseByIdWithDefaultMainCodeAsync(exerciseId);
         if (exercise == null)
             return ServiceResult<ExerciseProgressDto>.NotFound("Exercise not found");
 
