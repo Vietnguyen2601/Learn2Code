@@ -210,6 +210,10 @@ Table Exercises {
   instruction    text                  // yêu cầu cụ thể (dùng cho FreeCode & GradedCode (null nếu reading))
   hint           text                  // gợi ý khi bấm "Get Hint" (null nếu Reading)
 
+  /// Hàm main mặc định dùng khi student bấm Run (gắn vào sau starter_code).
+  /// Null = bài output-only (print hello, ...) → chạy student code thẳng.
+  default_main_code text               // null nếu Reading hoặc output-only
+
   created_at     timestamp [not null, default: `CURRENT_TIMESTAMP`]
   updated_at     timestamp [not null, default: `CURRENT_TIMESTAMP`]
 
@@ -244,6 +248,11 @@ Table TestCases {
   expected_output text      [not null]
   is_hidden       boolean   [default: false]  // ẩn với student (chống hardcode)
   weight          decimal   [default: 1]
+
+  /// Hàm main riêng của testcase.
+  /// Khi Submit: student_code + "\n\n" + main_code được chạy như 1 file.
+  /// Null = chạy student_code trực tiếp (stdin = text_input).
+  main_code       text                  // null = output-based exercise
   created_at      timestamp [not null, default: `CURRENT_TIMESTAMP`]
   updated_at      timestamp [not null, default: `CURRENT_TIMESTAMP`]
 

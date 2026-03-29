@@ -1,4 +1,4 @@
-﻿using Learn2Code.Domain.Entities;
+using Learn2Code.Domain.Entities;
 using Learn2Code.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -487,18 +487,11 @@ public static class Learn2CodeDbContextSeeder
                     "        return a + b;\n" +
                     "    }\n" +
                     "}",
-                // Validator template - sẽ được replace bởi ValidatorMain từng test case
-                SolutionValidator =
+                // default_main_code dùng khi student bấm Run (demo)
+                DefaultMainCode =
                     "public class Main {\n" +
                     "    public static void main(String[] args) {\n" +
-                    "        // Will be replaced by ValidatorMain from TestCase\n" +
-                    "    }\n" +
-                    "    static void check(int actual, int expected, String label) {\n" +
-                    "        if (actual == expected) {\n" +
-                    "            System.out.println(\"PASS:\" + label);\n" +
-                    "        } else {\n" +
-                    "            System.out.println(\"FAIL:\" + label + \" expected=\" + expected + \" got=\" + actual);\n" +
-                    "        }\n" +
+                    "        System.out.println(Solution.add(1, 2));\n" +
                     "    }\n" +
                     "}",
                 Instruction = "Implement the add method to return the sum of a and b.",
@@ -517,19 +510,12 @@ public static class Learn2CodeDbContextSeeder
                 {
                     TestCaseId = Guid.NewGuid(),
                     ExerciseId = exerciseId,
-                    ExpectedOutput = "PASS:add(1,2)=3",
+                    ExpectedOutput = "3",
                     TextInput = null,
-                    ValidatorMain = 
+                    MainCode =
                         "public class Main {\n" +
                         "    public static void main(String[] args) {\n" +
-                        "        check(Solution.add(1, 2), 3, \"add(1,2)=3\");\n" +
-                        "    }\n" +
-                        "    static void check(int actual, int expected, String label) {\n" +
-                        "        if (actual == expected) {\n" +
-                        "            System.out.println(\"PASS:\" + label);\n" +
-                        "        } else {\n" +
-                        "            System.out.println(\"FAIL:\" + label + \" expected=\" + expected + \" got=\" + actual);\n" +
-                        "        }\n" +
+                        "        System.out.println(Solution.add(1, 2));\n" +
                         "    }\n" +
                         "}",
                     IsHidden = false,
@@ -541,19 +527,12 @@ public static class Learn2CodeDbContextSeeder
                 {
                     TestCaseId = Guid.NewGuid(),
                     ExerciseId = exerciseId,
-                    ExpectedOutput = "PASS:add(10,20)=30",
+                    ExpectedOutput = "30",
                     TextInput = null,
-                    ValidatorMain = 
+                    MainCode =
                         "public class Main {\n" +
                         "    public static void main(String[] args) {\n" +
-                        "        check(Solution.add(10, 20), 30, \"add(10,20)=30\");\n" +
-                        "    }\n" +
-                        "    static void check(int actual, int expected, String label) {\n" +
-                        "        if (actual == expected) {\n" +
-                        "            System.out.println(\"PASS:\" + label);\n" +
-                        "        } else {\n" +
-                        "            System.out.println(\"FAIL:\" + label + \" expected=\" + expected + \" got=\" + actual);\n" +
-                        "        }\n" +
+                        "        System.out.println(Solution.add(10, 20));\n" +
                         "    }\n" +
                         "}",
                     IsHidden = false,
@@ -565,19 +544,12 @@ public static class Learn2CodeDbContextSeeder
                 {
                     TestCaseId = Guid.NewGuid(),
                     ExerciseId = exerciseId,
-                    ExpectedOutput = "PASS:add(-5,5)=0",
+                    ExpectedOutput = "0",
                     TextInput = null,
-                    ValidatorMain = 
+                    MainCode =
                         "public class Main {\n" +
                         "    public static void main(String[] args) {\n" +
-                        "        check(Solution.add(-5, 5), 0, \"add(-5,5)=0\");\n" +
-                        "    }\n" +
-                        "    static void check(int actual, int expected, String label) {\n" +
-                        "        if (actual == expected) {\n" +
-                        "            System.out.println(\"PASS:\" + label);\n" +
-                        "        } else {\n" +
-                        "            System.out.println(\"FAIL:\" + label + \" expected=\" + expected + \" got=\" + actual);\n" +
-                        "        }\n" +
+                        "        System.out.println(Solution.add(-5, 5));\n" +
                         "    }\n" +
                         "}",
                     IsHidden = false,
@@ -589,19 +561,12 @@ public static class Learn2CodeDbContextSeeder
                 {
                     TestCaseId = Guid.NewGuid(),
                     ExerciseId = exerciseId,
-                    ExpectedOutput = "PASS:add(0,0)=0",
+                    ExpectedOutput = "0",
                     TextInput = null,
-                    ValidatorMain = 
+                    MainCode =
                         "public class Main {\n" +
                         "    public static void main(String[] args) {\n" +
-                        "        check(Solution.add(0, 0), 0, \"add(0,0)=0\");\n" +
-                        "    }\n" +
-                        "    static void check(int actual, int expected, String label) {\n" +
-                        "        if (actual == expected) {\n" +
-                        "            System.out.println(\"PASS:\" + label);\n" +
-                        "        } else {\n" +
-                        "            System.out.println(\"FAIL:\" + label + \" expected=\" + expected + \" got=\" + actual);\n" +
-                        "        }\n" +
+                        "        System.out.println(Solution.add(0, 0));\n" +
                         "    }\n" +
                         "}",
                     IsHidden = false,
@@ -615,7 +580,7 @@ public static class Learn2CodeDbContextSeeder
         }
 
         await context.SaveChangesAsync();
-        logger.LogInformation("Seeded exercises with test cases containing ValidatorMain");
+        logger.LogInformation("Seeded exercises with test cases containing MainCode");
     }
 
 

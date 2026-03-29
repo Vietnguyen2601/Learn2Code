@@ -13,11 +13,11 @@ public class CreateTestCaseRequest
     public string ExpectedOutput { get; set; } = string.Empty;
 
     /// <summary>
-    /// Hàm main/validator function dành riêng cho test case này.
-    /// Khi submit, hàm main này sẽ thay thế hàm main trong SolutionValidator.
+    /// Hàm main riêng của testcase, gắn vào sau student code khi Submit.
+    /// Null = chạy student code trực tiếp.
     /// </summary>
-    [JsonPropertyName("validator_main")]
-    public string? ValidatorMain { get; set; }
+    [JsonPropertyName("main_code")]
+    public string? MainCode { get; set; }
 
     [JsonPropertyName("is_hidden")]
     public bool IsHidden { get; set; } = false;

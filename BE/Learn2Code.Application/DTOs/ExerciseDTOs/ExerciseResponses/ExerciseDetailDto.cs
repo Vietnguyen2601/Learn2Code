@@ -11,10 +11,10 @@ public class ExerciseDetailDto : ExerciseDto
     public string? SolutionCode { get; set; }
 
     /// <summary>
-    /// Chỉ trả về cho Admin — student không được thấy validator code.
+    /// Hàm main mặc định dùng khi student bấm Run.
     /// </summary>
-    [JsonPropertyName("solution_validator")]
-    public string? SolutionValidator { get; set; }
+    [JsonPropertyName("default_main_code")]
+    public string? DefaultMainCode { get; set; }
 
     [JsonPropertyName("instruction")]
     public string? Instruction { get; set; }

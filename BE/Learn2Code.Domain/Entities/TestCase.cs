@@ -21,11 +21,11 @@ public class TestCase
     public string? TextInput { get; set; }
 
     /// <summary>
-    /// Hàm main/validator function dành riêng cho test case này.
-    /// Khi submit, hàm main này sẽ thay thế hàm main trong SolutionValidator.
+    /// Hàm main riêng của test case này, được gắn vào sau student code khi Submit.
+    /// Null = chạy student code trực tiếp (stdin = TextInput, so sánh với ExpectedOutput).
     /// </summary>
-    [Column("validator_main")]
-    public string? ValidatorMain { get; set; }
+    [Column("main_code")]
+    public string? MainCode { get; set; }
 
     [Column("is_hidden")]
     public bool IsHidden { get; set; } = false;

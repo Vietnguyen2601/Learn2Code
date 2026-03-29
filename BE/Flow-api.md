@@ -362,7 +362,8 @@ Flow: FreeCode Exercise
 
 1. Student viết code
 2. POST /exercises/:id/run { code, language }
-   → gửi đến code execution service
+   → nếu exercise.default_main_code != null: ghép code + "\n\n" + default_main_code, chạy 1 file
+   → nếu null: chạy code thẳng
    → trả về { output, runtime_ms }
    → student thấy output, tự đánh giá
 3. Student bấm "Next"
@@ -370,10 +371,17 @@ Flow: FreeCode Exercise
    → cập nhật ExerciseProgress
    → kiểm tra nếu tất cả exercise trong lesson completed
    → tự động cập nhật LessonProgress = Completed
+
    Flow: GradedCode Exercise
-5. Student viết code
+5. Student viết code (starter_code chứa phần function, không có main)
 6. POST /exercises/:id/submit { code, language }
-   → chạy code qua tất cả TestCases
+   → với mỗi testcase:
+     • nếu testcase.main_code != null (bài viết function):
+       → ghép student_code + "\n\n" + testcase.main_code thành 1 file
+       → chạy, so sánh stdout với testcase.expected_output
+     • nếu testcase.main_code == null (bài output-only, ví dụ print hello):
+       → chạy student_code trực tiếp (stdin = testcase.text_input)
+       → so sánh stdout với testcase.expected_output
    → trả về { is_passed, results: [{ testcase_id, is_passed, actual_output (nếu không hidden) }] }
 7. Nếu is_passed = true
    → PATCH /exercises/:id/progress { is_completed: true, is_passed: true, last_code }

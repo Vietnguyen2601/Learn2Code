@@ -30,11 +30,11 @@ public class CreateExerciseRequest
     public string? Hint { get; set; }
 
     /// <summary>
-    /// Code test harness do admin viết (chỉ dành cho GradedCode).
-    /// In ra từng dòng "PASS" hoặc "FAIL[:message]" cho mỗi test case.
+    /// Hàm main mặc định dùng khi student bấm Run (chỉ dành cho FreeCode/GradedCode).
+    /// Null = chạy student code thẳng (bài output-only).
     /// </summary>
-    [JsonPropertyName("solution_validator")]
-    public string? SolutionValidator { get; set; }
+    [JsonPropertyName("default_main_code")]
+    public string? DefaultMainCode { get; set; }
 
     [JsonPropertyName("order_number")]
     [Range(1, int.MaxValue)]

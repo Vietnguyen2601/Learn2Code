@@ -40,12 +40,11 @@ public class Exercise
     public string? Hint { get; set; }
 
     /// <summary>
-    /// Code test harness do admin viết. Khi submit GradedCode, hệ thống sẽ
-    /// gộp student code + solution_validator thành 2 file riêng rồi chạy qua Piston.
-    /// Validator phải in ra từng dòng "PASS" hoặc "FAIL[:message]" cho mỗi test case.
+    /// Hàm main mặc định dùng khi student bấm Run (gắn vào sau student code).
+    /// Null = chạy student code thẳng (dành cho bài print-hello, v.v.)
     /// </summary>
-    [Column("solution_validator")]
-    public string? SolutionValidator { get; set; }
+    [Column("default_main_code")]
+    public string? DefaultMainCode { get; set; }
 
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
