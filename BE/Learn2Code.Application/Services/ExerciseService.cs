@@ -309,28 +309,23 @@ public class ExerciseService : IExerciseService
             finalPassed = execution.Response.Run?.Code == 0;
         }
 
+        // =================================
+        // KEY FIX: Only save last_code, DO NOT mark as completed
+        // Student will PATCH /progress to mark as completed
+        // =================================
         var progress = await UpsertProgressAsync(studentId, exerciseId, p =>
         {
             p.LastCode = request.Code;
-            p.IsPassed = finalPassed;
-            p.IsCompleted = finalPassed;
-            p.CompletedAt = finalPassed ? (p.CompletedAt ?? now) : null;
+            // DO NOT set IsCompleted or IsPassed here
+            // These will be updated via PATCH /progress endpoint
         });
 
         var response = progress.ToProgressDto();
         response.TestCaseResults = testCaseResults.Any() ? testCaseResults : null;
         ApplyExecutionResult(response, execution.Response!, language, execution.RuntimeMs);
 
-        if (finalPassed)
-        {
-            await _gamificationService.ProcessEventAsync(studentId, XPEventType.ExercisePassed);
-            // Trigger daily streak check-in (fire-and-forget)
-            _ = _streakService.CheckInAsync(studentId);
-            // Auto-update LessonProgress nếu tất cả exercise đã completed
-            await CheckAndUpdateLessonProgressAsync(exercise.LessonId, studentId);
-        }
-
-        var message = finalPassed ? "Submitted successfully" : "Submission failed. Please review your code and try again";
+        // Return results for student to review
+        var message = finalPassed ? "Submission validated successfully" : "Submission failed. Please review your code and try again";
         return ServiceResult<ExerciseProgressDto>.Ok(response, message);
     }
 
@@ -348,11 +343,25 @@ public class ExerciseService : IExerciseService
         var now = DateTime.UtcNow;
         var progress = await UpsertProgressAsync(studentId, exerciseId, p =>
         {
+            // Only update fields explicitly provided in request
             p.IsCompleted = request.IsCompleted;
-            if (request.IsCompleted)
+            
+            // Only update IsPassed if explicitly provided (GradedCode after passing)
+            if (request.IsPassed.HasValue)
             {
-                p.IsPassed = true;
-                p.CompletedAt ??= now;
+                p.IsPassed = request.IsPassed.Value;
+            }
+            
+            // Update LastCode if provided (Reading exercises or additional save)
+            if (!string.IsNullOrWhiteSpace(request.LastCode))
+            {
+                p.LastCode = request.LastCode;
+            }
+            
+            // Set CompletedAt only when marking as completed for the first time
+            if (request.IsCompleted && !p.CompletedAt.HasValue)
+            {
+                p.CompletedAt = now;
             }
         });
 
