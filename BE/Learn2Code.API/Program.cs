@@ -85,6 +85,7 @@ builder.Services.AddScoped<IGamificationService, GamificationService>();
 builder.Services.AddScoped<IUserXPService, UserXPService>();
 builder.Services.AddScoped<IAchievementService, AchievementService>();
 builder.Services.AddScoped<IDailyStreakService, DailyStreakService>();
+builder.Services.AddScoped<IDiscussionService, DiscussionService>();
 
 
 // JWT Authentication

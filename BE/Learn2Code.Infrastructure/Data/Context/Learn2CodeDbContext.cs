@@ -79,6 +79,9 @@ public class Learn2CodeDbContext : DbContext
     public DbSet<CourseCompletionRule> CourseCompletionRules { get; set; } = null!;
     public DbSet<Feedback> Feedbacks { get; set; } = null!;
     public DbSet<Leaderboard> Leaderboards { get; set; } = null!;
+    public DbSet<Discussion> Discussions { get; set; } = null!;
+    public DbSet<DiscussionComment> DiscussionComments { get; set; } = null!;
+    public DbSet<CommentLike> CommentLikes { get; set; } = null!;
 
     // ── Gamification ────────────────────────────────────────────────────────
     public DbSet<UserXP> UserXPs { get; set; } = null!;
@@ -260,5 +263,52 @@ public class Learn2CodeDbContext : DbContext
         modelBuilder.Entity<DailyStreak>()
             .HasIndex(ds => new { ds.UserId, ds.StreakDate })
             .IsUnique();
+
+        // ── Discussion Composite Key ────────────────────────────────────────
+        modelBuilder.Entity<CommentLike>()
+            .HasKey(cl => new { cl.CommentId, cl.UserId });
+
+        // ── Relationships ──────────────────────────────────────────────────
+        modelBuilder.Entity<Discussion>()
+            .HasOne(d => d.Lesson)
+            .WithMany()
+            .HasForeignKey(d => d.LessonId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Discussion>()
+            .HasOne(d => d.Creator)
+            .WithMany()
+            .HasForeignKey(d => d.CreatorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<DiscussionComment>()
+            .HasOne(dc => dc.Discussion)
+            .WithMany(d => d.Comments)
+            .HasForeignKey(dc => dc.DiscussionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<DiscussionComment>()
+            .HasOne(dc => dc.Author)
+            .WithMany()
+            .HasForeignKey(dc => dc.AuthorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<DiscussionComment>()
+            .HasOne(dc => dc.ParentComment)
+            .WithMany(dc => dc.RepliedComments)
+            .HasForeignKey(dc => dc.ParentCommentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CommentLike>()
+            .HasOne(cl => cl.Comment)
+            .WithMany(dc => dc.Likes)
+            .HasForeignKey(cl => cl.CommentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CommentLike>()
+            .HasOne(cl => cl.User)
+            .WithMany()
+            .HasForeignKey(cl => cl.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

@@ -245,6 +245,136 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                     b.ToTable("certifications");
                 });
 
+            modelBuilder.Entity("Learn2Code.Domain.Entities.CommentLike", b =>
+                {
+                    b.Property<Guid>("CommentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("comment_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("LikeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("like_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.HasKey("CommentId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("comment_likes");
+                });
+
+            modelBuilder.Entity("Learn2Code.Domain.Entities.Discussion", b =>
+                {
+                    b.Property<Guid>("DiscussionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("discussion_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("content");
+
+                    b.Property<Guid>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("creator_id");
+
+                    b.Property<bool>("IsPinned")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_pinned");
+
+                    b.Property<bool>("IsResolved")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_resolved");
+
+                    b.Property<Guid>("LessonId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("lesson_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("title");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int>("ViewCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("view_count");
+
+                    b.HasKey("DiscussionId");
+
+                    b.HasIndex("CreatorId");
+
+                    b.HasIndex("LessonId");
+
+                    b.ToTable("discussions");
+                });
+
+            modelBuilder.Entity("Learn2Code.Domain.Entities.DiscussionComment", b =>
+                {
+                    b.Property<Guid>("CommentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("comment_id");
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_id");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("content");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("DiscussionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("discussion_id");
+
+                    b.Property<bool>("IsAnswer")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_answer");
+
+                    b.Property<int>("LikeCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("like_count");
+
+                    b.Property<Guid?>("ParentCommentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_comment_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("CommentId");
+
+                    b.HasIndex("AuthorId");
+
+                    b.HasIndex("DiscussionId");
+
+                    b.HasIndex("ParentCommentId");
+
+                    b.ToTable("discussion_comments");
+                });
+
             modelBuilder.Entity("Learn2Code.Domain.Entities.Course", b =>
                 {
                     b.Property<Guid>("CourseId")
@@ -1744,6 +1874,76 @@ namespace Learn2Code.Infrastructure.Data.Migrations
                     b.Navigation("Payments");
 
                     b.Navigation("RenewedSubscriptions");
+                });
+
+            modelBuilder.Entity("Learn2Code.Domain.Entities.Discussion", b =>
+                {
+                    b.HasOne("Learn2Code.Domain.Entities.Account", "Creator")
+                        .WithMany()
+                        .HasForeignKey("CreatorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Learn2Code.Domain.Entities.Lesson", "Lesson")
+                        .WithMany()
+                        .HasForeignKey("LessonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Comments");
+
+                    b.Navigation("Creator");
+
+                    b.Navigation("Lesson");
+                });
+
+            modelBuilder.Entity("Learn2Code.Domain.Entities.DiscussionComment", b =>
+                {
+                    b.HasOne("Learn2Code.Domain.Entities.Account", "Author")
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Learn2Code.Domain.Entities.Discussion", "Discussion")
+                        .WithMany("Comments")
+                        .HasForeignKey("DiscussionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Learn2Code.Domain.Entities.DiscussionComment", "ParentComment")
+                        .WithMany("RepliedComments")
+                        .HasForeignKey("ParentCommentId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Author");
+
+                    b.Navigation("Discussion");
+
+                    b.Navigation("Likes");
+
+                    b.Navigation("ParentComment");
+
+                    b.Navigation("RepliedComments");
+                });
+
+            modelBuilder.Entity("Learn2Code.Domain.Entities.CommentLike", b =>
+                {
+                    b.HasOne("Learn2Code.Domain.Entities.DiscussionComment", "Comment")
+                        .WithMany("Likes")
+                        .HasForeignKey("CommentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Learn2Code.Domain.Entities.Account", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Comment");
+
+                    b.Navigation("User");
                 });
 #pragma warning restore 612, 618
         }
