@@ -20,7 +20,7 @@ public static class Learn2CodeDbContextSeeder
 
         try
         {
-            await ResetSchemaIfNeededAsync(context, logger);
+            //await ResetSchemaIfNeededAsync(context, logger);
             await context.Database.MigrateAsync();
             await SeedRolesAsync(context, logger);
             await SeedAdminAccountAsync(context, logger);

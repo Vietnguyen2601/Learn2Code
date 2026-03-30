@@ -19,20 +19,29 @@ public class CertificationController : ControllerBase
     }
 
     /// <summary>
-    /// Get all certifications for the current student [Student only]
+    /// Get all certifications for the current student [Student,Admin]
+    /// Admin can use ?studentId= query param to view student's certifications
     /// </summary>
     [HttpGet("me")]
-    [Authorize(Roles = "Student")]
+    [Authorize(Roles = "Student,Admin")]
     [ProducesResponseType(typeof(ServiceResult<List<CertificationDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> GetMyCertifications()
+    public async Task<IActionResult> GetMyCertifications([FromQuery] Guid? studentId)
     {
-        var studentId = GetCurrentUserId();
-        if (studentId == null)
+        var userId = GetCurrentUserId();
+        if (userId == null)
             return Unauthorized(ServiceResult.Error("UNAUTHORIZED", "Invalid token"));
 
-        var result = await _certificationService.GetMyCertificationsAsync(studentId.Value);
+        // Admin can view other student's certifications with ?studentId=
+        var targetStudentId = studentId ?? userId.Value;
+        
+        if (!User.IsInRole("Admin") && studentId.HasValue && studentId.Value != userId.Value)
+        {
+            return Forbid();
+        }
+
+        var result = await _certificationService.GetMyCertificationsAsync(targetStudentId);
         return Ok(result);
     }
 
@@ -124,23 +133,32 @@ public class CourseCertificationController : ControllerBase
     }
 
     /// <summary>
-    /// Check if current student is eligible for certification [Student only]
+    /// Check if current student is eligible for certification [Student,Admin]
+    /// Admin can use ?studentId= query param to check student's eligibility
     /// </summary>
     /// <param name="courseId">Course ID</param>
     [HttpPost("check")]
-    [Authorize(Roles = "Student")]
+    [Authorize(Roles = "Student,Admin")]
     [ProducesResponseType(typeof(ServiceResult<CertificationEligibilityDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ServiceResult<CertificationEligibilityDto>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ServiceResult<CertificationEligibilityDto>), StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> CheckEligibility(Guid courseId)
+    public async Task<IActionResult> CheckEligibility(Guid courseId, [FromQuery] Guid? studentId)
     {
-        var studentId = GetCurrentUserId();
-        if (studentId == null)
+        var userId = GetCurrentUserId();
+        if (userId == null)
             return Unauthorized(ServiceResult.Error("UNAUTHORIZED", "Invalid token"));
 
-        var result = await _certificationService.CheckCertificationEligibilityAsync(studentId.Value, courseId);
+        // Admin can check other student's eligibility with ?studentId=
+        var targetStudentId = studentId ?? userId.Value;
+        
+        if (!User.IsInRole("Admin") && studentId.HasValue && studentId.Value != userId.Value)
+        {
+            return Forbid();
+        }
+
+        var result = await _certificationService.CheckCertificationEligibilityAsync(targetStudentId, courseId);
         
         if (!result.Success)
         {
@@ -151,24 +169,33 @@ public class CourseCertificationController : ControllerBase
     }
 
     /// <summary>
-    /// Request to issue certificate (if eligible) [Student only]
+    /// Request to issue certificate (if eligible) [Student,Admin]
+    /// Admin can use ?studentId= query param to issue certificate for student
     /// </summary>
     /// <param name="courseId">Course ID</param>
     [HttpPost("issue")]
-    [Authorize(Roles = "Student")]
+    [Authorize(Roles = "Student,Admin")]
     [ProducesResponseType(typeof(ServiceResult<IssueCertificationResultDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ServiceResult<IssueCertificationResultDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ServiceResult<IssueCertificationResultDto>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ServiceResult<IssueCertificationResultDto>), StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> IssueCertificate(Guid courseId)
+    public async Task<IActionResult> IssueCertificate(Guid courseId, [FromQuery] Guid? studentId)
     {
-        var studentId = GetCurrentUserId();
-        if (studentId == null)
+        var userId = GetCurrentUserId();
+        if (userId == null)
             return Unauthorized(ServiceResult.Error("UNAUTHORIZED", "Invalid token"));
 
-        var result = await _certificationService.TryIssueCertificateAsync(studentId.Value, courseId);
+        // Admin can issue certificate for other student with ?studentId=
+        var targetStudentId = studentId ?? userId.Value;
+        
+        if (!User.IsInRole("Admin") && studentId.HasValue && studentId.Value != userId.Value)
+        {
+            return Forbid();
+        }
+
+        var result = await _certificationService.TryIssueCertificateAsync(targetStudentId, courseId);
         
         if (!result.Success)
         {

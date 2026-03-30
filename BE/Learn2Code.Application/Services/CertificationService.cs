@@ -179,7 +179,80 @@ public class CertificationService : ICertificationService
         // Default requirements if no rule exists
         var minWeightScore = rule?.MinWeightScore ?? 0;
 
-        // For now, no quiz requirements - return empty requirements
+        // Get all sections and lessons in course
+        var sections = await _unitOfWork.SectionRepository.GetByCourseIdAsync(courseId);
+        if (!sections.Any())
+        {
+            // No content - eligible for certification
+            progress.LessonCompletionPct = 100;
+            progress.ExercisePassPct = 100;
+            return (progress, missing);
+        }
+
+        var totalLessons = 0;
+        var totalCompletedLessons = 0;
+        var totalExercises = 0;
+        var totalPassedExercises = 0;
+
+        foreach (var section in sections)
+        {
+            // Get all lessons in section
+            var lessons = await _unitOfWork.LessonRepository.GetLessonsBySectionIdAsync(section.SectionId);
+            totalLessons += lessons.Count();
+
+            // Get lesson progresses for student
+            var lessonIds = lessons.Select(l => l.LessonId).ToList();
+            var lessonProgresses = await _unitOfWork.Repository<LessonProgress>()
+                .GetAllQueryable()
+                .Where(lp => lp.StudentId == studentId && lessonIds.Contains(lp.LessonId))
+                .ToListAsync();
+
+            var completedLessonIds = lessonProgresses
+                .Where(lp => lp.Status == LessonProgressStatus.Completed)
+                .Select(lp => lp.LessonId)
+                .ToList();
+
+            totalCompletedLessons += completedLessonIds.Count;
+
+            // Get exercises in lessons
+            foreach (var lesson in lessons)
+            {
+                var exercises = await _unitOfWork.ExerciseRepository.GetExercisesByLessonIdAsync(lesson.LessonId);
+                totalExercises += exercises.Count();
+
+                // Get exercise progresses for student
+                var exerciseIds = exercises.Select(e => e.ExerciseId).ToList();
+                var exerciseProgresses = await _unitOfWork.Repository<ExerciseProgress>()
+                    .GetAllQueryable()
+                    .Where(ep => ep.StudentId == studentId && exerciseIds.Contains(ep.ExerciseId))
+                    .ToListAsync();
+
+                totalPassedExercises += exerciseProgresses.Count(ep => ep.IsPassed && ep.IsCompleted);
+            }
+        }
+
+        // Calculate percentages
+        progress.LessonCompletionPct = totalLessons > 0
+            ? Math.Round((decimal)totalCompletedLessons / totalLessons * 100, 2)
+            : 100;
+
+        progress.ExercisePassPct = totalExercises > 0
+            ? Math.Round((decimal)totalPassedExercises / totalExercises * 100, 2)
+            : 100;
+
+        // Check requirements
+        // Requirement 1: All lessons must be completed
+        if (progress.LessonCompletionPct < 100)
+        {
+            missing.Add("Complete all lessons in the course");
+        }
+
+        // Requirement 2: All exercises must be passed
+        if (progress.ExercisePassPct < 100)
+        {
+            missing.Add("Pass all exercises in the course");
+        }
+
         return (progress, missing);
     }
 
