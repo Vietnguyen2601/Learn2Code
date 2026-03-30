@@ -34,6 +34,5 @@ public class Lesson
     public virtual Section Section { get; set; } = null!;
 
     public virtual ICollection<Exercise> Exercises { get; set; } = new List<Exercise>();
-    public virtual ICollection<Quiz> Quizzes { get; set; } = new List<Quiz>();
     public virtual ICollection<LessonProgress> LessonProgresses { get; set; } = new List<LessonProgress>();
 }

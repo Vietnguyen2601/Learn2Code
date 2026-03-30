@@ -16,9 +16,6 @@ public class CourseCompletionRule
     [Column("min_weight_score")]
     public decimal MinWeightScore { get; set; } = 0;
 
-    [Column("require_all_section_quiz")]
-    public bool RequireAllSectionQuiz { get; set; } = true;
-
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

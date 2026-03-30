@@ -28,7 +28,6 @@ public class LessonRepository : GenericRepository<Lesson>, ILessonRepository
             .Include(l => l.Section)
                 .ThenInclude(s => s.Course)
             .Include(l => l.Exercises)
-            .Include(l => l.Quizzes)
             .FirstOrDefaultAsync(l => l.LessonId == lessonId);
     }
 

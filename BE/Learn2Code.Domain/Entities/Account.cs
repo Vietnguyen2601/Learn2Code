@@ -49,7 +49,6 @@ public class Account
     public virtual ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
     public virtual ICollection<LessonProgress> LessonProgresses { get; set; } = new List<LessonProgress>();
     public virtual ICollection<ExerciseProgress> ExerciseProgresses { get; set; } = new List<ExerciseProgress>();
-    public virtual ICollection<SectionQuizAttempt> SectionQuizAttempts { get; set; } = new List<SectionQuizAttempt>();
     public virtual ICollection<Certification> Certifications { get; set; } = new List<Certification>();
     public virtual ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
     public virtual ICollection<Leaderboard> Leaderboards { get; set; } = new List<Leaderboard>();

@@ -91,23 +91,6 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
-    private IQuizRepository? _quizRepository;
-    public IQuizRepository QuizRepository
-    {
-        get
-        {
-            return _quizRepository ??= new QuizRepository(_context);
-        }
-    }
-
-    private IQuizOptionRepository? _quizOptionRepository;
-    public IQuizOptionRepository QuizOptionRepository
-    {
-        get
-        {
-            return _quizOptionRepository ??= new QuizOptionRepository(_context);
-        }
-    }
     private ISubscriptionPackageRepository? _subscriptionPackageRepository;
     public ISubscriptionPackageRepository SubscriptionPackageRepository
     {

@@ -9,7 +9,4 @@ public class CertificationRequirementsDto
 {
     [JsonPropertyName("min_weight_score")]
     public decimal MinWeightScore { get; set; }
-
-    [JsonPropertyName("require_all_section_quiz")]
-    public bool RequireAllSectionQuiz { get; set; }
 }

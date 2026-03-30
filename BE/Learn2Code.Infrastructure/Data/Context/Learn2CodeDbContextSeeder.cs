@@ -33,7 +33,6 @@ public static class Learn2CodeDbContextSeeder
             await SeedLessonsAsync(context, logger);
             await SeedExercisesAsync(context, logger);
             await SeedJavaExercisesForTestingAsync(context, logger);
-            await SeedQuizzesAsync(context, logger);
             await SeedCourseCompletionRulesAsync(context, logger);
             await SeedCertificateTemplatesAsync(context, logger);
             await SeedAchievementsAsync(context, logger);
@@ -587,43 +586,6 @@ public static class Learn2CodeDbContextSeeder
 
 
     // 
-    // Quizzes & Options  (1 quiz per lesson)
-    // 
-    private static async Task SeedQuizzesAsync(Learn2CodeDbContext context, ILogger logger)
-    {
-        if (await context.Quizzes.AnyAsync()) return;
-
-        var lessons = await context.Lessons.ToListAsync();
-        if (!lessons.Any()) return;
-
-        foreach (var lesson in lessons)
-        {
-            var quiz = new Quiz
-            {
-                QuizId = Guid.NewGuid(),
-                LessonId = lesson.LessonId,
-                OrderNumber = 1,
-                Question = $"What is the main purpose of {lesson.Title}?",
-                Explanation = "This question tests your understanding of the lesson's core objective.",
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            context.Quizzes.Add(quiz);
-            await context.SaveChangesAsync();
-
-            context.QuizOptions.AddRange(
-                new QuizOption { OptionId = Guid.NewGuid(), QuizId = quiz.QuizId, Content = "To learn fundamentals", IsCorrect = true, CreatedAt = DateTime.UtcNow },
-                new QuizOption { OptionId = Guid.NewGuid(), QuizId = quiz.QuizId, Content = "To practice advanced topics", IsCorrect = false, CreatedAt = DateTime.UtcNow },
-                new QuizOption { OptionId = Guid.NewGuid(), QuizId = quiz.QuizId, Content = "To review previous material", IsCorrect = false, CreatedAt = DateTime.UtcNow },
-                new QuizOption { OptionId = Guid.NewGuid(), QuizId = quiz.QuizId, Content = "None of the above", IsCorrect = false, CreatedAt = DateTime.UtcNow }
-            );
-            await context.SaveChangesAsync();
-        }
-
-        logger.LogInformation("Seeded quizzes & options");
-    }
-
     // 
     // Course Completion Rules  (1 per course)
     // 
@@ -639,7 +601,6 @@ public static class Learn2CodeDbContextSeeder
                 RuleId = Guid.NewGuid(),
                 CourseId = course.CourseId,
                 MinWeightScore = 60m,
-                RequireAllSectionQuiz = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             });
@@ -1146,106 +1107,6 @@ public static class Learn2CodeDbContextSeeder
     // 
     // Section Quiz Attempts (2-3 attempts per enrolled course)
     // 
-    private static async Task SeedSectionQuizAttemptsAsync(Learn2CodeDbContext context, ILogger logger)
-    {
-        if (await context.SectionQuizAttempts.AnyAsync()) return;
-        if (await context.SectionQuizAnswers.AnyAsync()) return;
-
-        var enrollments = await context.Enrollments.ToListAsync();
-        var attempts = new List<SectionQuizAttempt>();
-        var attemptCount = 0;
-
-        foreach (var enrollment in enrollments)
-        {
-            var sections = await context.Sections
-                .Where(s => s.CourseId == enrollment.CourseId)
-                .ToListAsync();
-
-            foreach (var section in sections.Take(Random.Shared.Next(1, sections.Count + 1)))
-            {
-                var quizzes = await context.Quizzes
-                    .Where(q => q.Lesson.Section.SectionId == section.SectionId)
-                    .ToListAsync();
-
-                if (!quizzes.Any()) continue;
-
-                var quiz = quizzes.First();
-                var correctAnswersCount = Random.Shared.Next(2, 4); // 2-3 out of 4
-                var score = (correctAnswersCount / 4m) * 100;
-                var isPassed = score >= 60;
-
-                var attemptId = Guid.NewGuid();
-                var attempt = new SectionQuizAttempt
-                {
-                    AttemptId = attemptId,
-                    SectionId = section.SectionId,
-                    StudentId = enrollment.StudentId,
-                    Score = score,
-                    IsPassed = isPassed,
-                    AttemptedAt = DateTime.UtcNow.AddDays(-Random.Shared.Next(1, 30))
-                };
-                attempts.Add(attempt);
-                attemptCount++;
-
-                context.SectionQuizAttempts.Add(attempt);
-            }
-        }
-
-        await context.SaveChangesAsync();
-
-        // Add quiz answers for each attempt
-        var options = await context.QuizOptions.ToListAsync();
-        var answerCount = 0;
-
-        foreach (var attempt in attempts)
-        {
-            var quizzes = await context.Quizzes
-                .Where(q => q.Lesson.Section.SectionId == attempt.SectionId)
-                .ToListAsync();
-
-            if (quizzes.Count == 0) continue;
-            var quiz = quizzes.First();
-
-            var quizOptions = await context.QuizOptions
-                .Where(qo => qo.QuizId == quiz.QuizId)
-                .ToListAsync();
-
-            if (quizOptions.Count == 0) continue;
-
-            var correctOption = quizOptions.FirstOrDefault(qo => qo.IsCorrect);
-            var randomWrongOptions = quizOptions.Where(qo => !qo.IsCorrect).OrderBy(x => Random.Shared.Next()).Take(2).ToList();
-
-            // Student answered with some correct and some wrong
-            foreach (var opt in randomWrongOptions.Take(1))
-            {
-                context.SectionQuizAnswers.Add(new SectionQuizAnswer
-                {
-                    AnswerId = Guid.NewGuid(),
-                    AttemptId = attempt.AttemptId,
-                    QuizId = quiz.QuizId,
-                    OptionId = opt.OptionId,
-                    IsCorrect = false
-                });
-                answerCount++;
-            }
-
-            if (correctOption != null)
-            {
-                context.SectionQuizAnswers.Add(new SectionQuizAnswer
-                {
-                    AnswerId = Guid.NewGuid(),
-                    AttemptId = attempt.AttemptId,
-                    QuizId = quiz.QuizId,
-                    OptionId = correctOption.OptionId,
-                    IsCorrect = true
-                });
-                answerCount++;
-            }
-        }
-
-        await context.SaveChangesAsync();
-        logger.LogInformation("Seeded {Count} quiz attempts with {AnswerCount} answers", attemptCount, answerCount);
-    }
 
     // ═══════════════════════════════════════════════════════════════════════════════════
     private static async Task SeedJavaExercisesForTestingAsync(Learn2CodeDbContext context, ILogger logger)

@@ -178,59 +178,8 @@ public class CertificationService : ICertificationService
 
         // Default requirements if no rule exists
         var minWeightScore = rule?.MinWeightScore ?? 0;
-        var requireAllQuiz = rule?.RequireAllSectionQuiz ?? false;
 
-        // Get all sections of the course
-        var sections = await _unitOfWork.SectionRepository.GetAllQueryable()
-            .Where(s => s.CourseId == courseId && s.IsActive)
-            .Include(s => s.Lessons)
-            .ToListAsync();
-
-        var allLessonIds = sections.SelectMany(s => s.Lessons.Select(l => l.LessonId)).ToList();
-        var sectionIds = sections.Select(s => s.SectionId).ToList();
-
-        // Get sections that have quizzes (sections where student has at least one quiz to attempt)
-        var sectionsWithQuizzes = await _unitOfWork.Repository<Quiz>().GetAllQueryable()
-            .Where(q => sections.SelectMany(s => s.Lessons.Select(l => l.LessonId)).Contains(q.LessonId))
-            .Select(q => q.Lesson.SectionId)
-            .Distinct()
-            .ToListAsync();
-
-        progress.TotalSectionsWithQuiz = sectionsWithQuizzes.Count;
-
-        if (sectionsWithQuizzes.Count > 0)
-        {
-            // Get best score per section for this student
-            var quizAttempts = await _unitOfWork.Repository<SectionQuizAttempt>().GetAllQueryable()
-                .Where(qa => qa.StudentId == studentId && sectionIds.Contains(qa.SectionId))
-                .ToListAsync();
-
-            var sectionsAttempted = quizAttempts
-                .GroupBy(qa => qa.SectionId)
-                .Select(g => new { SectionId = g.Key, BestScore = g.Max(qa => qa.Score) })
-                .ToList();
-
-            progress.SectionsWithQuizAttempt = sectionsAttempted.Count;
-
-            if (sectionsAttempted.Count > 0)
-            {
-                progress.SectionQuizAvgScore = Math.Round(sectionsAttempted.Average(s => s.BestScore), 2);
-            }
-
-            // Check min weight score
-            if (progress.SectionQuizAvgScore < minWeightScore)
-            {
-                missing.Add($"Section quiz average score: {progress.SectionQuizAvgScore}% (required: {minWeightScore}%)");
-            }
-
-            // Check if all sections with quizzes are attempted
-            if (requireAllQuiz && progress.SectionsWithQuizAttempt < progress.TotalSectionsWithQuiz)
-            {
-                var notAttemptedCount = progress.TotalSectionsWithQuiz - progress.SectionsWithQuizAttempt;
-                missing.Add($"Section quizzes not attempted: {notAttemptedCount} section(s)");
-            }
-        }
-
+        // For now, no quiz requirements - return empty requirements
         return (progress, missing);
     }
 

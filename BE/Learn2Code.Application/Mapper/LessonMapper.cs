@@ -34,8 +34,7 @@ public static class LessonMapper
             UpdatedAt = lesson.UpdatedAt,
             SectionTitle = lesson.Section?.Title ?? string.Empty,
             CourseTitle = lesson.Section?.Course?.Title ?? string.Empty,
-            ExerciseCount = lesson.Exercises?.Count ?? 0,
-            QuizCount = lesson.Quizzes?.Count ?? 0
+            ExerciseCount = lesson.Exercises?.Count ?? 0
         };
     }
 

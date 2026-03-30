@@ -15,8 +15,6 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
     ILessonRepository LessonRepository { get; }
     IExerciseRepository ExerciseRepository { get; }
     ITestCaseRepository TestCaseRepository { get; }
-    IQuizRepository QuizRepository { get; }
-    IQuizOptionRepository QuizOptionRepository { get; }
     ISubscriptionPackageRepository SubscriptionPackageRepository { get; }
     ISubscriptionRepository SubscriptionRepository { get; }
     IPaymentRepository PaymentRepository { get; }

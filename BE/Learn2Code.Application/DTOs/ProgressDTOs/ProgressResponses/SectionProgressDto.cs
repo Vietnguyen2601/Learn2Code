@@ -15,13 +15,4 @@ public class SectionProgressDto
 
     [JsonPropertyName("lessons_completed")]
     public int LessonsCompleted { get; set; }
-
-    [JsonPropertyName("section_quiz_unlocked")]
-    public bool SectionQuizUnlocked { get; set; }
-
-    [JsonPropertyName("section_quiz_passed")]
-    public bool SectionQuizPassed { get; set; }
-
-    [JsonPropertyName("section_quiz_score")]
-    public decimal? SectionQuizScore { get; set; }
 }
