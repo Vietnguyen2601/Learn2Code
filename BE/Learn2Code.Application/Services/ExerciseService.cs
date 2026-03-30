@@ -310,22 +310,39 @@ public class ExerciseService : IExerciseService
         }
 
         // =================================
-        // KEY FIX: Only save last_code, DO NOT mark as completed
-        // Student will PATCH /progress to mark as completed
+        // LOGIC FIX:
+        // - GradedCode: Auto-mark completed/passed if all testcases pass
+        // - FreeCode: Only save code, student will PATCH to mark completed
         // =================================
         var progress = await UpsertProgressAsync(studentId, exerciseId, p =>
         {
             p.LastCode = request.Code;
-            // DO NOT set IsCompleted or IsPassed here
-            // These will be updated via PATCH /progress endpoint
+            
+            if (exercise.ExerciseType == ExerciseType.GradedCode)
+            {
+                // GradedCode: Update based on test results
+                p.IsPassed = finalPassed;
+                p.IsCompleted = finalPassed;
+                p.CompletedAt = finalPassed ? (p.CompletedAt ?? now) : null;
+            }
+            // FreeCode: Only save code, wait for PATCH /progress
         });
 
         var response = progress.ToProgressDto();
         response.TestCaseResults = testCaseResults.Any() ? testCaseResults : null;
         ApplyExecutionResult(response, execution.Response!, language, execution.RuntimeMs);
 
-        // Return results for student to review
-        var message = finalPassed ? "Submission validated successfully" : "Submission failed. Please review your code and try again";
+        // Trigger gamification and lesson progress check for GradedCode pass
+        if (exercise.ExerciseType == ExerciseType.GradedCode && finalPassed)
+        {
+            await _gamificationService.ProcessEventAsync(studentId, XPEventType.ExercisePassed);
+            // Trigger daily streak check-in (fire-and-forget)
+            _ = _streakService.CheckInAsync(studentId);
+            // Auto-update LessonProgress if all exercises completed
+            await CheckAndUpdateLessonProgressAsync(exercise.LessonId, studentId);
+        }
+
+        var message = finalPassed ? "Submission passed successfully" : "Submission failed. Please review your code and try again";
         return ServiceResult<ExerciseProgressDto>.Ok(response, message);
     }
 
@@ -666,11 +683,21 @@ public class ExerciseService : IExerciseService
         if (string.IsNullOrWhiteSpace(output))
             return string.Empty;
 
+        // 1. Normalize line endings and split into lines
         var lines = output
             .Replace("\r\n", "\n")
+            .Replace("\r", "\n")
             .Split('\n', StringSplitOptions.None)
-            .Select(line => line.TrimEnd());
+            .Select(line => line.TrimEnd())
+            .ToList();
 
+        // 2. Remove trailing empty lines (common in code execution output)
+        while (lines.Count > 0 && string.IsNullOrEmpty(lines[^1]))
+        {
+            lines.RemoveAt(lines.Count - 1);
+        }
+
+        // 3. Join back and trim leading whitespace
         return string.Join("\n", lines).Trim();
     }
 
