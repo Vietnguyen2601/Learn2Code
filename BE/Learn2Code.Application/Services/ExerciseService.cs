@@ -335,11 +335,22 @@ public class ExerciseService : IExerciseService
         // Trigger gamification and lesson progress check for GradedCode pass
         if (exercise.ExerciseType == ExerciseType.GradedCode && finalPassed)
         {
+            // Sequential DB operations to avoid DbContext threading conflicts
             await _gamificationService.ProcessEventAsync(studentId, XPEventType.ExercisePassed);
-            // Trigger daily streak check-in (fire-and-forget)
-            _ = _streakService.CheckInAsync(studentId);
+            
             // Auto-update LessonProgress if all exercises completed
             await CheckAndUpdateLessonProgressAsync(exercise.LessonId, studentId);
+            
+            // Streak check-in - wrapped in try-catch to prevent blocking the response
+            try
+            {
+                await _streakService.CheckInAsync(studentId);
+            }
+            catch (Exception ex)
+            {
+                // Log but don't fail the request if streak check-in fails
+                _logger.LogWarning(ex, "Failed to process daily streak check-in for user {UserId}", studentId);
+            }
         }
 
         var message = finalPassed ? "Submission passed successfully" : "Submission failed. Please review your code and try again";
@@ -412,6 +423,7 @@ public class ExerciseService : IExerciseService
         var exerciseIds = exercises.Select(e => e.ExerciseId).ToList();
         var progresses = await _unitOfWork.Repository<ExerciseProgress>()
             .GetAllQueryable()
+            .AsNoTracking()  // FIX: Prevent DbContext tracking conflicts
             .Where(ep => ep.StudentId == studentId && exerciseIds.Contains(ep.ExerciseId))
             .ToListAsync();
 
