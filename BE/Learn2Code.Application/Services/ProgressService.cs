@@ -23,10 +23,13 @@ public class ProgressService : IProgressService
 
     public async Task<ServiceResult<CourseProgressDto>> GetCourseProgressAsync(Guid courseId, Guid studentId)
     {
-        // Kiểm tra course có tồn tại không
+        // Kiểm tra course có tồn tại và hoạt động không
         var course = await _unitOfWork.CourseRepository.GetByIdAsync(courseId);
         if (course == null)
             return ServiceResult<CourseProgressDto>.NotFound("Course not found");
+
+        if (!course.IsActive)
+            return ServiceResult<CourseProgressDto>.NotFound("Course is not available");
 
         // Kiểm tra enrollment
         var enrollment = await _unitOfWork.EnrollmentRepository
