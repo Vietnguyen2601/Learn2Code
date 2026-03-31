@@ -10,7 +10,11 @@ public class UpdateTestCaseRequest
 
     [JsonPropertyName("expected_output")]
     public string? ExpectedOutput { get; set; }
-
+    /// <summary>
+    /// Hàm main riêng của testcase. Null để xóa.
+    /// </summary>
+    [JsonPropertyName("main_code")]
+    public string? MainCode { get; set; }
     [JsonPropertyName("is_hidden")]
     public bool? IsHidden { get; set; }
 

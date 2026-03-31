@@ -32,6 +32,13 @@ public class ExerciseRepository : GenericRepository<Exercise>, IExerciseReposito
             .FirstOrDefaultAsync(e => e.ExerciseId == exerciseId);
     }
 
+    public async Task<Exercise?> GetExerciseByIdWithDefaultMainCodeAsync(Guid exerciseId)
+    {
+        return await _context.Set<Exercise>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.ExerciseId == exerciseId);
+    }
+
     public async Task<bool> CanUserAccessExerciseAsync(Guid exerciseId, Guid? userId)
     {
         var exercise = await _context.Set<Exercise>()

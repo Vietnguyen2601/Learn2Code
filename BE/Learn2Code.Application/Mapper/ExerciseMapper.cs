@@ -35,7 +35,7 @@ public static class ExerciseMapper
             Language = exercise.Language,
             StarterCode = exercise.StarterCode,
             SolutionCode = exercise.SolutionCode,
-            SolutionValidator = exercise.SolutionValidator,
+            DefaultMainCode = exercise.DefaultMainCode,
             Instruction = exercise.Instruction,
             Hint = exercise.Hint,
             CreatedAt = exercise.CreatedAt,
@@ -73,7 +73,7 @@ public static class ExerciseMapper
             Language = request.Language,
             StarterCode = request.StarterCode,
             SolutionCode = request.SolutionCode,
-            SolutionValidator = request.SolutionValidator,
+            DefaultMainCode = request.DefaultMainCode,
             Instruction = request.Instruction,
             Hint = request.Hint,
             CreatedAt = DateTime.UtcNow,
@@ -98,8 +98,8 @@ public static class ExerciseMapper
         if (request.SolutionCode != null)
             exercise.SolutionCode = request.SolutionCode;
 
-        if (request.SolutionValidator != null)
-            exercise.SolutionValidator = request.SolutionValidator;
+        if (request.DefaultMainCode != null)
+            exercise.DefaultMainCode = request.DefaultMainCode;
 
         if (request.Instruction != null)
             exercise.Instruction = request.Instruction;
@@ -117,7 +117,7 @@ public static class ExerciseMapper
             exercise.Language = null;
             exercise.StarterCode = null;
             exercise.SolutionCode = null;
-            exercise.SolutionValidator = null;
+            exercise.DefaultMainCode = null;
             exercise.Instruction = null;
             exercise.Hint = null;
         }

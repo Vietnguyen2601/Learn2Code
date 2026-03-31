@@ -28,7 +28,6 @@ public class LessonRepository : GenericRepository<Lesson>, ILessonRepository
             .Include(l => l.Section)
                 .ThenInclude(s => s.Course)
             .Include(l => l.Exercises)
-            .Include(l => l.Quizzes)
             .FirstOrDefaultAsync(l => l.LessonId == lessonId);
     }
 
@@ -50,11 +49,9 @@ public class LessonRepository : GenericRepository<Lesson>, ILessonRepository
         if (userId == null)
             return false;
 
-        // Check if user is enrolled in the course
+        // Check if user is enrolled in the course (any enrollment status allowed)
         var isEnrolled = await _context.Set<Enrollment>()
-            .AnyAsync(e => e.CourseId == lesson.Section.CourseId 
-                        && e.StudentId == userId.Value 
-                        && e.Status != Domain.Enums.EnrollmentStatus.Completed);
+            .AnyAsync(e => e.CourseId == lesson.Section.CourseId && e.StudentId == userId.Value);
 
         return isEnrolled;
     }

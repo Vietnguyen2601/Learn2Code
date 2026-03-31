@@ -23,10 +23,13 @@ public class ProgressService : IProgressService
 
     public async Task<ServiceResult<CourseProgressDto>> GetCourseProgressAsync(Guid courseId, Guid studentId)
     {
-        // Kiểm tra course có tồn tại không
+        // Kiểm tra course có tồn tại và hoạt động không
         var course = await _unitOfWork.CourseRepository.GetByIdAsync(courseId);
         if (course == null)
             return ServiceResult<CourseProgressDto>.NotFound("Course not found");
+
+        if (!course.IsActive)
+            return ServiceResult<CourseProgressDto>.NotFound("Course is not available");
 
         // Kiểm tra enrollment
         var enrollment = await _unitOfWork.EnrollmentRepository
@@ -66,28 +69,12 @@ public class ProgressService : IProgressService
             var completedCount = lessonProgresses.Count(lp => lp.Status == LessonProgressStatus.Completed);
             totalCompletedLessons += completedCount;
 
-            // Check section quiz unlocked
-            var sectionQuizUnlocked = completedCount >= lessons.Count();
-
-            // Lấy best attempt của section quiz
-            var bestAttempt = await _unitOfWork.Repository<SectionQuizAttempt>()
-                .GetAllQueryable()
-                .Where(a => a.SectionId == section.SectionId && a.StudentId == studentId)
-                .OrderByDescending(a => a.Score)
-                .ToListAsync();
-
-            var sectionQuizPassed = bestAttempt.Any() && bestAttempt.First().IsPassed;
-            var sectionQuizScore = bestAttempt.Any() ? (decimal?)bestAttempt.First().Score : null;
-
             sectionProgressDtos.Add(new SectionProgressDto
             {
                 SectionId = section.SectionId,
                 Title = section.Title,
                 LessonsTotal = lessons.Count(),
-                LessonsCompleted = completedCount,
-                SectionQuizUnlocked = sectionQuizUnlocked,
-                SectionQuizPassed = sectionQuizPassed,
-                SectionQuizScore = sectionQuizScore
+                LessonsCompleted = completedCount
             });
         }
 

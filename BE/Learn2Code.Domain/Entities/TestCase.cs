@@ -20,6 +20,13 @@ public class TestCase
     [Column("text_input")]
     public string? TextInput { get; set; }
 
+    /// <summary>
+    /// Hàm main riêng của test case này, được gắn vào sau student code khi Submit.
+    /// Null = chạy student code trực tiếp (stdin = TextInput, so sánh với ExpectedOutput).
+    /// </summary>
+    [Column("main_code")]
+    public string? MainCode { get; set; }
+
     [Column("is_hidden")]
     public bool IsHidden { get; set; } = false;
 

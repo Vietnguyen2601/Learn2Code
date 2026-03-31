@@ -178,57 +178,79 @@ public class CertificationService : ICertificationService
 
         // Default requirements if no rule exists
         var minWeightScore = rule?.MinWeightScore ?? 0;
-        var requireAllQuiz = rule?.RequireAllSectionQuiz ?? false;
 
-        // Get all sections of the course
-        var sections = await _unitOfWork.SectionRepository.GetAllQueryable()
-            .Where(s => s.CourseId == courseId && s.IsActive)
-            .Include(s => s.Lessons)
-            .ToListAsync();
-
-        var allLessonIds = sections.SelectMany(s => s.Lessons.Select(l => l.LessonId)).ToList();
-        var sectionIds = sections.Select(s => s.SectionId).ToList();
-
-        // Get sections that have quizzes (sections where student has at least one quiz to attempt)
-        var sectionsWithQuizzes = await _unitOfWork.Repository<Quiz>().GetAllQueryable()
-            .Where(q => sections.SelectMany(s => s.Lessons.Select(l => l.LessonId)).Contains(q.LessonId))
-            .Select(q => q.Lesson.SectionId)
-            .Distinct()
-            .ToListAsync();
-
-        progress.TotalSectionsWithQuiz = sectionsWithQuizzes.Count;
-
-        if (sectionsWithQuizzes.Count > 0)
+        // Get all sections and lessons in course
+        var sections = await _unitOfWork.SectionRepository.GetByCourseIdAsync(courseId);
+        if (!sections.Any())
         {
-            // Get best score per section for this student
-            var quizAttempts = await _unitOfWork.Repository<SectionQuizAttempt>().GetAllQueryable()
-                .Where(qa => qa.StudentId == studentId && sectionIds.Contains(qa.SectionId))
+            // No content - eligible for certification
+            progress.LessonCompletionPct = 100;
+            progress.ExercisePassPct = 100;
+            return (progress, missing);
+        }
+
+        var totalLessons = 0;
+        var totalCompletedLessons = 0;
+        var totalExercises = 0;
+        var totalPassedExercises = 0;
+
+        foreach (var section in sections)
+        {
+            // Get all lessons in section
+            var lessons = await _unitOfWork.LessonRepository.GetLessonsBySectionIdAsync(section.SectionId);
+            totalLessons += lessons.Count();
+
+            // Get lesson progresses for student
+            var lessonIds = lessons.Select(l => l.LessonId).ToList();
+            var lessonProgresses = await _unitOfWork.Repository<LessonProgress>()
+                .GetAllQueryable()
+                .Where(lp => lp.StudentId == studentId && lessonIds.Contains(lp.LessonId))
                 .ToListAsync();
 
-            var sectionsAttempted = quizAttempts
-                .GroupBy(qa => qa.SectionId)
-                .Select(g => new { SectionId = g.Key, BestScore = g.Max(qa => qa.Score) })
+            var completedLessonIds = lessonProgresses
+                .Where(lp => lp.Status == LessonProgressStatus.Completed)
+                .Select(lp => lp.LessonId)
                 .ToList();
 
-            progress.SectionsWithQuizAttempt = sectionsAttempted.Count;
+            totalCompletedLessons += completedLessonIds.Count;
 
-            if (sectionsAttempted.Count > 0)
+            // Get exercises in lessons
+            foreach (var lesson in lessons)
             {
-                progress.SectionQuizAvgScore = Math.Round(sectionsAttempted.Average(s => s.BestScore), 2);
-            }
+                var exercises = await _unitOfWork.ExerciseRepository.GetExercisesByLessonIdAsync(lesson.LessonId);
+                totalExercises += exercises.Count();
 
-            // Check min weight score
-            if (progress.SectionQuizAvgScore < minWeightScore)
-            {
-                missing.Add($"Section quiz average score: {progress.SectionQuizAvgScore}% (required: {minWeightScore}%)");
-            }
+                // Get exercise progresses for student
+                var exerciseIds = exercises.Select(e => e.ExerciseId).ToList();
+                var exerciseProgresses = await _unitOfWork.Repository<ExerciseProgress>()
+                    .GetAllQueryable()
+                    .Where(ep => ep.StudentId == studentId && exerciseIds.Contains(ep.ExerciseId))
+                    .ToListAsync();
 
-            // Check if all sections with quizzes are attempted
-            if (requireAllQuiz && progress.SectionsWithQuizAttempt < progress.TotalSectionsWithQuiz)
-            {
-                var notAttemptedCount = progress.TotalSectionsWithQuiz - progress.SectionsWithQuizAttempt;
-                missing.Add($"Section quizzes not attempted: {notAttemptedCount} section(s)");
+                totalPassedExercises += exerciseProgresses.Count(ep => ep.IsPassed && ep.IsCompleted);
             }
+        }
+
+        // Calculate percentages
+        progress.LessonCompletionPct = totalLessons > 0
+            ? Math.Round((decimal)totalCompletedLessons / totalLessons * 100, 2)
+            : 100;
+
+        progress.ExercisePassPct = totalExercises > 0
+            ? Math.Round((decimal)totalPassedExercises / totalExercises * 100, 2)
+            : 100;
+
+        // Check requirements
+        // Requirement 1: All lessons must be completed
+        if (progress.LessonCompletionPct < 100)
+        {
+            missing.Add("Complete all lessons in the course");
+        }
+
+        // Requirement 2: All exercises must be passed
+        if (progress.ExercisePassPct < 100)
+        {
+            missing.Add("Pass all exercises in the course");
         }
 
         return (progress, missing);

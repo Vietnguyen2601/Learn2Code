@@ -50,15 +50,13 @@ public static class CertificationMapper
             // Default requirements if no rule is set
             return new CertificationRequirementsDto
             {
-                MinWeightScore = 0,
-                RequireAllSectionQuiz = false
+                MinWeightScore = 0
             };
         }
 
         return new CertificationRequirementsDto
         {
-            MinWeightScore = rule.MinWeightScore,
-            RequireAllSectionQuiz = rule.RequireAllSectionQuiz
+            MinWeightScore = rule.MinWeightScore
         };
     }
 

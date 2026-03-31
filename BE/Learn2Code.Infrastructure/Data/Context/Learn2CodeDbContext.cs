@@ -68,10 +68,6 @@ public class Learn2CodeDbContext : DbContext
     public DbSet<Exercise> Exercises { get; set; } = null!;
     public DbSet<ExerciseMedia> ExerciseMedias { get; set; } = null!;
     public DbSet<TestCase> TestCases { get; set; } = null!;
-    public DbSet<Quiz> Quizzes { get; set; } = null!;
-    public DbSet<QuizOption> QuizOptions { get; set; } = null!;
-    public DbSet<SectionQuizAttempt> SectionQuizAttempts { get; set; } = null!;
-    public DbSet<SectionQuizAnswer> SectionQuizAnswers { get; set; } = null!;
     public DbSet<LessonProgress> LessonProgresses { get; set; } = null!;
     public DbSet<ExerciseProgress> ExerciseProgresses { get; set; } = null!;
     public DbSet<CertificateTemplate> CertificateTemplates { get; set; } = null!;
@@ -134,9 +130,6 @@ public class Learn2CodeDbContext : DbContext
         modelBuilder.Entity<ExerciseProgress>()
             .HasIndex(ep => new { ep.StudentId, ep.ExerciseId }).IsUnique();
 
-        modelBuilder.Entity<SectionQuizAnswer>()
-            .HasIndex(a => new { a.AttemptId, a.QuizId }).IsUnique();
-
         modelBuilder.Entity<Section>()
             .HasIndex(s => new { s.CourseId, s.OrderNumber }).IsUnique();
 
@@ -145,9 +138,6 @@ public class Learn2CodeDbContext : DbContext
 
         modelBuilder.Entity<Exercise>()
             .HasIndex(e => new { e.LessonId, e.OrderNumber }).IsUnique();
-
-        modelBuilder.Entity<Quiz>()
-            .HasIndex(q => new { q.LessonId, q.OrderNumber }).IsUnique();
 
         modelBuilder.Entity<ExerciseMedia>()
             .HasIndex(m => new { m.ExerciseId, m.OrderNumber }).IsUnique();
@@ -225,10 +215,6 @@ public class Learn2CodeDbContext : DbContext
 
         modelBuilder.Entity<TestCase>()
             .Property(t => t.Weight)
-            .HasPrecision(5, 2);
-
-        modelBuilder.Entity<SectionQuizAttempt>()
-            .Property(a => a.Score)
             .HasPrecision(5, 2);
 
         modelBuilder.Entity<CourseCompletionRule>()
