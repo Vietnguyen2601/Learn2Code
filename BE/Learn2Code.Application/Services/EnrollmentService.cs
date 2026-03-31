@@ -36,7 +36,7 @@ public class EnrollmentService : IEnrollmentService
         return ServiceResult<EnrollmentDetailDto>.Ok(enrollment.ToDetailDto());
     }
 
-    public async Task<ServiceResult<EnrollmentDto>> CreateEnrollmentAsync(Guid studentId, CreateEnrollmentRequest request)
+    public async Task<ServiceResult<EnrollmentDto>> CreateEnrollmentAsync(Guid studentId, CreateEnrollmentRequest request, bool isAdmin = false)
     {
         var course = await _unitOfWork.CourseRepository.GetByIdAsync(request.CourseId);
         if (course == null || !course.IsActive)
@@ -47,15 +47,26 @@ public class EnrollmentService : IEnrollmentService
         if (existing != null)
             return ServiceResult<EnrollmentDto>.Error("ALREADY_ENROLLED", "You are already enrolled in this course");
 
-        var subscription = await _unitOfWork.SubscriptionRepository.GetCurrentActiveAsync(studentId);
-        if (subscription == null || subscription.Status != SubscriptionStatus.Active)
-            return ServiceResult<EnrollmentDto>.Error("NO_ACTIVE_SUBSCRIPTION", "An active subscription is required to enroll in a course", 403);
+        // Admin can bypass subscription requirement
+        if (!isAdmin)
+        {
+            var subscription = await _unitOfWork.SubscriptionRepository.GetCurrentActiveAsync(studentId);
+            if (subscription == null || subscription.Status != SubscriptionStatus.Active)
+                return ServiceResult<EnrollmentDto>.Error("NO_ACTIVE_SUBSCRIPTION", "An active subscription is required to enroll in a course", 403);
 
-        var enrollment = request.ToEntity(studentId, subscription.SubscriptionId);
-        _unitOfWork.EnrollmentRepository.PrepareCreate(enrollment);
+            var enrollment = request.ToEntity(studentId, subscription.SubscriptionId);
+            _unitOfWork.EnrollmentRepository.PrepareCreate(enrollment);
+            await _unitOfWork.SaveChangesAsync();
+
+            return ServiceResult<EnrollmentDto>.Created(enrollment.ToDto(), "Enrolled successfully");
+        }
+
+        // For admin, create enrollment without subscription requirement
+        var adminEnrollment = request.ToEntity(studentId, null);
+        _unitOfWork.EnrollmentRepository.PrepareCreate(adminEnrollment);
         await _unitOfWork.SaveChangesAsync();
 
-        return ServiceResult<EnrollmentDto>.Created(enrollment.ToDto(), "Enrolled successfully");
+        return ServiceResult<EnrollmentDto>.Created(adminEnrollment.ToDto(), "Admin enrolled user successfully");
     }
 
     public async Task<ServiceResult<List<EnrollmentDetailDto>>> GetAllEnrollmentsAsync()

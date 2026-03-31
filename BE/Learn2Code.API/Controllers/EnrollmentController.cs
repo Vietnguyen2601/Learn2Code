@@ -55,7 +55,7 @@ public class EnrollmentController : ControllerBase
     }
 
     /// <summary>
-    /// Enroll in a course (requires active subscription)
+    /// Enroll in a course (requires active subscription, unless you are Admin)
     /// </summary>
     [HttpPost]
     [Authorize(Roles = "Student,Admin")]
@@ -67,7 +67,8 @@ public class EnrollmentController : ControllerBase
     public async Task<IActionResult> CreateEnrollment([FromBody] CreateEnrollmentRequest request)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var result = await _enrollmentService.CreateEnrollmentAsync(userId, request);
+        var isAdmin = User.IsInRole("Admin");
+        var result = await _enrollmentService.CreateEnrollmentAsync(userId, request, isAdmin);
 
         if (!result.Success)
             return result.Status == 403 ? StatusCode(403, result)

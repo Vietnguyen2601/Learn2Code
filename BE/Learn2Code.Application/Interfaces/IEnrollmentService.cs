@@ -8,6 +8,6 @@ public interface IEnrollmentService
 {
     Task<ServiceResult<List<EnrollmentDetailDto>>> GetMyEnrollmentsAsync(Guid studentId);
     Task<ServiceResult<EnrollmentDetailDto>> GetEnrollmentByIdAsync(Guid enrollmentId, Guid userId, bool isAdmin);
-    Task<ServiceResult<EnrollmentDto>> CreateEnrollmentAsync(Guid studentId, CreateEnrollmentRequest request);
+    Task<ServiceResult<EnrollmentDto>> CreateEnrollmentAsync(Guid studentId, CreateEnrollmentRequest request, bool isAdmin = false);
     Task<ServiceResult<List<EnrollmentDetailDto>>> GetAllEnrollmentsAsync();
 }

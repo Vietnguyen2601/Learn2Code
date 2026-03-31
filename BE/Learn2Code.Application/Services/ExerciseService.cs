@@ -50,16 +50,20 @@ public class ExerciseService : IExerciseService
         return ServiceResult<List<ExerciseDto>>.Ok(exerciseDtos);
     }
 
-    public async Task<ServiceResult<ExerciseDetailDto>> GetExerciseByIdAsync(Guid exerciseId, Guid? userId)
+    public async Task<ServiceResult<ExerciseDetailDto>> GetExerciseByIdAsync(Guid exerciseId, Guid? userId, bool isAdmin = false)
     {
         var exercise = await _unitOfWork.ExerciseRepository.GetExerciseWithDetailsAsync(exerciseId);
         if (exercise == null)
             return ServiceResult<ExerciseDetailDto>.NotFound("Exercise not found");
 
-        // Ki?m tra quy?n truy c?p
-        var canAccess = await _unitOfWork.ExerciseRepository.CanUserAccessExerciseAsync(exerciseId, userId);
-        if (!canAccess)
-            return ServiceResult<ExerciseDetailDto>.Error("ACCESS_DENIED", "You don't have permission to access this exercise", 403);
+        // Admin can bypass access control
+        if (!isAdmin)
+        {
+            // Ki?m tra quy?n truy c?p
+            var canAccess = await _unitOfWork.ExerciseRepository.CanUserAccessExerciseAsync(exerciseId, userId);
+            if (!canAccess)
+                return ServiceResult<ExerciseDetailDto>.Error("ACCESS_DENIED", "You don't have permission to access this exercise", 403);
+        }
 
         return ServiceResult<ExerciseDetailDto>.Ok(exercise.ToDetailDto());
     }

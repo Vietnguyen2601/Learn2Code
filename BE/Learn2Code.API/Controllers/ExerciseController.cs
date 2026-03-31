@@ -35,7 +35,7 @@ public class ExerciseController : ControllerBase
     }
 
     /// <summary>
-    /// Get exercise detail by ID (Admin & Student - with access control)
+    /// Get exercise detail by ID (Admin & Student - with access control, Admin bypass enabled)
     /// </summary>
     [HttpGet("exercises/{exerciseId}")]
     [Authorize]
@@ -47,8 +47,9 @@ public class ExerciseController : ControllerBase
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         Guid? userId = userIdClaim != null ? Guid.Parse(userIdClaim) : null;
+        var isAdmin = User.IsInRole("Admin");
 
-        var result = await _exerciseService.GetExerciseByIdAsync(exerciseId, userId);
+        var result = await _exerciseService.GetExerciseByIdAsync(exerciseId, userId, isAdmin);
         
         if (!result.Success)
         {
